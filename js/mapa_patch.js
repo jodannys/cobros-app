@@ -102,23 +102,14 @@ function obtenerUbicacionGPS() {
 
 function renderMapaCliente(lat, lng, nombre) {
   if (!lat || !lng) return '';
-  const urlMaps     = `https://www.google.com/maps?q=${lat},${lng}`;
-  const urlStaticImg = `https://staticmap.openstreetmap.de/staticmap.php?center=${lat},${lng}&zoom=16&size=400x180&markers=${lat},${lng},red`;
+  const urlMaps = `https://www.google.com/maps?q=${lat},${lng}`;
 
   return `
   <div style="margin-bottom:12px">
-    <!-- Mini mapa estático de OpenStreetMap (sin API key) -->
-    <div style="position:relative;border-radius:12px;overflow:hidden;border:2px solid var(--border)">
-      <img src="${urlStaticImg}"
-        style="width:100%;height:180px;object-fit:cover;display:block"
-        onerror="this.parentElement.innerHTML='<div style=\'height:60px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:13px\'>📍 Ubicación guardada</div>'"
-        alt="Ubicación de ${nombre}">
-      <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-        font-size:28px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5))">📍</div>
-    </div>
     <a href="${urlMaps}" target="_blank"
-      style="display:flex;align-items:center;gap:6px;color:var(--primary);
-      font-size:13px;font-weight:600;text-decoration:none;margin-top:8px">
+      style="display:inline-flex;align-items:center;gap:8px;background:#eff6ff;
+      color:var(--primary);padding:10px 16px;border-radius:10px;font-size:14px;
+      font-weight:600;text-decoration:none">
       🗺️ Abrir ubicación en Google Maps
     </a>
   </div>`;
