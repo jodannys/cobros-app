@@ -1,15 +1,24 @@
 function renderModal() {
   const m = state.modal;
   let content = '';
-  if (m === 'nuevo-cliente') content = renderModalNuevoCliente();
+  if (m === 'nuevo-cliente')       content = renderModalNuevoCliente();
   else if (m === 'editar-cliente') content = renderModalEditarCliente();
-  else if (m === 'nuevo-credito') content = renderModalNuevoCredito();
+  else if (m === 'nuevo-credito')  content = renderModalNuevoCredito();
   else if (m === 'registrar-pago') content = renderModalRegistrarPago();
-  else if (m === 'nuevo-usuario') content = renderModalNuevoUsuario();
+  else if (m === 'nuevo-usuario')  content = renderModalNuevoUsuario();
   else if (m === 'gestionar-credito') content = renderModalGestionarCredito();
   else if (m === 'banner-alertas') content = renderModalBannerAlertas();
   else if (m === 'editar-usuario') content = renderModalEditarUsuario();
-  return `<div class="modal-overlay" onclick="closeModal(event)"><div class="modal" onclick="event.stopPropagation()">${content}</div></div>`;
+  else if (m === 'editar-admin')   content = renderModalEditarAdmin();
+  return `
+  <div class="modal-overlay" onclick="closeModal(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+      <!-- CORRECCIÓN P6: botón X siempre visible -->
+      <button onclick="closeModal(event)"
+        style="position:absolute;top:12px;right:14px;border:none;background:none;font-size:22px;cursor:pointer;color:#94a3b8;line-height:1;padding:0">×</button>
+      ${content}
+    </div>
+  </div>`;
 }
 
 function renderModalNuevoCliente() {
@@ -36,6 +45,7 @@ function renderModalNuevoCliente() {
 function renderModalEditarCliente() {
   const c = state.selectedClient;
   const cobradores = (DB._cache['users'] || []).filter(u => u.role === 'cobrador');
+  const isAdmin = state.currentUser.role === 'admin';
   return `
   <div class="modal-handle"></div>
   <div class="modal-title">✏️ Editar Cliente</div>
@@ -44,9 +54,12 @@ function renderModalEditarCliente() {
   <div class="form-group"><label>Teléfono</label><input class="form-control" id="eTelefono" value="${c.telefono || ''}"></div>
   <div class="form-group"><label>Dirección</label><input class="form-control" id="eDireccion" value="${c.direccion || ''}"></div>
   <div class="form-group"><label>Link Google Maps</label><input class="form-control" id="eUbicacion" value="${c.ubicacion || ''}"></div>
+  ${isAdmin ? `
   <div class="form-group"><label>Cobrador asignado</label>
-    <select class="form-control" id="eCobrador">${cobradores.map(u => `<option value="${u.id}" ${u.id === c.cobradorId ? 'selected' : ''}>${u.nombre}</option>`).join('')}</select>
-  </div>
+    <select class="form-control" id="eCobrador">
+      ${cobradores.map(u => `<option value="${u.id}" ${u.id === c.cobradorId ? 'selected' : ''}>${u.nombre}</option>`).join('')}
+    </select>
+  </div>` : ''}
   <div class="form-group">
     <label>Foto</label>
     <label class="upload-btn" for="eFoto">📷 Cambiar foto</label>
@@ -54,14 +67,16 @@ function renderModalEditarCliente() {
     ${c.foto ? `<img src="${c.foto}" class="uploaded-img" id="previewEFoto">` : `<img id="previewEFoto" style="display:none" class="uploaded-img">`}
   </div>
   <button class="btn btn-primary" onclick="actualizarCliente()">Actualizar</button>
-  ${state.currentUser.role === 'admin' ? `<button class="btn btn-danger" style="margin-top:8px" onclick="eliminarCliente()">🗑️ Eliminar cliente</button>` : ''}`;
+  ${isAdmin ? `<button class="btn btn-danger" style="margin-top:8px" onclick="eliminarCliente()">🗑️ Eliminar cliente</button>` : ''}`;
 }
 
 function renderModalNuevoCredito() {
   return `
   <div class="modal-handle"></div>
   <div class="modal-title">💳 Nuevo Crédito</div>
-  <div class="form-group"><label>Monto a prestar (S/) *</label><input class="form-control" id="crMonto" type="number" placeholder="1000" oninput="calcularCredito()"></div>
+  <div class="form-group"><label>Monto a prestar (S/) *</label>
+    <input class="form-control" id="crMonto" type="number" placeholder="1000" oninput="calcularCredito()">
+  </div>
   <div id="crPreview" style="display:none;background:var(--bg);border-radius:12px;padding:14px;margin-bottom:12px">
     <div class="info-grid">
       <div class="info-item"><div class="info-label">Interés (20%)</div><div class="info-value" id="crInteres">—</div></div>
@@ -70,7 +85,9 @@ function renderModalNuevoCredito() {
       <div class="info-item"><div class="info-label">Plazo</div><div class="info-value">24 días</div></div>
     </div>
   </div>
-  <div class="form-group"><label>Fecha de inicio</label><input class="form-control" id="crFecha" type="date" value="${today()}"></div>
+  <div class="form-group"><label>Fecha de inicio</label>
+    <input class="form-control" id="crFecha" type="date" value="${today()}">
+  </div>
   <button class="btn btn-primary" onclick="guardarCredito()">Crear Crédito</button>`;
 }
 
@@ -87,7 +104,9 @@ function renderModalRegistrarPago() {
     <div class="flex-between"><span class="text-muted">Cuota diaria:</span><span class="fw-bold">${formatMoney(cr.cuotaDiaria)}</span></div>
     <div class="flex-between mt-2"><span class="text-muted">Saldo pendiente:</span><span class="fw-bold text-danger">${formatMoney(saldo)}</span></div>
   </div>
-  <div class="form-group"><label>Monto recibido (S/)</label><input class="form-control" id="pMonto" type="number" value="${cr.cuotaDiaria}"></div>
+  <div class="form-group"><label>Monto recibido (S/)</label>
+    <input class="form-control" id="pMonto" type="number" value="${cr.cuotaDiaria.toFixed(2)}">
+  </div>
   <div class="form-group"><label>Forma de pago</label>
     <select class="form-control" id="pTipo">
       <option value="efectivo">💵 Efectivo</option>
@@ -95,8 +114,12 @@ function renderModalRegistrarPago() {
       <option value="transferencia">🏦 Transferencia</option>
     </select>
   </div>
-  <div class="form-group"><label>Fecha</label><input class="form-control" id="pFecha" type="date" value="${today()}"></div>
-  <div class="form-group"><label>Nota (opcional)</label><input class="form-control" id="pNota" placeholder="Observaciones..."></div>
+  <div class="form-group"><label>Fecha</label>
+    <input class="form-control" id="pFecha" type="date" value="${today()}">
+  </div>
+  <div class="form-group"><label>Nota (opcional)</label>
+    <input class="form-control" id="pNota" placeholder="Observaciones...">
+  </div>
   <button class="btn btn-success" onclick="guardarPago()">✓ Confirmar Pago</button>`;
 }
 
@@ -114,19 +137,22 @@ function renderModalNuevoUsuario() {
     </div>
   </div>
   <div class="form-group"><label>Rol</label>
-    <select class="form-control" id="uRol"><option value="cobrador">Cobrador</option><option value="admin">Administrador</option></select>
+    <select class="form-control" id="uRol">
+      <option value="cobrador">Cobrador</option>
+      <option value="admin">Administrador</option>
+    </select>
   </div>
   <button class="btn btn-primary" onclick="guardarUsuario()">Crear Usuario</button>`;
 }
 
 function renderModalGestionarCredito() {
   const cr = state.selectedCredito;
-  const c = state.selectedClient;
+  const c  = state.selectedClient;
   if (!cr || !c) return '';
-  const pagos = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id);
+  const pagos      = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id);
   const totalPagado = pagos.reduce((s, p) => s + p.monto, 0);
   const saldo = cr.total - totalPagado;
-  const dias = diasSinPagar(cr.id);
+  const dias  = diasSinPagar(cr.id);
   const vencido = estaVencido(cr.fechaInicio, cr.diasTotal);
   return `
   <div class="modal-handle"></div>
@@ -143,7 +169,7 @@ function renderModalGestionarCredito() {
       </span>
     </div>
     <div style="font-size:12px;color:var(--muted);margin-top:8px">
-      Inicio: ${formatDate(cr.fechaInicio)} · Fin original: ${calcularFechaFin(cr.fechaInicio, cr.diasTotal)}
+      Inicio: ${formatDate(cr.fechaInicio)} · Fin: ${calcularFechaFin(cr.fechaInicio, cr.diasTotal)}
     </div>
   </div>
   <div style="border:2px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px">
@@ -161,11 +187,12 @@ function renderModalGestionarCredito() {
       <input class="form-control" id="fechaCompromiso" type="date" value="${cr.fechaCompromiso || ''}">
     </div>
     <button class="btn btn-primary btn-sm" style="width:100%" onclick="guardarCompromiso()">Guardar compromiso</button>
-    ${cr.fechaCompromiso ? `<div style="margin-top:8px;font-size:13px;color:var(--success);font-weight:600">✓ Compromiso actual: ${formatDate(cr.fechaCompromiso)}</div>` : ''}
+    ${cr.fechaCompromiso ? `<div style="margin-top:8px;font-size:13px;color:var(--success);font-weight:600">✓ Actual: ${formatDate(cr.fechaCompromiso)}</div>` : ''}
   </div>
   <div style="border:2px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px">
     <div style="font-weight:700;margin-bottom:10px">📝 Nota del crédito</div>
-    <textarea class="form-control" id="notaCredito" placeholder="Observaciones sobre este crédito..." style="resize:none;height:80px">${cr.nota || ''}</textarea>
+    <textarea class="form-control" id="notaCredito" style="resize:none;height:80px"
+      placeholder="Observaciones...">${cr.nota || ''}</textarea>
     <button class="btn btn-primary btn-sm" style="width:100%;margin-top:8px" onclick="guardarNotaCredito()">Guardar nota</button>
   </div>`;
 }
@@ -197,6 +224,7 @@ function renderModalBannerAlertas() {
   <button class="btn btn-primary" style="margin-top:8px" onclick="closeModal(event);navigate('admin')">Ver en Admin</button>
   <button class="btn btn-outline" style="margin-top:8px" onclick="closeModal(event)">Cerrar</button>`;
 }
+
 function renderModalEditarUsuario() {
   const users = DB._cache['users'] || [];
   const u = users.find(x => x.id === state.selectedCobrador);
@@ -221,14 +249,83 @@ function renderModalEditarUsuario() {
   </div>
   <button class="btn btn-primary" onclick="actualizarUsuario()">Actualizar</button>`;
 }
+
+// CORRECCIÓN P7: Modal para editar/crear admin principal
+function renderModalEditarAdmin() {
+  const u = state._editingAdmin;
+  const isNew = !u;
+  return `
+  <div class="modal-handle"></div>
+  <div class="modal-title">${isNew ? '➕ Nuevo Administrador' : '🛡️ Editar Administrador'}</div>
+  <div class="form-group">
+    <label>Nombre completo *</label>
+    <input class="form-control" id="adNombre" value="${u ? u.nombre : ''}" placeholder="Nombre del admin">
+  </div>
+  <div class="form-group">
+    <label>Usuario *</label>
+    <input class="form-control" id="adUser" value="${u ? u.user : ''}" placeholder="usuario" autocomplete="off">
+  </div>
+  <div class="form-group">
+    <label>${isNew ? 'Contraseña *' : 'Nueva contraseña (dejar vacío para no cambiar)'}</label>
+    <div style="position:relative">
+      <input class="form-control" id="adPass" type="password"
+        placeholder="${isNew ? '••••••••' : 'Dejar vacío para no cambiar'}" style="padding-right:40px">
+      <button type="button" onclick="togglePass('adPass')"
+        style="position:absolute;right:10px;top:50%;transform:translateY(-50%);border:none;background:none;font-size:18px;cursor:pointer">👁️</button>
+    </div>
+  </div>
+  <button class="btn btn-primary" onclick="guardarAdmin(${isNew ? 'null' : `'${u.id}'`})">${isNew ? 'Crear Admin' : 'Actualizar'}</button>`;
+}
+
+async function guardarAdmin(idExistente) {
+  const nombre = document.getElementById('adNombre').value.trim();
+  const user   = document.getElementById('adUser').value.trim();
+  const pass   = document.getElementById('adPass').value.trim();
+
+  if (!nombre || !user) { alert('Nombre y usuario son obligatorios'); return; }
+
+  const users = DB._cache['users'] || [];
+
+  if (!idExistente) {
+    // Nuevo admin
+    if (!pass) { alert('La contraseña es obligatoria para un nuevo admin'); return; }
+    if (users.find(u => u.user === user)) { alert('Ese nombre de usuario ya existe'); return; }
+    const id = genId();
+    await DB.set('users', id, { id, nombre, user, pass, role: 'admin' });
+    showToast('Administrador creado');
+  } else {
+    // Editar existente
+    const existing = users.find(u => u.id === idExistente);
+    if (!existing) return;
+    // Verificar que el username no lo use otro
+    if (users.find(u => u.user === user && u.id !== idExistente)) {
+      alert('Ese nombre de usuario ya está en uso'); return;
+    }
+    const updates = { nombre, user };
+    if (pass) updates.pass = pass;
+    await DB.update('users', idExistente, updates);
+    // Si el admin editado es el usuario actual, actualizar estado
+    if (state.currentUser.id === idExistente) {
+      state.currentUser = { ...state.currentUser, nombre, user, ...(pass ? { pass } : {}) };
+    }
+    showToast('Administrador actualizado');
+  }
+
+  state._editingAdmin = null;
+  state.modal = null;
+  render();
+}
+
 function openModal(m) { state.modal = m; render(); }
-function closeModal(e) { state.modal = null; state.selectedCredito = null; render(); }
+
+function closeModal(e) {
+  state.modal = null;
+  state.selectedCredito = null;
+  state._editingAdmin = null;
+  render();
+}
 
 function togglePass(id) {
   const input = document.getElementById(id);
-  if (input.type === "password") {
-    input.type = "text";
-  } else {
-    input.type = "password";
-  }
+  input.type = input.type === 'password' ? 'text' : 'password';
 }

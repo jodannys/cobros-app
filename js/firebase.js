@@ -46,10 +46,16 @@ async function fbInit() {
     await fbSet('users', 'u3', { id: 'u3', nombre: 'María López', user: 'maria', pass: '1234', role: 'cobrador' });
   }
 }
+
+// CORRECCIÓN P1: fbEscuchar ahora pasa los datos al callback
+// Esto permite que app.js actualice el caché cuando Firestore notifica cambios
+// sin cerrar la app ni perder el estado actual
 function fbEscuchar(colName, callback) {
   return fsdb.collection(colName).onSnapshot(snap => {
     const datos = snap.docs.map(d => ({ ...d.data(), id: d.id }));
-    DB._cache[colName] = datos;
-    callback();
+    // Pasar los datos al callback para que app.js actualice el caché
+    callback(datos);
+  }, (error) => {
+    console.error(`Error escuchando ${colName}:`, error);
   });
 }

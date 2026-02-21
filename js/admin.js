@@ -7,6 +7,7 @@ function renderAdmin() {
   const pagos = DB._cache['pagos'] || [];
   const cobradores = users.filter(u => u.role === 'cobrador');
   const admins = users.filter(u => u.role === 'admin');
+
   const totalPrestado = creditos.filter(c => c.activo).reduce((s, c) => s + c.monto, 0);
   const totalPorCobrar = creditos.filter(c => c.activo).reduce((s, c) => {
     const pagado = pagos.filter(p => p.creditoId === c.id).reduce((ss, p) => ss + p.monto, 0);
@@ -53,9 +54,8 @@ function renderAdmin() {
                     </span>
                   </div>
                 </div>
-                <button class="btn btn-sm" style="background:var(--primary);color:white;white-space:nowrap" onclick="abrirGestionCredito('${a.cr.id}','${a.cliente?.id}')">
-                  Gestionar
-                </button>
+                <button class="btn btn-sm" style="background:var(--primary);color:white;white-space:nowrap"
+                  onclick="abrirGestionCredito('${a.cr.id}','${a.cliente?.id}')">Gestionar</button>
               </div>
             </div>`).join('')}
         </div>
@@ -66,36 +66,63 @@ function renderAdmin() {
         </div>
       `}
 
+      <!-- COBRADORES -->
       <div class="flex-between mb-2">
         <div class="card-title" style="margin:0">👨‍💼 Cobradores</div>
         <button class="btn btn-primary btn-sm" onclick="openModal('nuevo-usuario')">+ Usuario</button>
       </div>
       ${cobradores.map(u => {
-        const mis = clientes.filter(c => c.cobradorId === u.id);
-        const activos = creditos.filter(c => mis.some(cl => cl.id === c.clienteId) && c.activo);
-        const alertasCobrador = alertas.filter(a => a.cobrador?.id === u.id);
-        return `
+    const mis = clientes.filter(c => c.cobradorId === u.id);
+    const activos = creditos.filter(c => mis.some(cl => cl.id === c.clienteId) && c.activo);
+    const alertasCobrador = alertas.filter(a => a.cobrador?.id === u.id);
+    return `
         <div class="cobrador-row" onclick="selectCobrador('${u.id}')">
           <div class="client-avatar" style="width:40px;height:40px;font-size:16px">${u.nombre.charAt(0)}</div>
           <div style="margin-left:12px;flex:1">
             <div style="font-weight:700;display:flex;align-items:center;gap:8px">
               ${u.nombre}
-              ${alertasCobrador.length > 0 ? `<span style="background:var(--danger);color:white;border-radius:20px;font-size:11px;padding:2px 7px;font-weight:700">${alertasCobrador.length}</span>` : ''}
+              ${alertasCobrador.length > 0
+        ? `<span style="background:var(--danger);color:white;border-radius:20px;font-size:11px;padding:2px 7px;font-weight:700">${alertasCobrador.length}</span>`
+        : ''}
             </div>
             <div style="font-size:12px;color:var(--muted)">${mis.length} clientes · ${activos.length} créditos activos</div>
           </div>
           <span style="color:var(--muted);font-size:20px">›</span>
         </div>`;
-      }).join('')}
+  }).join('')}
 
-      <div class="card-title" style="margin-top:16px">🛡️ Administradores</div>
+      <!-- ADMINISTRADORES (P7 CORREGIDO: editable + agregar) -->
+      <div class="flex-between" style="margin-top:20px;margin-bottom:10px">
+        <div class="card-title" style="margin:0">🛡️ Administradores</div>
+        <button class="btn btn-primary btn-sm" onclick="abrirNuevoAdmin()">+ Admin</button>
+      </div>
       ${admins.map(u => `
         <div class="cobrador-row">
-          <div class="client-avatar" style="width:40px;height:40px;font-size:16px;background:linear-gradient(135deg,#805ad5,#d53f8c)">${u.nombre.charAt(0)}</div>
-          <div style="margin-left:12px;flex:1"><div style="font-weight:700">${u.nombre}</div><div style="font-size:12px;color:var(--muted)">Usuario: ${u.user}</div></div>
+          <div class="client-avatar"
+            style="width:40px;height:40px;font-size:16px;background:linear-gradient(135deg,#805ad5,#d53f8c)">
+            ${u.nombre.charAt(0)}
+          </div>
+          <div style="margin-left:12px;flex:1">
+            <div style="font-weight:700">${u.nombre}</div>
+            <div style="font-size:12px;color:var(--muted)">Usuario: ${u.user}</div>
+          </div>
+          <button class="btn btn-sm btn-outline" onclick="abrirEditarAdmin('${u.id}')">✏️</button>
         </div>`).join('')}
     </div>
   </div>`;
+}
+
+function abrirNuevoAdmin() {
+  state._editingAdmin = null;
+  state.modal = 'editar-admin';
+  render();
+}
+
+function abrirEditarAdmin(id) {
+  const users = DB._cache['users'] || [];
+  state._editingAdmin = users.find(u => u.id === id) || null;
+  state.modal = 'editar-admin';
+  render();
 }
 
 function renderAdminCobrador() {
@@ -104,7 +131,9 @@ function renderAdminCobrador() {
   const creditos = DB._cache['creditos'] || [];
   const pagos = DB._cache['pagos'] || [];
   const cobrador = users.find(u => u.id === state.selectedCobrador);
-  const diasCobrador = [...new Set(pagos.filter(p => p.cobradorId === state.selectedCobrador).map(p => p.fecha))].sort((a, b) => b.localeCompare(a)).slice(0, 7);
+  const diasCobrador = [...new Set(
+    pagos.filter(p => p.cobradorId === state.selectedCobrador).map(p => p.fecha)
+  )].sort((a, b) => b.localeCompare(a)).slice(0, 7);
 
   return `
   <div>
@@ -114,41 +143,65 @@ function renderAdminCobrador() {
       <button class="btn btn-sm btn-outline" onclick="openModal('editar-usuario')">✏️ Editar</button>
     </div>
     <div class="page">
-      <div class="card"><div class="info-grid">
-        <div class="info-item"><div class="info-label">Usuario</div><div class="info-value">${cobrador.user}</div></div>
-        <div class="info-item"><div class="info-label">Clientes</div><div class="info-value">${clientes.length}</div></div>
+      <div class="card">
+        <div class="info-grid">
+          <div class="info-item"><div class="info-label">Usuario</div><div class="info-value">${cobrador.user}</div></div>
+          <div class="info-item"><div class="info-label">Clientes</div><div class="info-value">${clientes.length}</div></div>
+        </div>
+        <button class="btn btn-danger btn-sm" style="margin-top:8px" onclick="eliminarCobrador('${cobrador.id}')">🗑️ Eliminar cobrador</button>
       </div>
-      <button class="btn btn-danger btn-sm" style="margin-top:8px" onclick="eliminarCobrador('${cobrador.id}')">🗑️ Eliminar cobrador</button>
-      </div>
+
       <div class="card-title">Clientes</div>
       ${clientes.map(c => {
-        const crs = creditos.filter(cr => cr.clienteId === c.id && cr.activo);
-        return `
+    const crs = creditos.filter(cr => cr.clienteId === c.id && cr.activo);
+    return `
         <div class="client-item" onclick="selectClient('${c.id}')">
           <div class="client-avatar">${c.nombre.charAt(0)}</div>
-          <div class="client-info"><div class="client-name">${c.nombre}</div><div class="client-dni">DNI: ${c.dni}</div></div>
-          <span class="client-badge ${crs.length > 0 ? 'badge-active' : 'badge-done'}">${crs.length > 0 ? 'Activo' : 'Sin crédito'}</span>
+          <div class="client-info">
+            <div class="client-name">${c.nombre}</div>
+            <div class="client-dni">DNI: ${c.dni}</div>
+          </div>
+          <span class="client-badge ${crs.length > 0 ? 'badge-active' : 'badge-done'}">
+            ${crs.length > 0 ? 'Activo' : 'Sin crédito'}
+          </span>
         </div>`;
-      }).join('')}
+  }).join('')}
+
       <div class="card-title" style="margin-top:16px">Cuadres recientes</div>
-      ${diasCobrador.length === 0 ? `<div class="empty-state"><div class="icon">📊</div><p>Sin registros</p></div>` :
-        diasCobrador.map(fecha => {
-          const c = getCuadreDelDia(state.selectedCobrador, fecha);
-          return `
-          <div class="card" style="padding:14px">
-            <div class="flex-between">
-              <div class="fw-bold">${formatDate(fecha)}</div>
-              <div class="fw-bold text-success">${formatMoney(c.total)}</div>
-            </div>
-            <div class="text-muted" style="font-size:12px;margin-top:4px">📱 ${formatMoney(c.yape)} · 💵 ${formatMoney(c.efectivo)} · 🏦 ${formatMoney(c.transferencia)}</div>
-          </div>`;
-        }).join('')}
+      ${diasCobrador.length === 0
+      ? `<div class="empty-state"><div class="icon">📊</div><p>Sin registros</p></div>`
+      : diasCobrador.map(fecha => {
+        const c = getCuadreDelDia(state.selectedCobrador, fecha);
+        return `
+            <div class="card" style="padding:14px">
+              <div class="flex-between">
+                <div class="fw-bold">${formatDate(fecha)}</div>
+                <div class="fw-bold text-success">${formatMoney(c.total)}</div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center;margin-top:8px">
+                <div style="background:var(--bg);border-radius:8px;padding:6px">
+                  <div style="font-size:11px;color:var(--muted)">📱 Yape</div>
+                  <div style="font-weight:700;font-size:13px">${formatMoney(c.yape)}</div>
+                </div>
+                <div style="background:var(--bg);border-radius:8px;padding:6px">
+                  <div style="font-size:11px;color:var(--muted)">💵 Efectivo</div>
+                  <div style="font-weight:700;font-size:13px">${formatMoney(c.efectivo)}</div>
+                </div>
+                <div style="background:var(--bg);border-radius:8px;padding:6px">
+                  <div style="font-size:11px;color:var(--muted)">🏦 Transf.</div>
+                  <div style="font-weight:700;font-size:13px">${formatMoney(c.transferencia)}</div>
+                </div>
+              </div>
+              ${c.nota ? `<div style="margin-top:8px;font-size:12px;color:var(--muted);font-style:italic">📝 ${c.nota}</div>` : ''}
+            </div>`;
+      }).join('')}
     </div>
   </div>`;
 }
 
 async function eliminarCobrador(id) {
-  if (!confirm('¿Eliminar este cobrador? Sus clientes quedarán sin cobrador asignado.')) return;
+  // CORRECCIÓN P9: confirmación antes de eliminar
+  if (!confirm('¿Eliminar este cobrador? Sus clientes quedarán sin cobrador asignado. Esta acción no se puede deshacer.')) return;
   await DB.delete('users', id);
   state.selectedCobrador = null;
   showToast('Cobrador eliminado');
@@ -180,21 +233,20 @@ async function guardarUsuario() {
   state.modal = null;
   showToast('Usuario creado exitosamente');
 }
-function renderModalEditarUsuario() {
+
+async function actualizarUsuario() {
   const users = DB._cache['users'] || [];
   const u = users.find(x => x.id === state.selectedCobrador);
-  if (!u) return '';
-  return `
-  <div class="modal-handle"></div>
-  <div class="modal-title">✏️ Editar Usuario</div>
-  <div class="form-group"><label>Nombre completo</label><input class="form-control" id="euNombre" value="${u.nombre}"></div>
-  <div class="form-group"><label>Usuario</label><input class="form-control" id="euUser" value="${u.user}"></div>
-  <div class="form-group"><label>Nueva contraseña</label><input class="form-control" id="euPass" type="password" placeholder="Dejar vacío para no cambiar"></div>
-  <div class="form-group"><label>Rol</label>
-    <select class="form-control" id="euRol">
-      <option value="cobrador" ${u.role === 'cobrador' ? 'selected' : ''}>Cobrador</option>
-      <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>Administrador</option>
-    </select>
-  </div>
-  <button class="btn btn-primary" onclick="actualizarUsuario()">Actualizar</button>`;
+  if (!u) return;
+  const nombre = document.getElementById('euNombre').value.trim();
+  const user = document.getElementById('euUser').value.trim();
+  const pass = document.getElementById('euPass').value.trim();
+  const role = document.getElementById('euRol').value;
+  if (!nombre || !user) { alert('Nombre y usuario son obligatorios'); return; }
+  if (users.find(x => x.user === user && x.id !== u.id)) { alert('Ese usuario ya existe'); return; }
+  const updates = { nombre, user, role };
+  if (pass) updates.pass = pass;
+  await DB.update('users', u.id, updates);
+  state.modal = null;
+  showToast('Usuario actualizado');
 }

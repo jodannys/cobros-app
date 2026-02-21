@@ -8,10 +8,10 @@ let state = {
   search: '',
   selectedCobrador: null,
   toast: null,
-  
-  // --- NUEVOS CAMPOS PARA EL LOGIN ---
+  _editingAdmin: null,   // Para modal editar/crear admin (P7)
+
+  // Login
   loginError: '',
-  // Intenta recuperar el último usuario guardado, si no, vacío
-  loginUserField: localStorage.getItem('lastUser') || '', 
+  loginUserField: localStorage.getItem('lastUser') || '',
   loginPassField: ''
 };

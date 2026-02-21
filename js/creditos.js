@@ -7,22 +7,25 @@ function renderCreditoCard(cr) {
   const totalConMora = saldo + mora;
   const progreso = Math.min(100, Math.round((totalPagado / cr.total) * 100));
   const isAdmin = state.currentUser.role === 'admin';
+
   return `
   <div class="credito-card">
     <div class="credito-header">
-      <div>
+      <div style="flex:1">
         <div class="credito-monto">${formatMoney(cr.monto)} prestado</div>
         <div class="text-muted" style="font-size:12px">Total: ${formatMoney(cr.total)} · Cuota: ${formatMoney(cr.cuotaDiaria)}/día</div>
         ${renderFechasCredito(cr)}
       </div>
       <span class="tag ${!pagadoReal ? 'tag-blue' : 'tag-green'}">
-  ${!pagadoReal ? 'Debe ' + formatMoney(saldo) : '✓ Pagado'}
-</span>
+        ${!pagadoReal ? 'Debe ' + formatMoney(saldo) : '✓ Pagado'}
+      </span>
     </div>
-    <div class="flex-between" style="font-size:13px">
+
+    <div class="flex-between" style="font-size:14px;margin-bottom:6px">
       <span class="text-muted">Pagado: <strong class="text-success">${formatMoney(totalPagado)}</strong></span>
       <span class="text-muted">Saldo: <strong class="${saldo > 0 ? 'text-danger' : 'text-success'}">${formatMoney(saldo)}</strong></span>
     </div>
+
     ${mora > 0 ? `
     <div style="background:#fff5f5;border-radius:8px;padding:10px;margin:8px 0;border-left:3px solid var(--danger)">
       <div class="flex-between">
@@ -30,13 +33,17 @@ function renderCreditoCard(cr) {
         <span style="font-weight:800;color:var(--danger)">${formatMoney(mora)}</span>
       </div>
       <div class="flex-between mt-2">
-        <span style="font-size:13px;font-weight:700">Total con mora</span>
+        <span style="font-size:14px;font-weight:700">Total con mora</span>
         <span style="font-weight:800;font-size:16px;color:var(--danger)">${formatMoney(totalConMora)}</span>
       </div>
       <div style="font-size:11px;color:var(--muted);margin-top:4px">S/ 5.00 por día de atraso</div>
     </div>` : ''}
+
     <div class="progress-bar"><div class="progress-fill" style="width:${progreso}%"></div></div>
-    <div style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:8px">${progreso}% pagado · ${pagos.length} de ${cr.diasTotal} cuotas</div>
+    <div style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:10px">
+      ${progreso}% pagado · ${pagos.length} de ${cr.diasTotal} cuotas
+    </div>
+
     ${cr.activo ? `
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn btn-success btn-sm" onclick="openRegistrarPago('${cr.id}')">💰 Registrar pago</button>
@@ -45,14 +52,21 @@ function renderCreditoCard(cr) {
         <button class="btn btn-sm" style="background:${cr.mora_activa ? '#fff5f5' : '#f0fff4'};color:${cr.mora_activa ? 'var(--danger)' : 'var(--success)'};border:2px solid ${cr.mora_activa ? '#fed7d7' : '#c6f6d5'}" onclick="toggleMora('${cr.id}',${cr.mora_activa ? 'false' : 'true'})">
           ${cr.mora_activa ? '🔕 Desactivar mora' : '🔔 Activar mora'}
         </button>` : ''}
-    </div>` : ''}
+    </div>` : `
+    <div style="background:#f0fff4;border-radius:8px;padding:8px 12px;font-size:13px;color:#276749;font-weight:600;text-align:center">
+      ✅ Crédito cerrado
+    </div>`}
+
     ${pagos.length > 0 ? `
-    <div style="margin-top:12px">
-      <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px;text-transform:uppercase">Últimos pagos</div>
+    <div style="margin-top:14px">
+      <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase">Últimos pagos</div>
       ${pagos.slice(-5).reverse().map(p => `
         <div class="cuota-item">
-          <div><div style="font-weight:600;font-size:14px">${formatDate(p.fecha)}</div><div style="font-size:12px;color:var(--muted)">${p.tipo}</div></div>
-          <div style="font-weight:700;color:var(--success)">${formatMoney(p.monto)}</div>
+          <div>
+            <div style="font-weight:600;font-size:14px">${formatDate(p.fecha)}</div>
+            <div style="font-size:12px;color:var(--muted)">${p.tipo}</div>
+          </div>
+          <div style="font-weight:700;font-size:15px;color:var(--success)">${formatMoney(p.monto)}</div>
         </div>`).join('')}
     </div>` : ''}
   </div>`;
@@ -84,16 +98,29 @@ function calcularCredito() {
 }
 
 async function guardarCredito() {
+  // CORRECCIÓN P8: Verificar que no tenga crédito activo antes de crear
+  const creditosExistentes = (DB._cache['creditos'] || [])
+    .filter(c => c.clienteId === state.selectedClient.id && c.activo);
+  if (creditosExistentes.length > 0) {
+    alert('Este cliente ya tiene un crédito activo. Ciérralo antes de crear uno nuevo.');
+    return;
+  }
+
   const monto = parseFloat(document.getElementById('crMonto').value) || 0;
   if (monto <= 0) { alert('Ingresa el monto'); return; }
+
+  const fechaInicio = document.getElementById('crFecha').value;
+  if (!fechaInicio) { alert('Selecciona la fecha de inicio'); return; }
+
   const total = monto * 1.2;
   const cuotaDiaria = total / 24;
   const id = genId();
+
   await DB.set('creditos', id, {
     id,
     clienteId: state.selectedClient.id,
     monto, total, cuotaDiaria, diasTotal: 24,
-    fechaInicio: document.getElementById('crFecha').value,
+    fechaInicio,
     activo: true
   });
   state.modal = null;
@@ -101,24 +128,25 @@ async function guardarCredito() {
 }
 
 async function cerrarCredito(crId) {
-  // 1. Buscamos el crédito y sus pagos para ver el saldo real
   const cr = (DB._cache['creditos'] || []).find(c => c.id === crId);
+  if (!cr) return;
   const pagos = (DB._cache['pagos'] || []).filter(p => p.creditoId === crId);
   const totalPagado = pagos.reduce((s, p) => s + p.monto, 0);
   const saldo = cr.total - totalPagado;
 
-  // 2. Si todavía debe dinero (como los 10 del ejemplo), avisamos
   if (saldo > 0) {
-    if (!confirm(`¡CUIDADO! Aún debe ${formatMoney(saldo)}. Si lo cierras ahora, no cobrarás el 20% completo. ¿Cerrar de todos modos?`)) {
-      return;
-    }
+    if (!confirm(`¡CUIDADO! Aún debe ${formatMoney(saldo)}. Si lo cierras ahora no cobrarás ese saldo. ¿Cerrar de todos modos?`)) return;
   } else {
-    if (!confirm('¿Marcar como pagado totalmente?')) return;
+    if (!confirm('¿Marcar este crédito como pagado totalmente y cerrarlo?')) return;
   }
 
   await DB.update('creditos', crId, { activo: false });
-  showToast('Crédito finalizado');
-  render(); // Refrescar la pantalla
+  // Actualizar caché local
+  const idx = (DB._cache['creditos'] || []).findIndex(c => c.id === crId);
+  if (idx !== -1) DB._cache['creditos'][idx].activo = false;
+
+  showToast('Crédito cerrado');
+  render();
 }
 
 async function extenderCredito() {
@@ -148,6 +176,7 @@ async function guardarNotaCredito() {
   showToast('Nota guardada');
   render();
 }
+
 async function toggleMora(crId, activar) {
   await DB.update('creditos', crId, { mora_activa: activar });
   const creditos = DB._cache['creditos'] || [];
