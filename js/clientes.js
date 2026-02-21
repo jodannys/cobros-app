@@ -454,7 +454,22 @@ async function guardarCliente() {
     alert('Ocurrió un error al guardar el cliente. Revisa la consola.');
   }
 }
+function previewFoto(input, previewId) {
+  const file = input.files[0];
+  if (!file) return;
 
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = document.getElementById(previewId);
+    img.src = e.target.result;      // convierte la foto a base64
+    img.style.display = 'block';    // mostrar la imagen
+    console.log('📌 Foto convertida a base64');
+  };
+  reader.onerror = function(err) {
+    console.error('❌ Error leyendo la imagen:', err);
+  };
+  reader.readAsDataURL(file);
+}
 async function actualizarCliente() {
   const c      = state.selectedClient;
   const fotoEl = document.getElementById('previewEFoto');

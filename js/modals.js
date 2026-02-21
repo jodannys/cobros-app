@@ -39,8 +39,8 @@ function renderModalNuevoCliente() {
   <div class="form-group">
     <label>Foto de casa/negocio</label>
     <label class="upload-btn" for="nFoto">📷 Tomar o subir foto</label>
-    <input type="file" id="nFoto" accept="image/*" capture="environment" onchange="previewFoto(this,'previewNFoto')">
-    <img id="previewNFoto" style="display:none" class="uploaded-img">
+    <input type="file" id="nFoto" accept="image/*" onchange="previewFoto(this,'previewNFoto')">
+<img id="previewNFoto" style="display:none" class="uploaded-img">
   </div>
   <button class="btn btn-primary" onclick="guardarCliente()">Guardar Cliente</button>`;
   setTimeout(() => iniciarMapaSelector(null, null), 200);
