@@ -12,7 +12,7 @@ function renderModal() {
 }
 
 function renderModalNuevoCliente() {
-  const cobradores = DB.get('users').filter(u => u.role === 'cobrador');
+  const cobradores = (DB._cache['users'] || []).filter(u => u.role === 'cobrador');
   const isAdmin = state.currentUser.role === 'admin';
   return `
   <div class="modal-handle"></div>
@@ -34,7 +34,7 @@ function renderModalNuevoCliente() {
 
 function renderModalEditarCliente() {
   const c = state.selectedClient;
-  const cobradores = DB.get('users').filter(u => u.role === 'cobrador');
+  const cobradores = (DB._cache['users'] || []).filter(u => u.role === 'cobrador');
   return `
   <div class="modal-handle"></div>
   <div class="modal-title">✏️ Editar Cliente</div>
@@ -53,9 +53,9 @@ function renderModalEditarCliente() {
     ${c.foto ? `<img src="${c.foto}" class="uploaded-img" id="previewEFoto">` : `<img id="previewEFoto" style="display:none" class="uploaded-img">`}
   </div>
   <button class="btn btn-primary" onclick="actualizarCliente()">Actualizar</button>
-   ${state.currentUser.role === 'admin' ? `<button class="btn btn-danger" style="margin-top:8px" onclick="eliminarCliente()">🗑️ Eliminar cliente</button>` : ''}
-  `;
+  ${state.currentUser.role === 'admin' ? `<button class="btn btn-danger" style="margin-top:8px" onclick="eliminarCliente()">🗑️ Eliminar cliente</button>` : ''}`;
 }
+
 function renderModalNuevoCredito() {
   return `
   <div class="modal-handle"></div>
@@ -76,7 +76,7 @@ function renderModalNuevoCredito() {
 function renderModalRegistrarPago() {
   const cr = state.selectedCredito;
   if (!cr) return '';
-  const pagos = DB.get('pagos').filter(p => p.creditoId === cr.id);
+  const pagos = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id);
   const totalPagado = pagos.reduce((s, p) => s + p.monto, 0);
   const saldo = cr.total - totalPagado;
   return `
@@ -116,17 +116,14 @@ function renderModalGestionarCredito() {
   const cr = state.selectedCredito;
   const c = state.selectedClient;
   if (!cr || !c) return '';
-  const pagos = DB.get('pagos').filter(p => p.creditoId === cr.id);
+  const pagos = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id);
   const totalPagado = pagos.reduce((s, p) => s + p.monto, 0);
   const saldo = cr.total - totalPagado;
   const dias = diasSinPagar(cr.id);
   const vencido = estaVencido(cr.fechaInicio, cr.diasTotal);
-
   return `
   <div class="modal-handle"></div>
   <div class="modal-title">⚙️ Gestionar Crédito</div>
-
-  <!-- INFO CLIENTE -->
   <div style="background:var(--bg);border-radius:12px;padding:14px;margin-bottom:16px">
     <div style="font-weight:700;font-size:16px">${c.nombre}</div>
     <div style="font-size:13px;color:var(--muted);margin-top:4px">DNI: ${c.dni}</div>
@@ -142,8 +139,6 @@ function renderModalGestionarCredito() {
       Inicio: ${formatDate(cr.fechaInicio)} · Fin original: ${calcularFechaFin(cr.fechaInicio, cr.diasTotal)}
     </div>
   </div>
-
-  <!-- EXTENDER PLAZO -->
   <div style="border:2px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px">
     <div style="font-weight:700;margin-bottom:10px">📅 Extender plazo</div>
     <div class="form-group" style="margin-bottom:8px">
@@ -152,8 +147,6 @@ function renderModalGestionarCredito() {
     </div>
     <button class="btn btn-primary btn-sm" style="width:100%" onclick="extenderCredito()">Extender plazo</button>
   </div>
-
-  <!-- FECHA DE COMPROMISO -->
   <div style="border:2px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px">
     <div style="font-weight:700;margin-bottom:10px">🤝 Fecha de compromiso</div>
     <div class="form-group" style="margin-bottom:8px">
@@ -163,15 +156,13 @@ function renderModalGestionarCredito() {
     <button class="btn btn-primary btn-sm" style="width:100%" onclick="guardarCompromiso()">Guardar compromiso</button>
     ${cr.fechaCompromiso ? `<div style="margin-top:8px;font-size:13px;color:var(--success);font-weight:600">✓ Compromiso actual: ${formatDate(cr.fechaCompromiso)}</div>` : ''}
   </div>
-
-  <!-- NOTA -->
   <div style="border:2px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px">
     <div style="font-weight:700;margin-bottom:10px">📝 Nota del crédito</div>
     <textarea class="form-control" id="notaCredito" placeholder="Observaciones sobre este crédito..." style="resize:none;height:80px">${cr.nota || ''}</textarea>
     <button class="btn btn-primary btn-sm" style="width:100%;margin-top:8px" onclick="guardarNotaCredito()">Guardar nota</button>
   </div>`;
-
 }
+
 function renderModalBannerAlertas() {
   const alertas = getAlertasCreditos();
   return `
@@ -199,5 +190,6 @@ function renderModalBannerAlertas() {
   <button class="btn btn-primary" style="margin-top:8px" onclick="closeModal(event);navigate('admin')">Ver en Admin</button>
   <button class="btn btn-outline" style="margin-top:8px" onclick="closeModal(event)">Cerrar</button>`;
 }
+
 function openModal(m) { state.modal = m; render(); }
 function closeModal(e) { state.modal = null; state.selectedCredito = null; render(); }
