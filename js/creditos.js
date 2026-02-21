@@ -92,14 +92,17 @@ function renderCreditoCard(cr) {
 
     <!-- BOTONES -->
     ${cr.activo ? `
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
-      <button class="btn btn-success btn-sm" onclick="openRegistrarPago('${cr.id}')">💰 Registrar pago</button>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-top:14px">
+      <button class="btn btn-success" style="width:100%;padding:12px;font-size:15px;font-weight:700"
+        onclick="openRegistrarPago('${cr.id}')">💰 Registrar pago</button>
       ${isAdmin ? `
-        <button class="btn btn-outline btn-sm" onclick="cerrarCredito('${cr.id}')">✓ Cerrar</button>
-        <button class="btn btn-sm" style="background:${cr.mora_activa ? '#fff5f5' : '#f0fff4'};color:${cr.mora_activa ? 'var(--danger)' : 'var(--success)'};border:2px solid ${cr.mora_activa ? '#fed7d7' : '#c6f6d5'}"
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-outline btn-sm" style="flex:1" onclick="cerrarCredito('${cr.id}')">✓ Cerrar crédito</button>
+        <button class="btn btn-sm" style="flex:1;background:${cr.mora_activa ? '#fff5f5' : '#f0fff4'};color:${cr.mora_activa ? 'var(--danger)' : 'var(--success)'};border:2px solid ${cr.mora_activa ? '#fed7d7' : '#c6f6d5'}"
           onclick="toggleMora('${cr.id}',${cr.mora_activa ? 'false' : 'true'})">
           ${cr.mora_activa ? '🔕 Desactivar mora' : '🔔 Activar mora'}
-        </button>` : vencido ? `
+        </button>
+      </div>` : vencido ? `
         <span style="font-size:12px;color:var(--danger);font-weight:600;align-self:center">
           ⚠️ Coordina con el administrador
         </span>` : ''}
@@ -113,7 +116,7 @@ function renderCreditoCard(cr) {
     <!-- HISTORIAL DE PAGOS -->
     ${pagos.length > 0 ? `
     <div style="margin-top:16px">
-      <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px">
+      <div style="font-size:15px;font-weight:700;color:var(--muted);margin-bottom:12px;text-transform:uppercase;letter-spacing:0.5px">
         Historial de pagos
       </div>
       ${pagos.slice().reverse().map(p => `

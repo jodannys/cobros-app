@@ -225,32 +225,33 @@ function renderCuadre() {
             <div style="font-weight:700;font-size:15px">${u.nombre}</div>
             <div style="font-weight:800;font-size:15px;color:var(--success)">${formatMoney(c.total)}</div>
           </div>
+    
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center;margin-bottom:10px">
-            <div style="background:var(--bg);border-radius:8px;padding:8px">
-              <div style="font-size:11px;color:var(--muted)">Yape</div>
-              <div style="font-weight:700;font-size:14px">${formatMoney(c.yape)}</div>
+            <div style="background:var(--bg);border-radius:10px;padding:10px 8px">
+              <div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:2px">📱 YAPE</div>
+              <div style="font-weight:800;font-size:17px">${formatMoney(c.yape)}</div>
             </div>
-            <div style="background:var(--bg);border-radius:8px;padding:8px">
-              <div style="font-size:11px;color:var(--muted)">Efectivo</div>
-              <div style="font-weight:700;font-size:14px">${formatMoney(c.efectivo)}</div>
+            <div style="background:var(--bg);border-radius:10px;padding:10px 8px">
+              <div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:2px">💵 EFECTIVO</div>
+              <div style="font-weight:800;font-size:17px">${formatMoney(c.efectivo)}</div>
             </div>
-            <div style="background:var(--bg);border-radius:8px;padding:8px">
-              <div style="font-size:11px;color:var(--muted)">Transf.</div>
-              <div style="font-weight:700;font-size:14px">${formatMoney(c.transferencia)}</div>
+            <div style="background:var(--bg);border-radius:10px;padding:10px 8px">
+              <div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:2px">🏦 TRANSF.</div>
+              <div style="font-weight:800;font-size:17px">${formatMoney(c.transferencia)}</div>
             </div>
           </div>
-          <div style="font-size:12px;color:var(--muted)">
-            Meta: ${formatMoney(meta.metaTotal)} · Pendiente: 
-            <span style="color:${meta.pendiente > 0 ? 'var(--danger)' : 'var(--success)'};font-weight:700">
+          <div style="font-size:13px;color:var(--muted);margin-bottom:10px">
+            Meta: <strong>${formatMoney(meta.metaTotal)}</strong> · Pendiente: 
+            <strong style="color:${meta.pendiente > 0 ? 'var(--danger)' : 'var(--success)'}">
               ${formatMoney(meta.pendiente)}
-            </span>
+            </strong>
           </div>
           ${renderCajaChicaAdmin(u.id, hoy)}
-          <div style="display:flex;gap:6px;margin-top:10px">
-            <button class="btn btn-sm" style="background:#eff6ff;color:var(--primary);border:1px solid #bfdbfe;font-size:12px"
+          <div style="display:flex;gap:8px;margin-top:12px">
+            <button class="btn btn-sm" style="flex:1;background:#eff6ff;color:var(--primary);border:1px solid #bfdbfe;font-size:13px;padding:10px"
               onclick="abrirAsignarCaja('${u.id}')">💼 Caja chica</button>
-            <button class="btn btn-sm" style="background:#fff5f5;color:var(--danger);border:1px solid #fed7d7;font-size:12px"
-              onclick="abrirNuevoGastoAdmin('${u.id}')">+ Gasto</button>
+            <button class="btn btn-sm" style="flex:1;background:#fff5f5;color:var(--danger);border:1px solid #fed7d7;font-size:13px;padding:10px"
+              onclick="abrirNuevoGastoAdmin('${u.id}')">➕ Gasto</button>
           </div>
         </div>`;
       }).join('')}

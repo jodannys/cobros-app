@@ -172,7 +172,7 @@ function renderEsquemaCuotas(cr) {
 
   return `
   <div style="margin-top:14px">
-    <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase">
+    <div style="font-size:14px;font-weight:700;color:var(--muted);margin-bottom:10px;text-transform:uppercase">
       📊 Esquema de Cuotas
     </div>
     <div style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap;justify-content:center">
@@ -180,7 +180,7 @@ function renderEsquemaCuotas(cr) {
       ${atrasadas > 0 ? `<span style="font-size:11px;background:#fee2e2;color:#991b1b;padding:3px 8px;border-radius:20px;font-weight:700">⚠️ ${atrasadas} atrasadas</span>` : ''}
       <span style="font-size:11px;background:#f1f5f9;color:#64748b;padding:3px 8px;border-radius:20px;font-weight:700">🔘 ${pendientes} pendientes</span>
     </div>
-    <div class="cuotas-grid">
+<div class="cuotas-grid" style="gap:6px">
       ${cuotas.map(c => `
         <div title="Cuota ${c.num}" class="cuota-burbuja cuota-${c.estado}">
           ${c.num}
@@ -326,8 +326,8 @@ function renderClientDetail() {
     </div>
 
     <nav class="bottom-nav">
-      <div class="nav-item" onclick="backFromClient()"
-        style="flex:none;padding:8 24px;font-size:14px"> ← Volver</div>
+<div class="nav-item" onclick="backFromClient()"
+  style="width:100%;text-align:center;font-size:14px;font-weight:600">← Volver</div>
     </nav>
   </div>`;
 }
