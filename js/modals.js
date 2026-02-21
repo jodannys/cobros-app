@@ -10,6 +10,8 @@ function renderModal() {
   else if (m === 'banner-alertas') content = renderModalBannerAlertas();
   else if (m === 'editar-usuario') content = renderModalEditarUsuario();
   else if (m === 'editar-admin')   content = renderModalEditarAdmin();
+  else if (m === 'nuevo-gasto')    content = renderModalNuevoGasto();
+  else if (m === 'asignar-caja')   content = renderModalAsignarCaja();
   return `
   <div class="modal-overlay" onclick="closeModal(event)">
     <div class="modal" onclick="event.stopPropagation()">
@@ -32,7 +34,7 @@ function renderModalNuevoCliente() {
   <div class="form-group"><label>Nombre del negocio</label><input class="form-control" id="nNegocio" placeholder="Bodega El Sol, Ferretería..."></div>
   <div class="form-group"><label>Teléfono</label><input class="form-control" id="nTelefono" placeholder="987654321" type="tel"></div>
   <div class="form-group"><label>Dirección</label><input class="form-control" id="nDireccion" placeholder="Av. Lima 123"></div>
-  <div class="form-group"><label>Link Google Maps</label><input class="form-control" id="nUbicacion" placeholder="https://maps.google.com/..."></div>
+  ${renderMapaSelector(null, null)}
   ${isAdmin ? `<div class="form-group"><label>Cobrador asignado</label><select class="form-control" id="nCobrador">${cobradores.map(u => `<option value="${u.id}">${u.nombre}</option>`).join('')}</select></div>` : ''}
   <div class="form-group">
     <label>Foto de casa/negocio</label>
@@ -41,6 +43,7 @@ function renderModalNuevoCliente() {
     <img id="previewNFoto" style="display:none" class="uploaded-img">
   </div>
   <button class="btn btn-primary" onclick="guardarCliente()">Guardar Cliente</button>`;
+  setTimeout(() => iniciarMapaSelector(null, null), 200);
 }
 
 function renderModalEditarCliente() {
@@ -55,7 +58,7 @@ function renderModalEditarCliente() {
   <div class="form-group"><label>Nombre del negocio</label><input class="form-control" id="eNegocio" value="${c.negocio || ''}"></div>
   <div class="form-group"><label>Teléfono</label><input class="form-control" id="eTelefono" value="${c.telefono || ''}"></div>
   <div class="form-group"><label>Dirección</label><input class="form-control" id="eDireccion" value="${c.direccion || ''}"></div>
-  <div class="form-group"><label>Link Google Maps</label><input class="form-control" id="eUbicacion" value="${c.ubicacion || ''}"></div>
+  ${renderMapaSelector(c.lat || null, c.lng || null)}</div>
   ${isAdmin ? `
   <div class="form-group"><label>Cobrador asignado</label>
     <select class="form-control" id="eCobrador">
@@ -93,37 +96,7 @@ function renderModalNuevoCredito() {
   <button class="btn btn-primary" onclick="guardarCredito()">Crear Crédito</button>`;
 }
 
-function renderModalRegistrarPago() {
-  const cr = state.selectedCredito;
-  if (!cr) return '';
-  const pagos = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id);
-  const totalPagado = pagos.reduce((s, p) => s + p.monto, 0);
-  const saldo = cr.total - totalPagado;
-  return `
-  <div class="modal-handle"></div>
-  <div class="modal-title">💰 Registrar Pago</div>
-  <div style="background:var(--bg);border-radius:12px;padding:14px;margin-bottom:16px">
-    <div class="flex-between"><span class="text-muted">Cuota diaria:</span><span class="fw-bold">${formatMoney(cr.cuotaDiaria)}</span></div>
-    <div class="flex-between mt-2"><span class="text-muted">Saldo pendiente:</span><span class="fw-bold text-danger">${formatMoney(saldo)}</span></div>
-  </div>
-  <div class="form-group"><label>Monto recibido (S/)</label>
-    <input class="form-control" id="pMonto" type="number" value="${cr.cuotaDiaria.toFixed(2)}">
-  </div>
-  <div class="form-group"><label>Forma de pago</label>
-    <select class="form-control" id="pTipo">
-      <option value="efectivo">💵 Efectivo</option>
-      <option value="yape">📱 Yape</option>
-      <option value="transferencia">🏦 Transferencia</option>
-    </select>
-  </div>
-  <div class="form-group"><label>Fecha</label>
-    <input class="form-control" id="pFecha" type="date" value="${today()}">
-  </div>
-  <div class="form-group"><label>Nota (opcional)</label>
-    <input class="form-control" id="pNota" placeholder="Observaciones...">
-  </div>
-  <button class="btn btn-success" onclick="guardarPago()">✓ Confirmar Pago</button>`;
-}
+
 
 function renderModalNuevoUsuario() {
   return `

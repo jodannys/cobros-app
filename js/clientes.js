@@ -265,9 +265,7 @@ function renderClientDetail() {
           <div class="info-label">Dirección</div>
           <div class="info-value" style="font-size:14px">${c.direccion || '—'}</div>
         </div>
-        ${c.ubicacion ? `<a href="${c.ubicacion}" target="_blank"
-          style="display:flex;align-items:center;gap:6px;color:var(--primary);font-size:14px;font-weight:600;text-decoration:none;margin-bottom:8px">
-          📍 Ver ubicación en mapa</a>` : ''}
+        ${c.lat ? renderMapaCliente(c.lat, c.lng, c.nombre) : ''}
         ${c.foto ? `<img src="${c.foto}" class="uploaded-img">` : ''}
       </div>
 
@@ -287,7 +285,7 @@ function renderClientDetail() {
 
     <nav class="bottom-nav">
       <div class="nav-item" onclick="backFromClient()"
-        style="flex:none;padding:8px 34px;font-size:14px"> ⬅️ Volver </div>
+        style="flex:none;padding:0 24px;font-size:14px">← Volver</div>
     </nav>
   </div>`;
 }
@@ -295,6 +293,11 @@ function renderClientDetail() {
 function selectClient(id) {
   state.selectedClient = (DB._cache['clientes'] || []).find(x => x.id === id);
   render();
+  // Iniciar mapa de solo lectura si el cliente tiene coordenadas
+  const c = state.selectedClient;
+  if (c?.lat && c?.lng) {
+    iniciarMapaCliente(c.lat, c.lng, c.nombre);
+  }
 }
 
 function backFromClient() {
@@ -412,9 +415,11 @@ async function guardarCliente() {
     negocio:   document.getElementById('nNegocio').value.trim(),
     telefono:  document.getElementById('nTelefono').value.trim(),
     direccion: document.getElementById('nDireccion').value.trim(),
-    ubicacion: document.getElementById('nUbicacion').value.trim(),
+    lat:       _coordsSeleccionadas?.lat || null,
+    lng:       _coordsSeleccionadas?.lng || null,
     cobradorId, foto, creado: today()
   });
+  _coordsSeleccionadas = null;
   state.modal = null;
   showToast('Cliente guardado exitosamente');
 }
@@ -432,7 +437,8 @@ async function actualizarCliente() {
     negocio:   document.getElementById('eNegocio').value.trim(),
     telefono:  document.getElementById('eTelefono').value.trim(),
     direccion: document.getElementById('eDireccion').value.trim(),
-    ubicacion: document.getElementById('eUbicacion').value.trim(),
+    lat:       _coordsSeleccionadas?.lat ?? c.lat ?? null,
+    lng:       _coordsSeleccionadas?.lng ?? c.lng ?? null,
     cobradorId: isAdmin && cobradorEl ? cobradorEl.value : c.cobradorId,
     foto
   };

@@ -245,6 +245,13 @@ function renderCuadre() {
               ${formatMoney(meta.pendiente)}
             </span>
           </div>
+          ${renderCajaChicaAdmin(u.id, hoy)}
+          <div style="display:flex;gap:6px;margin-top:10px">
+            <button class="btn btn-sm" style="background:#eff6ff;color:var(--primary);border:1px solid #bfdbfe;font-size:12px"
+              onclick="abrirAsignarCaja('${u.id}')">💼 Caja chica</button>
+            <button class="btn btn-sm" style="background:#fff5f5;color:var(--danger);border:1px solid #fed7d7;font-size:12px"
+              onclick="abrirNuevoGastoAdmin('${u.id}')">+ Gasto</button>
+          </div>
         </div>`;
       }).join('')}
     </div>`;
@@ -264,6 +271,9 @@ function renderCuadre() {
     <div class="topbar-user"><strong>${state.currentUser.nombre}</strong></div>
   </div>
   <div class="page">
+
+    <!-- PANEL CAJA CHICA -->
+    ${renderPanelCajaChica()}
 
     <!-- PANEL META DIARIA (P3 CORREGIDO) -->
     <div class="card" style="padding:16px;margin-bottom:12px;background:${metaAlcanzada ? '#f0fdf4' : '#fffbeb'};border-left:4px solid ${metaAlcanzada ? '#22c55e' : '#f59e0b'}">

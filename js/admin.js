@@ -1,15 +1,15 @@
 function renderAdmin() {
   if (state.selectedCobrador) return renderAdminCobrador();
 
-  const clientes = DB._cache['clientes'] || [];
-  const creditos = DB._cache['creditos'] || [];
-  const users = DB._cache['users'] || [];
-  const pagos = DB._cache['pagos'] || [];
+  const clientes  = DB._cache['clientes']  || [];
+  const creditos  = DB._cache['creditos']  || [];
+  const users     = DB._cache['users']     || [];
+  const pagos     = DB._cache['pagos']     || [];
   const cobradores = users.filter(u => u.role === 'cobrador');
-  const admins = users.filter(u => u.role === 'admin');
+  const admins     = users.filter(u => u.role === 'admin');
 
-  const totalPrestado = creditos.filter(c => c.activo).reduce((s, c) => s + c.monto, 0);
-  const totalPorCobrar = creditos.filter(c => c.activo).reduce((s, c) => {
+  const totalPrestado   = creditos.filter(c => c.activo).reduce((s, c) => s + c.monto, 0);
+  const totalPorCobrar  = creditos.filter(c => c.activo).reduce((s, c) => {
     const pagado = pagos.filter(p => p.creditoId === c.id).reduce((ss, p) => ss + p.monto, 0);
     return s + (c.total - pagado);
   }, 0);
@@ -72,24 +72,24 @@ function renderAdmin() {
         <button class="btn btn-primary btn-sm" onclick="openModal('nuevo-usuario')">+ Usuario</button>
       </div>
       ${cobradores.map(u => {
-    const mis = clientes.filter(c => c.cobradorId === u.id);
-    const activos = creditos.filter(c => mis.some(cl => cl.id === c.clienteId) && c.activo);
-    const alertasCobrador = alertas.filter(a => a.cobrador?.id === u.id);
-    return `
+        const mis    = clientes.filter(c => c.cobradorId === u.id);
+        const activos = creditos.filter(c => mis.some(cl => cl.id === c.clienteId) && c.activo);
+        const alertasCobrador = alertas.filter(a => a.cobrador?.id === u.id);
+        return `
         <div class="cobrador-row" onclick="selectCobrador('${u.id}')">
           <div class="client-avatar" style="width:40px;height:40px;font-size:16px">${u.nombre.charAt(0)}</div>
           <div style="margin-left:12px;flex:1">
             <div style="font-weight:700;display:flex;align-items:center;gap:8px">
               ${u.nombre}
               ${alertasCobrador.length > 0
-        ? `<span style="background:var(--danger);color:white;border-radius:20px;font-size:11px;padding:2px 7px;font-weight:700">${alertasCobrador.length}</span>`
-        : ''}
+                ? `<span style="background:var(--danger);color:white;border-radius:20px;font-size:11px;padding:2px 7px;font-weight:700">${alertasCobrador.length}</span>`
+                : ''}
             </div>
             <div style="font-size:12px;color:var(--muted)">${mis.length} clientes · ${activos.length} créditos activos</div>
           </div>
           <span style="color:var(--muted);font-size:20px">›</span>
         </div>`;
-  }).join('')}
+      }).join('')}
 
       <!-- ADMINISTRADORES (P7 CORREGIDO: editable + agregar) -->
       <div class="flex-between" style="margin-top:20px;margin-bottom:10px">
@@ -126,10 +126,10 @@ function abrirEditarAdmin(id) {
 }
 
 function renderAdminCobrador() {
-  const users = DB._cache['users'] || [];
+  const users    = DB._cache['users']    || [];
   const clientes = (DB._cache['clientes'] || []).filter(c => c.cobradorId === state.selectedCobrador);
   const creditos = DB._cache['creditos'] || [];
-  const pagos = DB._cache['pagos'] || [];
+  const pagos    = DB._cache['pagos']    || [];
   const cobrador = users.find(u => u.id === state.selectedCobrador);
   const diasCobrador = [...new Set(
     pagos.filter(p => p.cobradorId === state.selectedCobrador).map(p => p.fecha)
@@ -153,8 +153,8 @@ function renderAdminCobrador() {
 
       <div class="card-title">Clientes</div>
       ${clientes.map(c => {
-    const crs = creditos.filter(cr => cr.clienteId === c.id && cr.activo);
-    return `
+        const crs = creditos.filter(cr => cr.clienteId === c.id && cr.activo);
+        return `
         <div class="client-item" onclick="selectClient('${c.id}')">
           <div class="client-avatar">${c.nombre.charAt(0)}</div>
           <div class="client-info">
@@ -165,14 +165,14 @@ function renderAdminCobrador() {
             ${crs.length > 0 ? 'Activo' : 'Sin crédito'}
           </span>
         </div>`;
-  }).join('')}
+      }).join('')}
 
       <div class="card-title" style="margin-top:16px">Cuadres recientes</div>
       ${diasCobrador.length === 0
-      ? `<div class="empty-state"><div class="icon">📊</div><p>Sin registros</p></div>`
-      : diasCobrador.map(fecha => {
-        const c = getCuadreDelDia(state.selectedCobrador, fecha);
-        return `
+        ? `<div class="empty-state"><div class="icon">📊</div><p>Sin registros</p></div>`
+        : diasCobrador.map(fecha => {
+            const c = getCuadreDelDia(state.selectedCobrador, fecha);
+            return `
             <div class="card" style="padding:14px">
               <div class="flex-between">
                 <div class="fw-bold">${formatDate(fecha)}</div>
@@ -194,10 +194,11 @@ function renderAdminCobrador() {
               </div>
               ${c.nota ? `<div style="margin-top:8px;font-size:12px;color:var(--muted);font-style:italic">📝 ${c.nota}</div>` : ''}
             </div>`;
-      }).join('')}
+          }).join('')}
     </div>
   </div>`;
 }
+
 async function eliminarCobrador(id) {
   // CORRECCIÓN P9: confirmación antes de eliminar
   if (!confirm('¿Eliminar este cobrador? Sus clientes quedarán sin cobrador asignado. Esta acción no se puede deshacer.')) return;
@@ -208,7 +209,7 @@ async function eliminarCobrador(id) {
 }
 
 function abrirGestionCredito(crId, clienteId) {
-  state.selectedClient = (DB._cache['clientes'] || []).find(x => x.id === clienteId);
+  state.selectedClient  = (DB._cache['clientes'] || []).find(x => x.id === clienteId);
   state.selectedCredito = (DB._cache['creditos'] || []).find(x => x.id === crId);
   state.modal = 'gestionar-credito';
   render();
@@ -221,16 +222,28 @@ function selectCobrador(id) {
 
 async function guardarUsuario() {
   const nombre = document.getElementById('uNombre').value.trim();
-  const user = document.getElementById('uUser').value.trim();
-  const pass = document.getElementById('uPass').value.trim();
-  const role = document.getElementById('uRol').value;
+  const user   = document.getElementById('uUser').value.trim();
+  const pass   = document.getElementById('uPass').value.trim();
+  const role   = document.getElementById('uRol').value;
   if (!nombre || !user || !pass) { alert('Todos los campos son obligatorios'); return; }
   const users = DB._cache['users'] || [];
   if (users.find(u => u.user === user)) { alert('Ese nombre de usuario ya existe'); return; }
   const id = genId();
-  await DB.set('users', id, { id, nombre, user, pass, role });
-  state.modal = null;
-  showToast('Usuario creado exitosamente');
+  try {
+    const nuevoUser = { id, nombre, user, pass, role };
+    await DB.set('users', id, nuevoUser);
+    // Actualizar caché local inmediatamente sin esperar onSnapshot
+    if (!DB._cache['users']) DB._cache['users'] = [];
+    if (!DB._cache['users'].find(u => u.id === id)) {
+      DB._cache['users'].push(nuevoUser);
+    }
+    state.modal = null;
+    showToast('Usuario creado exitosamente');
+    render();
+  } catch(e) {
+    console.error('Error al guardar usuario:', e);
+    alert('Error al guardar: ' + e.message);
+  }
 }
 
 async function actualizarUsuario() {
@@ -238,14 +251,23 @@ async function actualizarUsuario() {
   const u = users.find(x => x.id === state.selectedCobrador);
   if (!u) return;
   const nombre = document.getElementById('euNombre').value.trim();
-  const user = document.getElementById('euUser').value.trim();
-  const pass = document.getElementById('euPass').value.trim();
-  const role = document.getElementById('euRol').value;
+  const user   = document.getElementById('euUser').value.trim();
+  const pass   = document.getElementById('euPass').value.trim();
+  const role   = document.getElementById('euRol').value;
   if (!nombre || !user) { alert('Nombre y usuario son obligatorios'); return; }
   if (users.find(x => x.user === user && x.id !== u.id)) { alert('Ese usuario ya existe'); return; }
   const updates = { nombre, user, role };
   if (pass) updates.pass = pass;
-  await DB.update('users', u.id, updates);
-  state.modal = null;
-  showToast('Usuario actualizado');
+  try {
+    await DB.update('users', u.id, updates);
+    // Actualizar caché local inmediatamente
+    const idx = (DB._cache['users'] || []).findIndex(x => x.id === u.id);
+    if (idx !== -1) DB._cache['users'][idx] = { ...DB._cache['users'][idx], ...updates };
+    state.modal = null;
+    showToast('Usuario actualizado');
+    render();
+  } catch(e) {
+    console.error('Error al actualizar usuario:', e);
+    alert('Error al actualizar: ' + e.message);
+  }
 }

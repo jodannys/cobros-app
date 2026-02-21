@@ -96,6 +96,7 @@ window.addEventListener('beforeunload', (e) => {
     fbEscuchar('clientes',      (datos) => { DB._cache['clientes']      = datos; render(); });
     fbEscuchar('users',         (datos) => { DB._cache['users']         = datos; render(); });
     fbEscuchar('notas_cuadre',  (datos) => { DB._cache['notas_cuadre']  = datos; render(); });
+    fbEscuchar('gastos',         (datos) => { DB._cache['gastos']         = datos; render(); });
 
     // Pushear estado inicial en el historial
     history.replaceState({ nav: 'clientes' }, '', '#clientes');
