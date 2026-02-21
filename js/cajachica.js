@@ -11,6 +11,9 @@ function getCajaChicaDelDia(cobradorId, fecha) {
   const gastosDelDia = gastos.filter(g => g.cobradorId === cobradorId && g.fecha === fecha);
   const totalGastos  = gastosDelDia.reduce((s, g) => s + Number(g.monto), 0);
   const cuadreDelDia = getCuadreDelDia(cobradorId, fecha);
+
+
+  
   const cobrosDelDia = cuadreDelDia.total;
   const saldo = cajaInicial + cobrosDelDia - totalGastos;
 
@@ -109,7 +112,7 @@ function renderCajaChicaAdmin(cobradorId, fecha) {
             <span style="color:var(--danger);font-weight:700;font-size:13px">-${formatMoney(g.monto)}</span>
             <button class="btn btn-sm"
               style="background:#eff6ff;color:var(--primary);border:1px solid #bfdbfe;font-size:11px;padding:3px 8px"
-              onclick="abrirEditarFechaGasto('${g.id}')">📅</button>
+              onclick="abrirEditarMontoGasto('${g.id}')">✏️</button>
           </div>
         </div>`).join('')}
     </div>` : '<div style="font-size:12px;color:var(--muted)">Sin gastos registrados</div>'}
@@ -119,7 +122,47 @@ function renderCajaChicaAdmin(cobradorId, fecha) {
 // ══════════════════════════════════════════════════════════════
 // ✅ EDITAR FECHA DE UN GASTO (solo admin)
 // ══════════════════════════════════════════════════════════════
+function abrirEditarMontoGasto(gastoId) {
+  const g = (DB._cache['gastos'] || []).find(x => x.id === gastoId);
+  if (!g) return;
+  state._editandoGasto = g;
+  state.modal = 'editar-monto-gasto';
+  render();
+}
 
+function renderModalEditarMontoGasto() {
+  const g = state._editandoGasto;
+  if (!g) return '';
+  return `
+  <div class="modal-handle"></div>
+  <div class="modal-title">✏️ Editar Gasto</div>
+  <div style="background:var(--bg);border-radius:10px;padding:10px 14px;margin-bottom:14px">
+    <div style="font-size:12px;color:var(--muted)">Descripción</div>
+    <div style="font-weight:700">${g.descripcion}</div>
+  </div>
+  <div class="form-group">
+    <label>Monto (S/) *</label>
+    <input class="form-control" id="egMonto" type="number" step="0.01" value="${g.monto}">
+  </div>
+  <button class="btn btn-primary" onclick="guardarMontoGasto()">💾 Guardar</button>`;
+}
+
+async function guardarMontoGasto() {
+  const g     = state._editandoGasto;
+  const monto = parseFloat(document.getElementById('egMonto').value);
+  if (!monto || monto <= 0) { alert('Ingresa un monto válido'); return; }
+  try {
+    await DB.update('gastos', g.id, { monto });
+    const idx = (DB._cache['gastos'] || []).findIndex(x => x.id === g.id);
+    if (idx !== -1) DB._cache['gastos'][idx].monto = monto;
+    state._editandoGasto = null;
+    state.modal = null;
+    showToast('✅ Gasto actualizado');
+    render();
+  } catch(e) {
+    alert('Error: ' + e.message);
+  }
+}
 function abrirEditarFechaGasto(gastoId) {
   const g = (DB._cache['gastos'] || []).find(x => x.id === gastoId);
   if (!g) return;
