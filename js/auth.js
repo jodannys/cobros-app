@@ -6,32 +6,35 @@ function renderLogin() {
     <div class="form-group"><label>Usuario</label><input class="form-control" id="loginUser" placeholder="Ingresa tu usuario" autocomplete="off"></div>
     <div class="form-group"><label>Contraseña</label><input class="form-control" id="loginPass" type="password" placeholder="••••••••"></div>
     <button class="btn btn-primary" id="btnLogin">Ingresar</button>
-    <p style="text-align:center;margin-top:16px;font-size:12px;color:#718096;">Demo: admin/1234 · carlos/1234 · maria/1234</p>
+    <p style="text-align:center;margin-top:16px;font-size:12px;color:#718096;">admin/1234 · carlos/1234 · maria/1234</p>
   </div></div>`;
 }
 
 function bindLogin() {
-  document.getElementById('btnLogin').onclick = () => {
+  document.getElementById('btnLogin').onclick = async () => {
     const user = document.getElementById('loginUser').value.trim();
     const pass = document.getElementById('loginPass').value.trim();
-    const found = DB.get('users').find(u => u.user === user && u.pass === pass);
+    
+    // Usar cache de DB que ya se cargó al init
+    const users = DB._cache['users'] || [];
+    const found = users.find(u => u.user === user && u.pass === pass);
+    
     if (found) {
-  state.currentUser = found;
-  state.screen = 'main';
-  state.loginError = '';
-  render();
-  // Mostrar banner de alertas al admin al entrar
-  if (found.role === 'admin') {
-    const alertas = getAlertasCreditos();
-    if (alertas.length > 0) {
-      setTimeout(() => {
-        state.modal = 'banner-alertas';
-        render();
-      }, 500);
+      state.currentUser = found;
+      state.screen = 'main';
+      state.loginError = '';
+      render();
+      if (found.role === 'admin') {
+        const alertas = getAlertasCreditos();
+        if (alertas.length > 0) {
+          setTimeout(() => { state.modal = 'banner-alertas'; render(); }, 500);
+        }
+      }
+    } else {
+      state.loginError = 'Usuario o contraseña incorrectos';
+      render();
     }
-  }
-}
-};
+  };
   document.getElementById('loginPass').onkeydown = (e) => {
     if (e.key === 'Enter') document.getElementById('btnLogin').click();
   };
