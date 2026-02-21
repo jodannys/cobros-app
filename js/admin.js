@@ -198,43 +198,15 @@ function renderAdminCobrador() {
     </div>
   </div>`;
 }
-
 async function eliminarCobrador(id) {
-  const confirmar = confirm('⚠️ ¡ATENCIÓN! Si eliminas este cobrador, se borrarán PERMANENTEMENTE todos sus clientes, créditos y pagos. ¿Estás seguro?');
-  if (!confirmar) return;
-
-  try {
-    // 1. Obtener todos los datos vinculados
-    const clientes = (DB._cache['clientes'] || []).filter(c => c.cobradorId === id);
-    const pagos = (DB._cache['pagos'] || []).filter(p => p.cobradorId === id);
-    
-    // 2. Borrar Clientes
-    for (let c of clientes) {
-      // Borrar créditos de este cliente
-      const creditosCliente = (DB._cache['creditos'] || []).filter(cr => cr.clienteId === c.id);
-      for (let cr of creditosCliente) {
-        await DB.delete('creditos', cr.id);
-      }
-      // Borrar el cliente
-      await DB.delete('clientes', c.id);
-    }
-
-    // 3. Borrar Pagos realizados por este cobrador
-    for (let p of pagos) {
-      await DB.delete('pagos', p.id);
-    }
-
-    // 4. Borrar finalmente al Cobrador (Usuario)
-    await DB.delete('users', id);
-
-    state.selectedCobrador = null;
-    showToast('Cobrador y todos sus datos eliminados');
-    render();
-  } catch (e) {
-    console.error("Error al eliminar cascada:", e);
-    alert("Error al intentar borrar los datos vinculados.");
-  }
+  // CORRECCIÓN P9: confirmación antes de eliminar
+  if (!confirm('¿Eliminar este cobrador? Sus clientes quedarán sin cobrador asignado. Esta acción no se puede deshacer.')) return;
+  await DB.delete('users', id);
+  state.selectedCobrador = null;
+  showToast('Cobrador eliminado');
+  render();
 }
+
 function abrirGestionCredito(crId, clienteId) {
   state.selectedClient = (DB._cache['clientes'] || []).find(x => x.id === clienteId);
   state.selectedCredito = (DB._cache['creditos'] || []).find(x => x.id === crId);
