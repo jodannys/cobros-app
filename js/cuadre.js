@@ -139,10 +139,10 @@ function renderCuadre() {
             ${totalObjetivoGlobal === 0
               ? 'Sin créditos activos hoy'
               : totalRecaudadoGlobal >= totalObjetivoGlobal
-                ? '✅ Meta alcanzada'
+                ? `✅ Meta superada (+${formatMoney(totalRecaudadoGlobal - totalObjetivoGlobal)})`
                 : `Faltan: ${formatMoney(totalObjetivoGlobal - totalRecaudadoGlobal)}`}
           </span>
-          <span style="font-size:13px;font-weight:700">${porcentajeGlobal}%</span>
+          <span style="font-size:13px;font-weight:700">${Math.min(100, porcentajeGlobal)}%</span>
         </div>
       </div>
 
