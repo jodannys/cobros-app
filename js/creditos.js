@@ -2,6 +2,7 @@ function renderCreditoCard(cr) {
   const pagos = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id);
   const totalPagado = pagos.reduce((s, p) => s + p.monto, 0);
   const saldo = cr.total - totalPagado;
+  const pagadoReal = saldo <= 0;
   const mora = calcularMora(cr);
   const totalConMora = saldo + mora;
   const progreso = Math.min(100, Math.round((totalPagado / cr.total) * 100));
@@ -14,7 +15,9 @@ function renderCreditoCard(cr) {
         <div class="text-muted" style="font-size:12px">Total: ${formatMoney(cr.total)} · Cuota: ${formatMoney(cr.cuotaDiaria)}/día</div>
         ${renderFechasCredito(cr)}
       </div>
-      <span class="tag ${cr.activo ? 'tag-blue' : 'tag-green'}">${cr.activo ? 'Activo' : 'Pagado'}</span>
+      <span class="tag ${!pagadoReal ? 'tag-blue' : 'tag-green'}">
+  ${!pagadoReal ? 'Debe ' + formatMoney(saldo) : '✓ Pagado'}
+</span>
     </div>
     <div class="flex-between" style="font-size:13px">
       <span class="text-muted">Pagado: <strong class="text-success">${formatMoney(totalPagado)}</strong></span>
@@ -98,9 +101,24 @@ async function guardarCredito() {
 }
 
 async function cerrarCredito(crId) {
-  if (!confirm('¿Marcar este crédito como pagado?')) return;
+  // 1. Buscamos el crédito y sus pagos para ver el saldo real
+  const cr = (DB._cache['creditos'] || []).find(c => c.id === crId);
+  const pagos = (DB._cache['pagos'] || []).filter(p => p.creditoId === crId);
+  const totalPagado = pagos.reduce((s, p) => s + p.monto, 0);
+  const saldo = cr.total - totalPagado;
+
+  // 2. Si todavía debe dinero (como los 10 del ejemplo), avisamos
+  if (saldo > 0) {
+    if (!confirm(`¡CUIDADO! Aún debe ${formatMoney(saldo)}. Si lo cierras ahora, no cobrarás el 20% completo. ¿Cerrar de todos modos?`)) {
+      return;
+    }
+  } else {
+    if (!confirm('¿Marcar como pagado totalmente?')) return;
+  }
+
   await DB.update('creditos', crId, { activo: false });
-  showToast('Crédito cerrado');
+  showToast('Crédito finalizado');
+  render(); // Refrescar la pantalla
 }
 
 async function extenderCredito() {
