@@ -392,28 +392,67 @@ function _renderListaClientes() {
 }
 
 async function guardarCliente() {
-  const dni    = document.getElementById('nDNI').value.trim();
-  const nombre = document.getElementById('nNombre').value.trim();
-  if (!dni || !nombre) { alert('DNI y nombre son obligatorios'); return; }
-  const clientes = DB._cache['clientes'] || [];
-  if (clientes.find(c => c.dni === dni)) { alert('Ya existe un cliente con ese DNI'); return; }
-  const isAdmin    = state.currentUser.role === 'admin';
-  const cobradorId = isAdmin ? document.getElementById('nCobrador').value : state.currentUser.id;
-  const fotoEl     = document.getElementById('previewNFoto');
-  const foto       = fotoEl.style.display !== 'none' ? fotoEl.src : '';
-  const id         = genId();
-  await DB.set('clientes', id, {
-    id, dni, nombre,
-    negocio:   document.getElementById('nNegocio').value.trim(),
-    telefono:  document.getElementById('nTelefono').value.trim(),
-    direccion: document.getElementById('nDireccion').value.trim(),
-    lat:       _coordsSeleccionadas?.lat || null,
-    lng:       _coordsSeleccionadas?.lng || null,
-    cobradorId, foto, creado: today()
-  });
-  _coordsSeleccionadas = null;
-  state.modal = null;
-  showToast('Cliente guardado exitosamente');
+  try {
+    console.log('💡 Iniciando guardarCliente');
+
+    const dni    = document.getElementById('nDNI').value.trim();
+    const nombre = document.getElementById('nNombre').value.trim();
+    console.log('📌 DNI:', dni, 'Nombre:', nombre);
+
+    if (!dni || !nombre) { 
+      alert('DNI y nombre son obligatorios'); 
+      console.log('❌ Falta DNI o nombre'); 
+      return; 
+    }
+
+    const clientes = DB._cache['clientes'] || [];
+    console.log('📌 Clientes actuales:', clientes.length);
+
+    if (clientes.find(c => c.dni === dni)) { 
+      alert('Ya existe un cliente con ese DNI'); 
+      console.log('❌ DNI duplicado'); 
+      return; 
+    }
+
+    const isAdmin    = state.currentUser.role === 'admin';
+    const cobradorId = isAdmin ? document.getElementById('nCobrador').value : state.currentUser.id;
+    console.log('📌 Cobrador asignado:', cobradorId);
+
+    const fotoEl = document.getElementById('previewNFoto');
+    const foto   = fotoEl?.src || '';
+    console.log('📌 Foto base64/URL:', foto ? '[Imagen cargada]' : '[No hay foto]');
+
+    const negocio   = document.getElementById('nNegocio').value.trim();
+    const telefono  = document.getElementById('nTelefono').value.trim();
+    const direccion = document.getElementById('nDireccion').value.trim();
+    console.log('📌 Otros datos:', { negocio, telefono, direccion, lat: _coordsSeleccionadas?.lat, lng: _coordsSeleccionadas?.lng });
+
+    const id = genId();
+    console.log('📌 ID generado:', id);
+
+    console.log('💾 Guardando cliente en DB...');
+    await DB.set('clientes', id, {
+      id, dni, nombre,
+      negocio,
+      telefono,
+      direccion,
+      lat: _coordsSeleccionadas?.lat || null,
+      lng: _coordsSeleccionadas?.lng || null,
+      cobradorId,
+      foto,
+      creado: today()
+    });
+
+    console.log('✅ Cliente guardado correctamente');
+
+    _coordsSeleccionadas = null;
+    state.modal = null;
+    showToast('Cliente guardado exitosamente');
+
+  } catch (err) {
+    console.error('❌ Error en guardarCliente:', err);
+    alert('Ocurrió un error al guardar el cliente. Revisa la consola.');
+  }
 }
 
 async function actualizarCliente() {
