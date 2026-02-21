@@ -28,7 +28,7 @@ function render() {
       <div class="nav-item ${state.nav === 'admin' ? 'active' : ''}" onclick="navigate('admin')">
         <span class="nav-icon">🛡️</span><span>Admin</span>
       </div>` : ''}
-      <div class="nav-item" onclick="logout()">
+      <div class="nav-item" onclick="if(confirm('¿Desea salir?')) logout()">
         <span class="nav-icon">🚪</span><span>Salir</span>
       </div>
     </nav>` : ''}
