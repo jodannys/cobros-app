@@ -10,32 +10,40 @@ async function guardarPago() {
   if (monto <= 0) { alert('Ingresa el monto'); return; }
   
   const id = genId();
-  
-  // 1. Guardamos el pago
+  const tipo = document.getElementById('pTipo').value;
+  const fecha = document.getElementById('pFecha').value;
+  const nota = document.getElementById('pNota').value.trim();
+
+  // 1. Guardamos el pago en la DB
   await DB.set('pagos', id, {
     id,
     creditoId: cr.id,
-    clienteId: state.selectedClient.id,
+    clienteId: cr.clienteId, // Usamos cr.clienteId para mayor seguridad
     cobradorId: state.currentUser.id,
     monto,
-    tipo: document.getElementById('pTipo').value,
-    fecha: document.getElementById('pFecha').value,
-    nota: document.getElementById('pNota').value.trim()
+    tipo,
+    fecha,
+    nota
   });
 
-  // 2. Calculamos el total pagado incluyendo el monto que acabamos de recibir
-  const pagosAnteriores = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id);
-  const totalPagadoReal = pagosAnteriores.reduce((s, p) => s + p.monto, 0) + monto;
+  // 2. Calculamos el total pagado sumando: 
+  // Lo que ya había en caché + el monto que estamos pagando AHORA
+  const pagosEnCache = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id);
+  const totalPagadoCalculado = pagosEnCache.reduce((s, p) => s + p.monto, 0) + monto;
 
-  // 3. Ahora sí comparamos contra el TOTAL (el que tiene el 20%)
-  if (totalPagadoReal >= cr.total) {
+  // 3. Verificamos si con este pago se llega al TOTAL (monto + 20%)
+  if (totalPagadoCalculado >= cr.total) {
     await DB.update('creditos', cr.id, { activo: false });
     showToast('¡Crédito cancelado en su totalidad! ✓');
   } else {
-    showToast('Pago registrado · cuadre actualizado ✓');
+    showToast(`Pago de ${formatMoney(monto)} registrado ✓`);
   }
 
+  // 4. Limpiamos estado y refrescamos
   state.modal = null;
   state.selectedCredito = null;
-  render(); // Forzamos el redibujado para que la etiqueta cambie a "Pagado"
+  
+  // Si tienes una función que actualiza el cache localmente antes del render, úsala.
+  // Si no, el fbEscuchar() que tienes en app.js se encargará de re-renderizar.
+  render(); 
 }
