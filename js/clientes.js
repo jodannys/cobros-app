@@ -4,13 +4,11 @@ function renderClientes() {
   const users    = DB._cache['users']    || [];
   const isAdmin  = state.currentUser.role === 'admin';
 
-  // CORRECCIÓN P2: En vista cobrador solo mostrar clientes CON crédito activo
+  // Vista cobrador: ver TODOS sus clientes asignados
+  // (con crédito activo, sin crédito aún, o con crédito cerrado listo para renovar)
   let lista = isAdmin
     ? clientes
-    : clientes.filter(c => {
-        if (c.cobradorId !== state.currentUser.id) return false;
-        return creditos.some(cr => cr.clienteId === c.id && cr.activo);
-      });
+    : clientes.filter(c => c.cobradorId === state.currentUser.id);
 
   if (state.search) {
     const q = state.search.toLowerCase();
