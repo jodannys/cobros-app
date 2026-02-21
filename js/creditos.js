@@ -1,19 +1,19 @@
 function renderCreditoCard(cr) {
-  const pagos       = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id);
+  const pagos = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id);
   const totalPagado = pagos.reduce((s, p) => s + p.monto, 0);
-  const saldo       = cr.total - totalPagado;
-  const pagadoReal  = saldo <= 0;
-  const mora        = calcularMora(cr);
+  const saldo = cr.total - totalPagado;
+  const pagadoReal = saldo <= 0;
+  const mora = calcularMora(cr);
   // LOG temporal para debug de mora
   if (cr.mora_activa) {
     console.log('📊 renderCreditoCard - mora_activa=true | mora calculada:', mora,
       '| activo:', cr.activo, '| vencido:', estaVencido(cr.fechaInicio, cr.diasTotal),
       '| saldo:', saldo);
   }
-  const totalConMora= saldo + mora;
-  const progreso    = Math.min(100, Math.round((totalPagado / cr.total) * 100));
-  const isAdmin     = state.currentUser.role === 'admin';
-  const vencido     = cr.activo && estaVencido(cr.fechaInicio, cr.diasTotal);
+  const totalConMora = saldo + mora;
+  const progreso = Math.min(100, Math.round((totalPagado / cr.total) * 100));
+  const isAdmin = state.currentUser.role === 'admin';
+  const vencido = cr.activo && estaVencido(cr.fechaInicio, cr.diasTotal);
 
   return `
   <div class="credito-card">
@@ -95,7 +95,7 @@ function renderCreditoCard(cr) {
 
 function renderFechasCredito(cr) {
   const fechaFin = calcularFechaFin(cr.fechaInicio, cr.diasTotal);
-  const vencido  = cr.activo && estaVencido(cr.fechaInicio, cr.diasTotal);
+  const vencido = cr.activo && estaVencido(cr.fechaInicio, cr.diasTotal);
   return `
   <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
     <div class="text-muted" style="font-size:12px">📅 Inicio: ${formatDate(cr.fechaInicio)}</div>
@@ -110,12 +110,12 @@ function calcularCredito() {
   const monto = parseFloat(document.getElementById('crMonto').value) || 0;
   if (monto <= 0) { document.getElementById('crPreview').style.display = 'none'; return; }
   const interes = monto * 0.2;
-  const total   = monto + interes;
-  const cuota   = total / 24;
+  const total = monto + interes;
+  const cuota = total / 24;
   document.getElementById('crPreview').style.display = 'block';
   document.getElementById('crInteres').textContent = formatMoney(interes);
-  document.getElementById('crTotal').textContent   = formatMoney(total);
-  document.getElementById('crCuota').textContent   = formatMoney(cuota);
+  document.getElementById('crTotal').textContent = formatMoney(total);
+  document.getElementById('crCuota').textContent = formatMoney(cuota);
 }
 
 async function guardarCredito() {
@@ -129,9 +129,9 @@ async function guardarCredito() {
   if (monto <= 0) { alert('Ingresa el monto'); return; }
   const fechaInicio = document.getElementById('crFecha').value;
   if (!fechaInicio) { alert('Selecciona la fecha de inicio'); return; }
-  const total       = monto * 1.2;
+  const total = monto * 1.2;
   const cuotaDiaria = total / 24;
-  const id          = genId();
+  const id = genId();
   await DB.set('creditos', id, {
     id, clienteId: state.selectedClient.id,
     monto, total, cuotaDiaria, diasTotal: 24,
@@ -144,9 +144,9 @@ async function guardarCredito() {
 async function cerrarCredito(crId) {
   const cr = (DB._cache['creditos'] || []).find(c => c.id === crId);
   if (!cr) return;
-  const pagos       = (DB._cache['pagos'] || []).filter(p => p.creditoId === crId);
+  const pagos = (DB._cache['pagos'] || []).filter(p => p.creditoId === crId);
   const totalPagado = pagos.reduce((s, p) => s + p.monto, 0);
-  const saldo       = cr.total - totalPagado;
+  const saldo = cr.total - totalPagado;
   if (saldo > 0) {
     if (!confirm(`¡CUIDADO! Aún debe ${formatMoney(saldo)}. ¿Cerrar de todos modos?`)) return;
   } else {
@@ -162,7 +162,7 @@ async function cerrarCredito(crId) {
 async function extenderCredito() {
   const dias = parseInt(document.getElementById('extDias').value) || 0;
   if (dias <= 0) { alert('Ingresa los días a extender'); return; }
-  const cr       = state.selectedCredito;
+  const cr = state.selectedCredito;
   const nuevoDias = cr.diasTotal + dias;
   await DB.update('creditos', cr.id, { diasTotal: nuevoDias });
   state.selectedCredito = { ...cr, diasTotal: nuevoDias };
@@ -208,7 +208,7 @@ async function toggleMora(crId, activar) {
   try {
     await DB.update('creditos', crId, { mora_activa: activar });
     console.log('✅ Firestore actualizado correctamente');
-  } catch(e) {
+  } catch (e) {
     console.error('❌ Error al actualizar Firestore:', e);
   }
 
