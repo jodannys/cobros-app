@@ -35,40 +35,30 @@ async function guardarNota() {
   showToast('Nota guardada');
 }
 
-// CORRECCIÓN P3: Calcula la meta diaria real verificando quién debe cobrar HOY
-// Un crédito cuenta para la meta del día si:
-//   1. Está activo
-//   2. fechaInicio <= hoy (ya arrancó)
-//   3. No ha terminado su plazo aún
-// Y la "meta alcanzada" se evalúa por cliente: si el cliente pagó hoy,
-// su cuota se descuenta de lo que falta; si no pagó, su cuota queda pendiente.
 function calcularMetaReal(cobradorId, fecha) {
   const creditos = DB._cache['creditos'] || [];
   const clientes = DB._cache['clientes'] || [];
   const pagos    = DB._cache['pagos']    || [];
 
-  // Clientes de este cobrador
   const misClientesIds = clientes
     .filter(c => c.cobradorId === cobradorId)
     .map(c => c.id);
 
-  // Créditos activos que ya arrancaron (fechaInicio <= fecha)
   const creditosActivos = creditos.filter(cr =>
     misClientesIds.includes(cr.clienteId) &&
     cr.activo === true &&
     cr.fechaInicio <= fecha
   );
 
-  let metaTotal   = 0;
-  let pagadoHoy   = 0;
-  let pendiente   = 0;
-  const detalle   = []; // { cliente, cuota, pagadoHoy, completo }
+  let metaTotal = 0;
+  let pagadoHoy = 0;
+  let pendiente = 0;
+  const detalle = [];
 
   creditosActivos.forEach(cr => {
     const cliente = clientes.find(c => c.id === cr.clienteId);
     const cuota   = Number(cr.cuotaDiaria) || 0;
 
-    // Pagos de HOY para este crédito
     const pagosHoyCliente = pagos.filter(
       p => p.creditoId === cr.id && p.fecha === fecha
     );
@@ -80,13 +70,7 @@ function calcularMetaReal(cobradorId, fecha) {
     const completo = montoPagadoHoy >= cuota;
     if (!completo) pendiente += (cuota - montoPagadoHoy);
 
-    detalle.push({
-      cliente,
-      cr,
-      cuota,
-      montoPagadoHoy,
-      completo
-    });
+    detalle.push({ cliente, cr, cuota, montoPagadoHoy, completo });
   });
 
   return { metaTotal, pagadoHoy, pendiente, detalle };
@@ -101,13 +85,20 @@ function renderCuadre() {
 
   // ─── VISTA ADMINISTRADOR ───────────────────────────────────────────────────
   if (isAdmin) {
+    // ✅ CORREGIDO: cobradores y cobradorIds definidos ANTES de usarlos
+    const cobradores  = usuarios.filter(u => u.role === 'cobrador');
+    const cobradorIds = cobradores.map(u => u.id);
+
     const totalObjetivoGlobal = creditos
-      .filter(cr => cr.activo === true && cr.fechaInicio <= hoy)
+      .filter(cr => {
+        const cliente = clientes.find(c => c.id === cr.clienteId);
+        return cr.activo === true &&
+               cr.fechaInicio <= hoy &&
+               cliente &&
+               cobradorIds.includes(cliente.cobradorId);
+      })
       .reduce((s, cr) => s + (Number(cr.cuotaDiaria) || 0), 0);
 
-    const cobradores = usuarios.filter(u => u.role === 'cobrador');
-    const cobradorIds = cobradores.map(u => u.id);
-    // Solo pagos de cobradores registrados (evita contar pagos de admin u otros)
     const pagosHoy = (DB._cache['pagos'] || []).filter(p => p.fecha === hoy && cobradorIds.includes(p.cobradorId));
     const totalRecaudadoGlobal = pagosHoy.reduce((s, p) => s + (Number(p.monto) || 0), 0);
     const porcentajeGlobal = totalObjetivoGlobal > 0
@@ -122,7 +113,7 @@ function renderCuadre() {
     <div class="page">
       <div class="card" style="padding:16px;margin-bottom:16px;background:#1e293b;color:white;border:none">
         <div style="font-size:11px;opacity:0.8;font-weight:700;text-transform:uppercase;margin-bottom:10px">Estado de Cobranza — Hoy</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;text-align:center">
           <div>
             <div style="font-size:11px;opacity:0.7">OBJETIVO TOTAL</div>
             <div style="font-size:22px;font-weight:800">${formatMoney(totalObjetivoGlobal)}</div>
@@ -147,7 +138,7 @@ function renderCuadre() {
         </div>
       </div>
 
-      <!-- ALERTAS AUTOMÁTICAS: clientes con fecha vencida -->
+      <!-- ALERTAS -->
       ${(() => {
         const alertas = getAlertasCreditos();
         const vencidosHoy = alertas.filter(a => a.tipo === 'vencido');
@@ -225,7 +216,6 @@ function renderCuadre() {
             <div style="font-weight:700;font-size:15px">${u.nombre}</div>
             <div style="font-weight:800;font-size:15px;color:var(--success)">${formatMoney(c.total)}</div>
           </div>
-    
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center;margin-bottom:10px">
             <div style="background:var(--bg);border-radius:10px;padding:10px 8px">
               <div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:2px">📱 YAPE</div>
@@ -241,7 +231,7 @@ function renderCuadre() {
             </div>
           </div>
           <div style="font-size:13px;color:var(--muted);margin-bottom:10px">
-            Meta: <strong>${formatMoney(meta.metaTotal)}</strong> · Pendiente: 
+            Meta: <strong>${formatMoney(meta.metaTotal)}</strong> · Pendiente:
             <strong style="color:${meta.pendiente > 0 ? 'var(--danger)' : 'var(--success)'}">
               ${formatMoney(meta.pendiente)}
             </strong>
@@ -262,8 +252,6 @@ function renderCuadre() {
   const cuadreHoy = getCuadreDelDia(state.currentUser.id, hoy);
   const meta      = calcularMetaReal(state.currentUser.id, hoy);
   const metaAlcanzada = meta.pendiente === 0 && meta.metaTotal > 0;
-
-  // Nota actual para habilitar botón
   const notaActual = cuadreHoy.nota || '';
 
   return `
@@ -273,10 +261,8 @@ function renderCuadre() {
   </div>
   <div class="page">
 
-    <!-- PANEL CAJA CHICA -->
     ${renderPanelCajaChica()}
 
-    <!-- PANEL META DIARIA (P3 CORREGIDO) -->
     <div class="card" style="padding:16px;margin-bottom:12px;background:${metaAlcanzada ? '#f0fdf4' : '#fffbeb'};border-left:4px solid ${metaAlcanzada ? '#22c55e' : '#f59e0b'}">
       <div class="flex-between">
         <div>
@@ -295,7 +281,6 @@ function renderCuadre() {
       </div>
     </div>
 
-    <!-- DESGLOSE YAPE / EFECTIVO / TRANSFERENCIA (P4 CORREGIDO: textos más grandes) -->
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px">
       <div style="background:white;padding:12px 8px;border-radius:12px;text-align:center;border:1px solid #e2e8f0;box-shadow:var(--shadow)">
         <div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:4px">📱 YAPE</div>
@@ -311,7 +296,6 @@ function renderCuadre() {
       </div>
     </div>
 
-    <!-- DETALLE CLIENTE POR CLIENTE (P3: quién pagó / quién no) -->
     <div class="card" style="margin-bottom:12px">
       <div class="card-title">Estado por cliente (hoy)</div>
       ${meta.detalle.length === 0
@@ -332,7 +316,6 @@ function renderCuadre() {
           </div>`).join('')}
     </div>
 
-    <!-- COBROS DEL DÍA -->
     <div class="card" style="margin-bottom:12px">
       <div class="card-title">Cobros del día (${cuadreHoy.pagos.length})</div>
       ${cuadreHoy.pagos.length === 0
@@ -350,7 +333,6 @@ function renderCuadre() {
           }).join('')}
     </div>
 
-    <!-- NOTA DEL DÍA (P3 CORREGIDO: botón siempre activo) -->
     <div class="card" style="padding:14px">
       <div style="font-weight:700;font-size:13px;margin-bottom:8px">📝 NOTA DEL DÍA</div>
       <textarea id="notaHoy" class="form-control" style="height:70px;font-size:14px;resize:none"

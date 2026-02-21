@@ -38,7 +38,8 @@ function renderPanelCajaChica() {
       <div style="font-size:11px;opacity:0.7;font-weight:700;text-transform:uppercase;margin-bottom:10px">
         💼 Caja Chica — Hoy
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;text-align:center">
         <div>
           <div style="font-size:10px;opacity:0.6">CAJA INICIAL</div>
           <div style="font-size:18px;font-weight:800">${formatMoney(caja.cajaInicial)}</div>
