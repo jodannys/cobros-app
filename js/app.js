@@ -115,7 +115,7 @@ function renderHistorial() {
     <div class="card" style="padding:14px">
       <div class="flex-between" style="margin-bottom:12px">
         <div style="font-weight:700">Pagos del ${formatDate(filtroFecha)}</div>
-        <div style="font-weight:800;color:var(--success)">${formatMoney(totalPagos)}</div>
+        <div style="font-weight:800;color:var(--success)"></div>
       </div>
       ${pagosFiltrados.length === 0
         ? `<p style="text-align:center;color:var(--muted);font-size:14px;padding:16px">Sin pagos este día</p>`
@@ -140,7 +140,7 @@ function renderHistorial() {
     <div class="card" style="padding:14px">
       <div class="flex-between" style="margin-bottom:12px">
         <div style="font-weight:700">Gastos del ${formatDate(filtroFecha)}</div>
-        <div style="font-weight:800;color:var(--danger)">${formatMoney(totalGastos)}</div>
+        <div style="font-weight:800;color:var(--danger)"></div>
       </div>
       ${gastosFiltrados.length === 0
         ? `<p style="text-align:center;color:var(--muted);font-size:14px;padding:16px">Sin gastos este día</p>`
