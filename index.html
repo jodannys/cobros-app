@@ -9,36 +9,8 @@
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-<div id="root"></div>
+<div id="root"><div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;flex-direction:column;gap:12px"><div style="font-size:40px">💰</div><div style="font-size:16px;color:#718096">Cargando CobrosApp...</div></div></div>
 
-<script type="module">
-  import { fbGetAll, fbGet, fbSet, fbUpdate, fbDelete, fbQuery, fbInit } from './js/firebase.js';
-
-  window.fbGetAll  = fbGetAll;
-  window.fbGet     = fbGet;
-  window.fbSet     = fbSet;
-  window.fbUpdate  = fbUpdate;
-  window.fbDelete  = fbDelete;
-  window.fbQuery   = fbQuery;
-  window.fbInit    = fbInit;
-
-  const scripts = [
-    './js/helpers.js',
-    './js/state.js',
-    './js/db.js',
-    './js/auth.js',
-    './js/clientes.js',
-    './js/creditos.js',
-    './js/pagos.js',
-    './js/cuadre.js',
-    './js/admin.js',
-    './js/modals.js',
-    './js/app.js'
-  ];
-
-  for (const src of scripts) {
-    await import(src);
-  }
-</script>
+<script type="module" src="js/main.js"></script>
 </body>
 </html>
