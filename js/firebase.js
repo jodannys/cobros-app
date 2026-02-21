@@ -46,3 +46,10 @@ async function fbInit() {
     await fbSet('users', 'u3', { id: 'u3', nombre: 'María López', user: 'maria', pass: '1234', role: 'cobrador' });
   }
 }
+function fbEscuchar(colName, callback) {
+  return fsdb.collection(colName).onSnapshot(snap => {
+    const datos = snap.docs.map(d => ({ ...d.data(), id: d.id }));
+    DB._cache[colName] = datos;
+    callback();
+  });
+}

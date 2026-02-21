@@ -31,6 +31,12 @@ function navigate(nav) {
 (async () => {
   try {
     await DB.init();
+    
+    // Escuchar cambios en tiempo real
+    fbEscuchar('pagos', () => render());
+    fbEscuchar('creditos', () => render());
+    fbEscuchar('clientes', () => render());
+    
     render();
   } catch(e) {
     console.error('Error iniciando app:', e);
