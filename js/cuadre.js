@@ -1,10 +1,10 @@
 function getCuadreDelDia(cobradorId, fecha) {
-  const pagos = DB.get('pagos');
+  const pagos = DB._cache['pagos'] || [];
   const pagosDia = pagos.filter(p => p.cobradorId === cobradorId && p.fecha === fecha);
   const yape = pagosDia.filter(p => p.tipo === 'yape').reduce((s, p) => s + p.monto, 0);
   const efectivo = pagosDia.filter(p => p.tipo === 'efectivo').reduce((s, p) => s + p.monto, 0);
   const transferencia = pagosDia.filter(p => p.tipo === 'transferencia').reduce((s, p) => s + p.monto, 0);
-  const notas = DB.get('notas_cuadre') || [];
+  const notas = DB._cache['notas_cuadre'] || [];
   const notaObj = notas.find(n => n.cobradorId === cobradorId && n.fecha === fecha);
   return { yape, efectivo, transferencia, total: yape + efectivo + transferencia, nota: notaObj ? notaObj.nota : '', pagos: pagosDia };
 }
@@ -12,13 +12,13 @@ function getCuadreDelDia(cobradorId, fecha) {
 function renderCuadre() {
   const isAdmin = state.currentUser.role === 'admin';
   const hoy = today();
-  const users = DB.get('users');
+  const users = DB._cache['users'] || [];
 
   if (isAdmin) {
     const cobradores = users.filter(u => u.role === 'cobrador');
     let totalGeneral = 0;
     const filas = cobradores.map(u => { const c = getCuadreDelDia(u.id, hoy); totalGeneral += c.total; return { u, c }; });
-    const pagos = DB.get('pagos');
+    const pagos = DB._cache['pagos'] || [];
     const dias = [...new Set(pagos.map(p => p.fecha))].sort((a, b) => b.localeCompare(a)).slice(0, 10);
 
     return `
@@ -47,7 +47,7 @@ function renderCuadre() {
         ${dias.length === 0 ? `<div class="empty-state"><div class="icon">📊</div><p>Sin registros aún</p></div>` :
           dias.map(fecha => {
             let totalDia = 0;
-            const detalle = users.filter(u => u.role === 'cobrador').map(u => { const c = getCuadreDelDia(u.id, fecha); totalDia += c.total; return { u, c }; }).filter(x => x.c.total > 0);
+            const detalle = cobradores.map(u => { const c = getCuadreDelDia(u.id, fecha); totalDia += c.total; return { u, c }; }).filter(x => x.c.total > 0);
             return `
             <div class="card" style="padding:14px">
               <div class="flex-between mb-2">
@@ -65,9 +65,8 @@ function renderCuadre() {
     </div>`;
   }
 
-  // Vista cobrador
   const cuadreHoy = getCuadreDelDia(state.currentUser.id, hoy);
-  const pagos = DB.get('pagos');
+  const pagos = DB._cache['pagos'] || [];
   const diasCobrador = [...new Set(pagos.filter(p => p.cobradorId === state.currentUser.id).map(p => p.fecha))].sort((a, b) => b.localeCompare(a));
 
   return `
@@ -87,7 +86,7 @@ function renderCuadre() {
         <div class="card">
           <div class="card-title">Pagos de hoy (${cuadreHoy.pagos.length})</div>
           ${cuadreHoy.pagos.map(p => {
-            const cl = DB.get('clientes').find(c => c.id === p.clienteId);
+            const cl = (DB._cache['clientes'] || []).find(c => c.id === p.clienteId);
             return `
             <div class="cuota-item">
               <div><div style="font-weight:600;font-size:14px">${cl ? cl.nombre : '—'}</div><div style="font-size:12px;color:var(--muted)">${p.tipo}</div></div>
@@ -125,12 +124,15 @@ function renderCuadre() {
   </div>`;
 }
 
-function guardarNota() {
+async function guardarNota() {
   const nota = document.getElementById('notaHoy').value.trim();
-  const notas = DB.get('notas_cuadre') || [];
-  const idx = notas.findIndex(n => n.cobradorId === state.currentUser.id && n.fecha === today());
-  if (idx >= 0) notas[idx].nota = nota;
-  else notas.push({ id: genId(), cobradorId: state.currentUser.id, fecha: today(), nota });
-  DB.set('notas_cuadre', notas);
+  const notas = DB._cache['notas_cuadre'] || [];
+  const existing = notas.find(n => n.cobradorId === state.currentUser.id && n.fecha === today());
+  if (existing) {
+    await DB.update('notas_cuadre', existing.id, { nota });
+  } else {
+    const id = genId();
+    await DB.set('notas_cuadre', id, { id, cobradorId: state.currentUser.id, fecha: today(), nota });
+  }
   showToast('Nota guardada');
 }

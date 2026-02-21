@@ -1,17 +1,16 @@
 function renderClientes() {
-    const clientes = DB.get('clientes');
-    const creditos = DB.get('creditos');
-    const isAdmin = state.currentUser.role === 'admin';
-    let lista = isAdmin ? clientes : clientes.filter(c => c.cobradorId === state.currentUser.id);
-    if (state.search) {
-        const q = state.search.toLowerCase();
-        lista = lista.filter(c => c.nombre.toLowerCase().includes(q) || c.dni.includes(q));
-    }
-    const users = DB.get('users');
-    return `
+  const clientes = DB._cache['clientes'] || [];
+  const creditos = DB._cache['creditos'] || [];
+  const users = DB._cache['users'] || [];
+  const isAdmin = state.currentUser.role === 'admin';
+  let lista = isAdmin ? clientes : clientes.filter(c => c.cobradorId === state.currentUser.id);
+  if (state.search) {
+    const q = state.search.toLowerCase();
+    lista = lista.filter(c => c.nombre.toLowerCase().includes(q) || c.dni.includes(q));
+  }
+  return `
   <div>
-    <div class="topbar">
-      <h2>Clientes</h2>
+    <div class="topbar"><h2>Clientes</h2>
       <div class="topbar-user"><strong>${state.currentUser.nombre}</strong><span>${isAdmin ? 'Administrador' : 'Cobrador'}</span></div>
     </div>
     <div class="page">
@@ -20,10 +19,10 @@ function renderClientes() {
         <input class="form-control" placeholder="Buscar por nombre o DNI..." value="${state.search}" oninput="updateSearch(this.value)">
       </div>
       ${lista.length === 0 ? `<div class="empty-state"><div class="icon">👤</div><p>No se encontraron clientes</p></div>` :
-            lista.map(c => {
-                const crs = creditos.filter(cr => cr.clienteId === c.id && cr.activo);
-                const cob = users.find(u => u.id === c.cobradorId);
-                return `
+        lista.map(c => {
+          const crs = creditos.filter(cr => cr.clienteId === c.id && cr.activo);
+          const cob = users.find(u => u.id === c.cobradorId);
+          return `
           <div class="client-item" onclick="selectClient('${c.id}')">
             <div class="client-avatar">${c.nombre.charAt(0)}</div>
             <div class="client-info">
@@ -32,19 +31,19 @@ function renderClientes() {
             </div>
             <span class="client-badge ${crs.length > 0 ? 'badge-active' : 'badge-done'}">${crs.length > 0 ? `${crs.length} activo${crs.length > 1 ? 's' : ''}` : 'Sin crédito'}</span>
           </div>`;
-            }).join('')}
+        }).join('')}
     </div>
     <button class="fab" onclick="openModal('nuevo-cliente')">+</button>
   </div>`;
 }
 
 function renderClientDetail() {
-    const c = state.selectedClient;
-    const creditos = DB.get('creditos').filter(cr => cr.clienteId === c.id);
-    const users = DB.get('users');
-    const cobrador = users.find(u => u.id === c.cobradorId);
-    const isAdmin = state.currentUser.role === 'admin';
-    return `
+  const c = state.selectedClient;
+  const creditos = (DB._cache['creditos'] || []).filter(cr => cr.clienteId === c.id);
+  const users = DB._cache['users'] || [];
+  const cobrador = users.find(u => u.id === c.cobradorId);
+  const isAdmin = state.currentUser.role === 'admin';
+  return `
   <div>
     <div style="background:linear-gradient(135deg,#1a56db,#0ea96d)">
       <div style="padding:16px 20px;display:flex;align-items:center;gap:12px">
@@ -82,71 +81,75 @@ function renderClientDetail() {
 }
 
 function selectClient(id) {
-    state.selectedClient = DB.get('clientes').find(x => x.id === id);
-    render();
+  state.selectedClient = (DB._cache['clientes'] || []).find(x => x.id === id);
+  render();
 }
 
 function backFromClient() {
-    state.selectedClient = null;
-    render();
+  state.selectedClient = null;
+  render();
 }
 
 function updateSearch(v) {
-    state.search = v;
-    render();
+  state.search = v;
+  render();
 }
 
-function guardarCliente() {
-    const dni = document.getElementById('nDNI').value.trim();
-    const nombre = document.getElementById('nNombre').value.trim();
-    if (!dni || !nombre) { alert('DNI y nombre son obligatorios'); return; }
-    const clientes = DB.get('clientes');
-    if (clientes.find(c => c.dni === dni)) { alert('Ya existe un cliente con ese DNI'); return; }
-    const isAdmin = state.currentUser.role === 'admin';
-    const cobradorId = isAdmin ? document.getElementById('nCobrador').value : state.currentUser.id;
-    const fotoEl = document.getElementById('previewNFoto');
-    const foto = fotoEl.style.display !== 'none' ? fotoEl.src : '';
-    clientes.push({
-        id: genId(), dni, nombre,
-        telefono: document.getElementById('nTelefono').value.trim(),
-        direccion: document.getElementById('nDireccion').value.trim(),
-        ubicacion: document.getElementById('nUbicacion').value.trim(),
-        cobradorId, foto, creado: today()
-    });
-    DB.set('clientes', clientes);
-    state.modal = null;
-    showToast('Cliente guardado exitosamente');
+async function guardarCliente() {
+  const dni = document.getElementById('nDNI').value.trim();
+  const nombre = document.getElementById('nNombre').value.trim();
+  if (!dni || !nombre) { alert('DNI y nombre son obligatorios'); return; }
+  const clientes = DB._cache['clientes'] || [];
+  if (clientes.find(c => c.dni === dni)) { alert('Ya existe un cliente con ese DNI'); return; }
+  const isAdmin = state.currentUser.role === 'admin';
+  const cobradorId = isAdmin ? document.getElementById('nCobrador').value : state.currentUser.id;
+  const fotoEl = document.getElementById('previewNFoto');
+  const foto = fotoEl.style.display !== 'none' ? fotoEl.src : '';
+  const id = genId();
+  await DB.set('clientes', id, {
+    id, dni, nombre,
+    telefono: document.getElementById('nTelefono').value.trim(),
+    direccion: document.getElementById('nDireccion').value.trim(),
+    ubicacion: document.getElementById('nUbicacion').value.trim(),
+    cobradorId, foto, creado: today()
+  });
+  state.modal = null;
+  showToast('Cliente guardado exitosamente');
 }
 
-function actualizarCliente() {
-    const c = state.selectedClient;
-    const clientes = DB.get('clientes');
-    const idx = clientes.findIndex(x => x.id === c.id);
-    const fotoEl = document.getElementById('previewEFoto');
-    const foto = fotoEl && fotoEl.style.display !== 'none' ? fotoEl.src : c.foto;
-    clientes[idx] = {
-        ...c,
-        dni: document.getElementById('eDNI').value.trim(),
-        nombre: document.getElementById('eNombre').value.trim(),
-        telefono: document.getElementById('eTelefono').value.trim(),
-        direccion: document.getElementById('eDireccion').value.trim(),
-        ubicacion: document.getElementById('eUbicacion').value.trim(),
-        cobradorId: document.getElementById('eCobrador').value,
-        foto
-    };
-    DB.set('clientes', clientes);
-    state.selectedClient = clientes[idx];
-    state.modal = null;
-    showToast('Cliente actualizado');
+async function actualizarCliente() {
+  const c = state.selectedClient;
+  const fotoEl = document.getElementById('previewEFoto');
+  const foto = fotoEl && fotoEl.style.display !== 'none' ? fotoEl.src : c.foto;
+  const updated = {
+    ...c,
+    dni: document.getElementById('eDNI').value.trim(),
+    nombre: document.getElementById('eNombre').value.trim(),
+    telefono: document.getElementById('eTelefono').value.trim(),
+    direccion: document.getElementById('eDireccion').value.trim(),
+    ubicacion: document.getElementById('eUbicacion').value.trim(),
+    cobradorId: document.getElementById('eCobrador').value,
+    foto
+  };
+  await DB.set('clientes', c.id, updated);
+  state.selectedClient = updated;
+  state.modal = null;
+  showToast('Cliente actualizado');
 }
 
-function eliminarCliente() {
-    if (!confirm('¿Eliminar este cliente? Se borrarán también sus créditos y pagos.')) return;
-    const c = state.selectedClient;
-    DB.set('clientes', DB.get('clientes').filter(x => x.id !== c.id));
-    DB.set('creditos', DB.get('creditos').filter(x => x.clienteId !== c.id));
-    DB.set('pagos', DB.get('pagos').filter(x => x.clienteId !== c.id));
-    state.selectedClient = null;
-    state.modal = null;
-    showToast('Cliente eliminado');
+async function eliminarCliente() {
+  if (!confirm('¿Eliminar este cliente? Se borrarán también sus créditos y pagos.')) return;
+  const c = state.selectedClient;
+  await DB.delete('clientes', c.id);
+  const creditos = DB._cache['creditos'] || [];
+  for (const cr of creditos.filter(x => x.clienteId === c.id)) {
+    await DB.delete('creditos', cr.id);
+  }
+  const pagos = DB._cache['pagos'] || [];
+  for (const p of pagos.filter(x => x.clienteId === c.id)) {
+    await DB.delete('pagos', p.id);
+  }
+  state.selectedClient = null;
+  state.modal = null;
+  showToast('Cliente eliminado');
 }

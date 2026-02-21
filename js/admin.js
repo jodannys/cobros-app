@@ -1,10 +1,10 @@
 function renderAdmin() {
   if (state.selectedCobrador) return renderAdminCobrador();
 
-  const clientes = DB.get('clientes');
-  const creditos = DB.get('creditos');
-  const users = DB.get('users');
-  const pagos = DB.get('pagos');
+  const clientes = DB._cache['clientes'] || [];
+  const creditos = DB._cache['creditos'] || [];
+  const users = DB._cache['users'] || [];
+  const pagos = DB._cache['pagos'] || [];
   const cobradores = users.filter(u => u.role === 'cobrador');
   const admins = users.filter(u => u.role === 'admin');
   const totalPrestado = creditos.filter(c => c.activo).reduce((s, c) => s + c.monto, 0);
@@ -22,8 +22,6 @@ function renderAdmin() {
       <div class="topbar-user"><strong>${state.currentUser.nombre}</strong><span>Admin</span></div>
     </div>
     <div class="page">
-
-      <!-- STATS -->
       <div class="admin-grid">
         <div class="stat-card"><div class="stat-number">${clientes.length}</div><div class="stat-label">Clientes totales</div></div>
         <div class="stat-card"><div class="stat-number">${creditos.filter(c => c.activo).length}</div><div class="stat-label">Créditos activos</div></div>
@@ -31,7 +29,6 @@ function renderAdmin() {
         <div class="stat-card"><div class="stat-number" style="font-size:18px">${formatMoney(totalPorCobrar)}</div><div class="stat-label">Por cobrar</div></div>
       </div>
 
-      <!-- ALERTAS -->
       ${alertas.length > 0 ? `
         <div style="background:#fff5f5;border:2px solid #fed7d7;border-radius:14px;padding:16px;margin-bottom:16px">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
@@ -69,7 +66,6 @@ function renderAdmin() {
         </div>
       `}
 
-      <!-- COBRADORES -->
       <div class="flex-between mb-2">
         <div class="card-title" style="margin:0">👨‍💼 Cobradores</div>
         <button class="btn btn-primary btn-sm" onclick="openModal('nuevo-usuario')">+ Usuario</button>
@@ -77,7 +73,7 @@ function renderAdmin() {
       ${cobradores.map(u => {
         const mis = clientes.filter(c => c.cobradorId === u.id);
         const activos = creditos.filter(c => mis.some(cl => cl.id === c.clienteId) && c.activo);
-        const alertasCobrador = getAlertasCreditos().filter(a => a.cobrador?.id === u.id);
+        const alertasCobrador = alertas.filter(a => a.cobrador?.id === u.id);
         return `
         <div class="cobrador-row" onclick="selectCobrador('${u.id}')">
           <div class="client-avatar" style="width:40px;height:40px;font-size:16px">${u.nombre.charAt(0)}</div>
@@ -92,7 +88,6 @@ function renderAdmin() {
         </div>`;
       }).join('')}
 
-      <!-- ADMINS -->
       <div class="card-title" style="margin-top:16px">🛡️ Administradores</div>
       ${admins.map(u => `
         <div class="cobrador-row">
@@ -103,9 +98,75 @@ function renderAdmin() {
   </div>`;
 }
 
+function renderAdminCobrador() {
+  const users = DB._cache['users'] || [];
+  const clientes = (DB._cache['clientes'] || []).filter(c => c.cobradorId === state.selectedCobrador);
+  const creditos = DB._cache['creditos'] || [];
+  const pagos = DB._cache['pagos'] || [];
+  const cobrador = users.find(u => u.id === state.selectedCobrador);
+  const diasCobrador = [...new Set(pagos.filter(p => p.cobradorId === state.selectedCobrador).map(p => p.fecha))].sort((a, b) => b.localeCompare(a)).slice(0, 7);
+
+  return `
+  <div>
+    <div class="topbar">
+      <button class="back-btn" onclick="state.selectedCobrador=null;render()">←</button>
+      <h2>${cobrador.nombre}</h2>
+    </div>
+    <div class="page">
+      <div class="card"><div class="info-grid">
+        <div class="info-item"><div class="info-label">Usuario</div><div class="info-value">${cobrador.user}</div></div>
+        <div class="info-item"><div class="info-label">Clientes</div><div class="info-value">${clientes.length}</div></div>
+      </div></div>
+      <div class="card-title">Clientes</div>
+      ${clientes.map(c => {
+        const crs = creditos.filter(cr => cr.clienteId === c.id && cr.activo);
+        return `
+        <div class="client-item" onclick="selectClient('${c.id}')">
+          <div class="client-avatar">${c.nombre.charAt(0)}</div>
+          <div class="client-info"><div class="client-name">${c.nombre}</div><div class="client-dni">DNI: ${c.dni}</div></div>
+          <span class="client-badge ${crs.length > 0 ? 'badge-active' : 'badge-done'}">${crs.length > 0 ? 'Activo' : 'Sin crédito'}</span>
+        </div>`;
+      }).join('')}
+      <div class="card-title" style="margin-top:16px">Cuadres recientes</div>
+      ${diasCobrador.length === 0 ? `<div class="empty-state"><div class="icon">📊</div><p>Sin registros</p></div>` :
+        diasCobrador.map(fecha => {
+          const c = getCuadreDelDia(state.selectedCobrador, fecha);
+          return `
+          <div class="card" style="padding:14px">
+            <div class="flex-between">
+              <div class="fw-bold">${formatDate(fecha)}</div>
+              <div class="fw-bold text-success">${formatMoney(c.total)}</div>
+            </div>
+            <div class="text-muted" style="font-size:12px;margin-top:4px">📱 ${formatMoney(c.yape)} · 💵 ${formatMoney(c.efectivo)} · 🏦 ${formatMoney(c.transferencia)}</div>
+            ${c.nota ? `<div class="text-muted" style="font-size:12px;margin-top:4px">📝 ${c.nota}</div>` : ''}
+          </div>`;
+        }).join('')}
+    </div>
+  </div>`;
+}
+
 function abrirGestionCredito(crId, clienteId) {
-  state.selectedClient = DB.get('clientes').find(x => x.id === clienteId);
-  state.selectedCredito = DB.get('creditos').find(x => x.id === crId);
+  state.selectedClient = (DB._cache['clientes'] || []).find(x => x.id === clienteId);
+  state.selectedCredito = (DB._cache['creditos'] || []).find(x => x.id === crId);
   state.modal = 'gestionar-credito';
   render();
+}
+
+function selectCobrador(id) {
+  state.selectedCobrador = id;
+  render();
+}
+
+async function guardarUsuario() {
+  const nombre = document.getElementById('uNombre').value.trim();
+  const user = document.getElementById('uUser').value.trim();
+  const pass = document.getElementById('uPass').value.trim();
+  const role = document.getElementById('uRol').value;
+  if (!nombre || !user || !pass) { alert('Todos los campos son obligatorios'); return; }
+  const users = DB._cache['users'] || [];
+  if (users.find(u => u.user === user)) { alert('Ese nombre de usuario ya existe'); return; }
+  const id = genId();
+  await DB.set('users', id, { id, nombre, user, pass, role });
+  state.modal = null;
+  showToast('Usuario creado exitosamente');
 }

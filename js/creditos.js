@@ -1,5 +1,5 @@
 function renderCreditoCard(cr) {
-  const pagos = DB.get('pagos').filter(p => p.creditoId === cr.id);
+  const pagos = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id);
   const totalPagado = pagos.reduce((s, p) => s + p.monto, 0);
   const saldo = cr.total - totalPagado;
   const progreso = Math.min(100, Math.round((totalPagado / cr.total) * 100));
@@ -37,43 +37,6 @@ function renderCreditoCard(cr) {
   </div>`;
 }
 
-function calcularCredito() {
-  const monto = parseFloat(document.getElementById('crMonto').value) || 0;
-  if (monto <= 0) { document.getElementById('crPreview').style.display = 'none'; return; }
-  const interes = monto * 0.2;
-  const total = monto + interes;
-  const cuota = total / 24;
-  document.getElementById('crPreview').style.display = 'block';
-  document.getElementById('crInteres').textContent = formatMoney(interes);
-  document.getElementById('crTotal').textContent = formatMoney(total);
-  document.getElementById('crCuota').textContent = formatMoney(cuota);
-}
-
-function guardarCredito() {
-  const monto = parseFloat(document.getElementById('crMonto').value) || 0;
-  if (monto <= 0) { alert('Ingresa el monto'); return; }
-  const total = monto * 1.2;
-  const cuotaDiaria = total / 24;
-  const creditos = DB.get('creditos');
-  creditos.push({
-    id: genId(), clienteId: state.selectedClient.id,
-    monto, total, cuotaDiaria, diasTotal: 24,
-    fechaInicio: document.getElementById('crFecha').value,
-    activo: true
-  });
-  DB.set('creditos', creditos);
-  state.modal = null;
-  showToast(`Crédito de ${formatMoney(monto)} creado`);
-}
-
-function cerrarCredito(crId) {
-  if (!confirm('¿Marcar este crédito como pagado?')) return;
-  const creditos = DB.get('creditos');
-  const idx = creditos.findIndex(c => c.id === crId);
-  creditos[idx].activo = false;
-  DB.set('creditos', creditos);
-  showToast('Crédito cerrado');
-}
 function renderFechasCredito(cr) {
   const fechaFin = calcularFechaFin(cr.fechaInicio, cr.diasTotal);
   const vencido = cr.activo && estaVencido(cr.fechaInicio, cr.diasTotal);
@@ -87,37 +50,65 @@ function renderFechasCredito(cr) {
   </div>`;
 }
 
-function extenderCredito() {
+function calcularCredito() {
+  const monto = parseFloat(document.getElementById('crMonto').value) || 0;
+  if (monto <= 0) { document.getElementById('crPreview').style.display = 'none'; return; }
+  const interes = monto * 0.2;
+  const total = monto + interes;
+  const cuota = total / 24;
+  document.getElementById('crPreview').style.display = 'block';
+  document.getElementById('crInteres').textContent = formatMoney(interes);
+  document.getElementById('crTotal').textContent = formatMoney(total);
+  document.getElementById('crCuota').textContent = formatMoney(cuota);
+}
+
+async function guardarCredito() {
+  const monto = parseFloat(document.getElementById('crMonto').value) || 0;
+  if (monto <= 0) { alert('Ingresa el monto'); return; }
+  const total = monto * 1.2;
+  const cuotaDiaria = total / 24;
+  const id = genId();
+  await DB.set('creditos', id, {
+    id,
+    clienteId: state.selectedClient.id,
+    monto, total, cuotaDiaria, diasTotal: 24,
+    fechaInicio: document.getElementById('crFecha').value,
+    activo: true
+  });
+  state.modal = null;
+  showToast(`Crédito de ${formatMoney(monto)} creado`);
+}
+
+async function cerrarCredito(crId) {
+  if (!confirm('¿Marcar este crédito como pagado?')) return;
+  await DB.update('creditos', crId, { activo: false });
+  showToast('Crédito cerrado');
+}
+
+async function extenderCredito() {
   const dias = parseInt(document.getElementById('extDias').value) || 0;
   if (dias <= 0) { alert('Ingresa los días a extender'); return; }
-  const creditos = DB.get('creditos');
-  const idx = creditos.findIndex(c => c.id === state.selectedCredito.id);
-  creditos[idx].diasTotal += dias;
-  DB.set('creditos', creditos);
-  state.selectedCredito = creditos[idx];
+  const cr = state.selectedCredito;
+  const nuevoDias = cr.diasTotal + dias;
+  await DB.update('creditos', cr.id, { diasTotal: nuevoDias });
+  state.selectedCredito = { ...cr, diasTotal: nuevoDias };
   showToast(`Plazo extendido ${dias} días más`);
   render();
 }
 
-function guardarCompromiso() {
+async function guardarCompromiso() {
   const fecha = document.getElementById('fechaCompromiso').value;
   if (!fecha) { alert('Selecciona una fecha'); return; }
-  const creditos = DB.get('creditos');
-  const idx = creditos.findIndex(c => c.id === state.selectedCredito.id);
-  creditos[idx].fechaCompromiso = fecha;
-  DB.set('creditos', creditos);
-  state.selectedCredito = creditos[idx];
+  await DB.update('creditos', state.selectedCredito.id, { fechaCompromiso: fecha });
+  state.selectedCredito = { ...state.selectedCredito, fechaCompromiso: fecha };
   showToast(`Compromiso registrado para el ${formatDate(fecha)}`);
   render();
 }
 
-function guardarNotaCredito() {
+async function guardarNotaCredito() {
   const nota = document.getElementById('notaCredito').value.trim();
-  const creditos = DB.get('creditos');
-  const idx = creditos.findIndex(c => c.id === state.selectedCredito.id);
-  creditos[idx].nota = nota;
-  DB.set('creditos', creditos);
-  state.selectedCredito = creditos[idx];
+  await DB.update('creditos', state.selectedCredito.id, { nota });
+  state.selectedCredito = { ...state.selectedCredito, nota };
   showToast('Nota guardada');
   render();
 }
