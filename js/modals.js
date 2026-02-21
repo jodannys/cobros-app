@@ -106,7 +106,13 @@ function renderModalNuevoUsuario() {
   <div class="modal-title">👤 Nuevo Usuario</div>
   <div class="form-group"><label>Nombre completo *</label><input class="form-control" id="uNombre" placeholder="Juan Pérez"></div>
   <div class="form-group"><label>Usuario *</label><input class="form-control" id="uUser" placeholder="juanperez" autocomplete="off"></div>
-  <div class="form-group"><label>Contraseña *</label><input class="form-control" id="uPass" type="password" placeholder="••••••••" autocomplete="new-password"></div>
+  <div class="form-group">
+    <label>Contraseña *</label>
+    <div style="position:relative">
+      <input class="form-control" id="uPass" type="password" placeholder="••••••••" autocomplete="new-password" style="padding-right:40px">
+      <button type="button" onclick="togglePass('uPass')" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);border:none;background:none;font-size:18px;cursor:pointer">👁️</button>
+    </div>
+  </div>
   <div class="form-group"><label>Rol</label>
     <select class="form-control" id="uRol"><option value="cobrador">Cobrador</option><option value="admin">Administrador</option></select>
   </div>
@@ -200,7 +206,13 @@ function renderModalEditarUsuario() {
   <div class="modal-title">✏️ Editar Usuario</div>
   <div class="form-group"><label>Nombre completo</label><input class="form-control" id="euNombre" value="${u.nombre}"></div>
   <div class="form-group"><label>Usuario</label><input class="form-control" id="euUser" value="${u.user}"></div>
-  <div class="form-group"><label>Nueva contraseña</label><input class="form-control" id="euPass" type="password" placeholder="Dejar vacío para no cambiar"></div>
+  <div class="form-group">
+    <label>Nueva contraseña</label>
+    <div style="position:relative">
+      <input class="form-control" id="euPass" type="password" placeholder="Dejar vacío para no cambiar" style="padding-right:40px">
+      <button type="button" onclick="togglePass('euPass')" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);border:none;background:none;font-size:18px;cursor:pointer">👁️</button>
+    </div>
+  </div>
   <div class="form-group"><label>Rol</label>
     <select class="form-control" id="euRol">
       <option value="cobrador" ${u.role === 'cobrador' ? 'selected' : ''}>Cobrador</option>
@@ -211,3 +223,12 @@ function renderModalEditarUsuario() {
 }
 function openModal(m) { state.modal = m; render(); }
 function closeModal(e) { state.modal = null; state.selectedCredito = null; render(); }
+
+function togglePass(id) {
+  const input = document.getElementById(id);
+  if (input.type === "password") {
+    input.type = "text";
+  } else {
+    input.type = "password";
+  }
+}
