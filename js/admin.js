@@ -91,7 +91,7 @@ function renderAdmin() {
         </div>`;
       }).join('')}
 
-      <!-- ADMINISTRADORES (P7 CORREGIDO: editable + agregar) -->
+      <!-- ADMINISTRADORES -->
       <div class="flex-between" style="margin-top:20px;margin-bottom:10px">
         <div class="card-title" style="margin:0">🛡️ Administradores</div>
         <button class="btn btn-primary btn-sm" onclick="abrirNuevoAdmin()">+ Admin</button>
@@ -200,7 +200,6 @@ function renderAdminCobrador() {
 }
 
 async function eliminarCobrador(id) {
-  // CORRECCIÓN P9: confirmación antes de eliminar
   if (!confirm('¿Eliminar este cobrador? Sus clientes quedarán sin cobrador asignado. Esta acción no se puede deshacer.')) return;
   await DB.delete('users', id);
   state.selectedCobrador = null;
@@ -232,16 +231,12 @@ async function guardarUsuario() {
   try {
     const nuevoUser = { id, nombre, user, pass, role };
     await DB.set('users', id, nuevoUser);
-    // Actualizar caché local inmediatamente sin esperar onSnapshot
     if (!DB._cache['users']) DB._cache['users'] = [];
-    if (!DB._cache['users'].find(u => u.id === id)) {
-      DB._cache['users'].push(nuevoUser);
-    }
+    if (!DB._cache['users'].find(u => u.id === id)) DB._cache['users'].push(nuevoUser);
     state.modal = null;
     showToast('Usuario creado exitosamente');
     render();
   } catch(e) {
-    console.error('Error al guardar usuario:', e);
     alert('Error al guardar: ' + e.message);
   }
 }
@@ -260,14 +255,102 @@ async function actualizarUsuario() {
   if (pass) updates.pass = pass;
   try {
     await DB.update('users', u.id, updates);
-    // Actualizar caché local inmediatamente
     const idx = (DB._cache['users'] || []).findIndex(x => x.id === u.id);
     if (idx !== -1) DB._cache['users'][idx] = { ...DB._cache['users'][idx], ...updates };
     state.modal = null;
     showToast('Usuario actualizado');
     render();
   } catch(e) {
-    console.error('Error al actualizar usuario:', e);
     alert('Error al actualizar: ' + e.message);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// ✅ EDITAR MONTO DEL CRÉDITO (solo admin)
+// Recalcula total (20% interés) y cuota diaria automáticamente
+// ══════════════════════════════════════════════════════════════
+
+function abrirEditarCredito(crId) {
+  const cr = (DB._cache['creditos'] || []).find(c => c.id === crId);
+  if (!cr) return;
+  state._editandoCredito = cr;
+  state.modal = 'editar-credito';
+  render();
+}
+
+function renderModalEditarCredito() {
+  const cr = state._editandoCredito;
+  if (!cr) return '';
+  const cliente = (DB._cache['clientes'] || []).find(c => c.id === cr.clienteId);
+  const totalActual = cr.monto * 1.2;
+  const cuotaActual = totalActual / cr.diasTotal;
+  return `
+  <div class="modal-handle"></div>
+  <div class="modal-title">✏️ Corregir Monto</div>
+  <div style="background:var(--bg);border-radius:10px;padding:10px 14px;margin-bottom:14px">
+    <div style="font-size:12px;color:var(--muted)">Cliente</div>
+    <div style="font-weight:700">${cliente?.nombre || '—'}</div>
+  </div>
+
+  <div class="form-group">
+    <label>Monto prestado (S/) *</label>
+    <input class="form-control" id="ecMonto" type="number" step="0.01"
+      value="${cr.monto}" oninput="previsualizarCambioMonto()">
+  </div>
+
+  <!-- Preview recálculo automático -->
+  <div style="background:#eff6ff;border-radius:10px;padding:12px;margin-bottom:16px">
+    <div style="font-size:11px;color:var(--muted);font-weight:700;margin-bottom:8px;text-transform:uppercase">
+      Se recalculará con 20% de interés
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div>
+        <div style="font-size:11px;color:var(--muted)">Total a pagar</div>
+        <div style="font-weight:800;font-size:18px;color:var(--primary)" id="ecPreviewTotal">
+          ${formatMoney(totalActual)}
+        </div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--muted)">Cuota diaria</div>
+        <div style="font-weight:800;font-size:18px;color:var(--primary)" id="ecPreviewCuota">
+          ${formatMoney(cuotaActual)}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <button class="btn btn-primary" onclick="guardarCreditoEditado()">💾 Guardar corrección</button>`;
+}
+
+function previsualizarCambioMonto() {
+  const monto = parseFloat(document.getElementById('ecMonto').value) || 0;
+  const cr    = state._editandoCredito;
+  const total = monto * 1.2;
+  const cuota = total / (cr?.diasTotal || 24);
+  const elTotal = document.getElementById('ecPreviewTotal');
+  const elCuota = document.getElementById('ecPreviewCuota');
+  if (elTotal) elTotal.textContent = formatMoney(total);
+  if (elCuota) elCuota.textContent = formatMoney(cuota);
+}
+
+async function guardarCreditoEditado() {
+  const cr    = state._editandoCredito;
+  const monto = parseFloat(document.getElementById('ecMonto').value);
+  if (!monto || monto <= 0) { alert('Ingresa un monto válido'); return; }
+
+  const total = monto * 1.2;
+  const cuota = total / cr.diasTotal;
+  const updates = { monto, total, cuotaDiaria: cuota };
+
+  try {
+    await DB.update('creditos', cr.id, updates);
+    const idx = (DB._cache['creditos'] || []).findIndex(c => c.id === cr.id);
+    if (idx !== -1) DB._cache['creditos'][idx] = { ...DB._cache['creditos'][idx], ...updates };
+    state._editandoCredito = null;
+    state.modal = null;
+    showToast('✅ Monto corregido correctamente');
+    render();
+  } catch(e) {
+    alert('Error al guardar: ' + e.message);
   }
 }
