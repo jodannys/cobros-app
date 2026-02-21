@@ -1,3 +1,28 @@
+// ============================================================
+// FUNCIÓN DE COMPRESIÓN DE IMAGEN ✅ NUEVA
+// ============================================================
+function comprimirImagen(base64, maxWidth = 600, calidad = 0.6) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.src = base64;
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const escala = Math.min(1, maxWidth / img.width);
+      canvas.width  = img.width  * escala;
+      canvas.height = img.height * escala;
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/jpeg', calidad));
+    };
+    img.onerror = () => {
+      console.warn('⚠️ No se pudo comprimir la imagen, usando original');
+      resolve(base64);
+    };
+  });
+}
+
+// ============================================================
+// RENDER MODAL PRINCIPAL
+// ============================================================
 function renderModal() {
   const m = state.modal;
   let content = '';
@@ -15,7 +40,6 @@ function renderModal() {
   return `
   <div class="modal-overlay" onclick="closeModal(event)">
     <div class="modal" onclick="event.stopPropagation()">
-      <!-- CORRECCIÓN P6: botón X siempre visible -->
       <button onclick="closeModal(event)"
         style="position:absolute;top:12px;right:14px;border:none;background:none;font-size:22px;cursor:pointer;color:#94a3b8;line-height:1;padding:0">×</button>
       ${content}
@@ -23,6 +47,9 @@ function renderModal() {
   </div>`;
 }
 
+// ============================================================
+// MODAL NUEVO CLIENTE
+// ============================================================
 function renderModalNuevoCliente() {
   const cobradores = (DB._cache['users'] || []).filter(u => u.role === 'cobrador');
   const isAdmin = state.currentUser.role === 'admin';
@@ -40,12 +67,15 @@ function renderModalNuevoCliente() {
     <label>Foto de casa/negocio</label>
     <label class="upload-btn" for="nFoto">📷 Tomar o subir foto</label>
     <input type="file" id="nFoto" accept="image/*" onchange="previewFoto(this,'previewNFoto')">
-<img id="previewNFoto" style="display:none" class="uploaded-img">
+    <img id="previewNFoto" style="display:none" class="uploaded-img">
   </div>
   <button class="btn btn-primary" onclick="guardarCliente()">Guardar Cliente</button>`;
   setTimeout(() => iniciarMapaSelector(null, null), 200);
 }
 
+// ============================================================
+// MODAL EDITAR CLIENTE
+// ============================================================
 function renderModalEditarCliente() {
   const c = state.selectedClient;
   const cobradores = (DB._cache['users'] || []).filter(u => u.role === 'cobrador');
@@ -75,6 +105,9 @@ function renderModalEditarCliente() {
   ${isAdmin ? `<button class="btn btn-danger" style="margin-top:8px" onclick="eliminarCliente()">🗑️ Eliminar cliente</button>` : ''}`;
 }
 
+// ============================================================
+// MODAL NUEVO CRÉDITO
+// ============================================================
 function renderModalNuevoCredito() {
   return `
   <div class="modal-handle"></div>
@@ -96,8 +129,9 @@ function renderModalNuevoCredito() {
   <button class="btn btn-primary" onclick="guardarCredito()">Crear Crédito</button>`;
 }
 
-
-
+// ============================================================
+// MODAL NUEVO USUARIO
+// ============================================================
 function renderModalNuevoUsuario() {
   return `
   <div class="modal-handle"></div>
@@ -120,14 +154,17 @@ function renderModalNuevoUsuario() {
   <button class="btn btn-primary" onclick="guardarUsuario()">Crear Usuario</button>`;
 }
 
+// ============================================================
+// MODAL GESTIONAR CRÉDITO
+// ============================================================
 function renderModalGestionarCredito() {
   const cr = state.selectedCredito;
   const c  = state.selectedClient;
   if (!cr || !c) return '';
-  const pagos      = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id);
+  const pagos       = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id);
   const totalPagado = pagos.reduce((s, p) => s + p.monto, 0);
-  const saldo = cr.total - totalPagado;
-  const dias  = diasSinPagar(cr.id);
+  const saldo   = cr.total - totalPagado;
+  const dias    = diasSinPagar(cr.id);
   const vencido = estaVencido(cr.fechaInicio, cr.diasTotal);
   return `
   <div class="modal-handle"></div>
@@ -172,6 +209,9 @@ function renderModalGestionarCredito() {
   </div>`;
 }
 
+// ============================================================
+// MODAL BANNER ALERTAS
+// ============================================================
 function renderModalBannerAlertas() {
   const alertas = getAlertasCreditos();
   return `
@@ -200,6 +240,9 @@ function renderModalBannerAlertas() {
   <button class="btn btn-outline" style="margin-top:8px" onclick="closeModal(event)">Cerrar</button>`;
 }
 
+// ============================================================
+// MODAL EDITAR USUARIO
+// ============================================================
 function renderModalEditarUsuario() {
   const users = DB._cache['users'] || [];
   const u = users.find(x => x.id === state.selectedCobrador);
@@ -225,7 +268,9 @@ function renderModalEditarUsuario() {
   <button class="btn btn-primary" onclick="actualizarUsuario()">Actualizar</button>`;
 }
 
-// CORRECCIÓN P7: Modal para editar/crear admin principal
+// ============================================================
+// MODAL EDITAR / CREAR ADMIN
+// ============================================================
 function renderModalEditarAdmin() {
   const u = state._editingAdmin;
   const isNew = !u;
@@ -252,6 +297,9 @@ function renderModalEditarAdmin() {
   <button class="btn btn-primary" onclick="guardarAdmin(${isNew ? 'null' : `'${u.id}'`})">${isNew ? 'Crear Admin' : 'Actualizar'}</button>`;
 }
 
+// ============================================================
+// GUARDAR ADMIN
+// ============================================================
 async function guardarAdmin(idExistente) {
   const nombre = document.getElementById('adNombre').value.trim();
   const user   = document.getElementById('adUser').value.trim();
@@ -262,24 +310,20 @@ async function guardarAdmin(idExistente) {
   const users = DB._cache['users'] || [];
 
   if (!idExistente) {
-    // Nuevo admin
     if (!pass) { alert('La contraseña es obligatoria para un nuevo admin'); return; }
     if (users.find(u => u.user === user)) { alert('Ese nombre de usuario ya existe'); return; }
     const id = genId();
     await DB.set('users', id, { id, nombre, user, pass, role: 'admin' });
     showToast('Administrador creado');
   } else {
-    // Editar existente
     const existing = users.find(u => u.id === idExistente);
     if (!existing) return;
-    // Verificar que el username no lo use otro
     if (users.find(u => u.user === user && u.id !== idExistente)) {
       alert('Ese nombre de usuario ya está en uso'); return;
     }
     const updates = { nombre, user };
     if (pass) updates.pass = pass;
     await DB.update('users', idExistente, updates);
-    // Si el admin editado es el usuario actual, actualizar estado
     if (state.currentUser.id === idExistente) {
       state.currentUser = { ...state.currentUser, nombre, user, ...(pass ? { pass } : {}) };
     }
@@ -291,6 +335,9 @@ async function guardarAdmin(idExistente) {
   render();
 }
 
+// ============================================================
+// HELPERS DE MODAL
+// ============================================================
 function openModal(m) { state.modal = m; render(); }
 
 function closeModal(e) {
@@ -303,4 +350,23 @@ function closeModal(e) {
 function togglePass(id) {
   const input = document.getElementById(id);
   input.type = input.type === 'password' ? 'text' : 'password';
+}
+
+// ============================================================
+// PREVIEW DE FOTO
+// ============================================================
+function previewFoto(input, previewId) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = document.getElementById(previewId);
+    img.src = e.target.result;
+    img.style.display = 'block';
+    console.log('📌 Foto cargada en preview (se comprimirá al guardar)');
+  };
+  reader.onerror = function(err) {
+    console.error('❌ Error leyendo la imagen:', err);
+  };
+  reader.readAsDataURL(file);
 }
