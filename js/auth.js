@@ -14,7 +14,8 @@ function renderLogin() {
       <label>Contraseña</label>
       <div style="position:relative">
         <input class="form-control" id="loginPass" type="password" placeholder="••••••••" 
-               value="${state.loginPassField || ''}" style="padding-right:40px">
+               value="${state.loginPassField || ''}" style="padding-right:40px"
+               autocomplete="current-password">
         <button type="button" onclick="togglePass('loginPass')" 
                 style="position:absolute;right:10px;top:50%;transform:translateY(-50%);border:none;background:none;font-size:18px;cursor:pointer">👁️</button>
       </div>
@@ -33,9 +34,7 @@ function bindLogin() {
     const found = users.find(u => u.user === userVal && u.pass === passVal);
     
     if (found) {
-      // 1. ÉXITO: Guardamos el usuario para la próxima vez
       localStorage.setItem('lastUser', found.user);
-      
       state.currentUser = found;
       state.screen = 'main';
       state.loginError = '';
@@ -50,14 +49,13 @@ function bindLogin() {
         }
       }
     } else {
-      // 2. ERROR: Lógica inteligente
       state.loginUserField = userVal;
       if (!userExists) {
         state.loginError = 'El usuario no existe';
         state.loginPassField = passVal;
       } else {
         state.loginError = 'Contraseña incorrecta';
-        state.loginPassField = ''; // Borra pass si el user es correcto
+        state.loginPassField = '';
       }
       render();
     }
