@@ -17,7 +17,11 @@ function renderCuadre() {
   if (isAdmin) {
     const cobradores = users.filter(u => u.role === 'cobrador');
     let totalGeneral = 0;
-    const filas = cobradores.map(u => { const c = getCuadreDelDia(u.id, hoy); totalGeneral += c.total; return { u, c }; });
+    const filas = cobradores.map(u => { 
+      const c = getCuadreDelDia(u.id, hoy); 
+      totalGeneral += c.total; 
+      return { u, c }; 
+    });
     const pagos = DB._cache['pagos'] || [];
     const dias = [...new Set(pagos.map(p => p.fecha))].sort((a, b) => b.localeCompare(a)).slice(0, 10);
 
@@ -44,8 +48,7 @@ function renderCuadre() {
             ${c.nota ? `<div class="text-muted mt-2" style="font-size:12px">📝 ${c.nota}</div>` : ''}
           </div>`).join('')}
         <div class="card-title" style="margin-top:8px">Historial por fecha</div>
-        ${dias.length === 0 ? `<div class="empty-state"><div class="icon">📊</div><p>Sin registros aún</p></div>` :
-          dias.map(fecha => {
+        ${dias.map(fecha => {
             let totalDia = 0;
             const detalle = cobradores.map(u => { const c = getCuadreDelDia(u.id, fecha); totalDia += c.total; return { u, c }; }).filter(x => x.c.total > 0);
             return `
@@ -64,6 +67,93 @@ function renderCuadre() {
       </div>
     </div>`;
   }
+
+  // --- VISTA COBRADOR CON META DINÁMICA ---
+  const cuadreHoy = getCuadreDelDia(state.currentUser.id, hoy);
+  
+  const misClientesIds = (DB._cache['clientes'] || [])
+    .filter(c => c.cobradorId === state.currentUser.id)
+    .map(c => c.id);
+    
+  const porCobrarHoy = (DB._cache['creditos'] || [])
+    .filter(cr => misClientesIds.includes(cr.clienteId) && cr.estado === 'activo')
+    .reduce((s, cr) => s + (cr.cuotaDiaria || 0), 0);
+
+  // Lógica de color de la meta
+  const metaAlcanzada = cuadreHoy.total >= porCobrarHoy && porCobrarHoy > 0;
+  const bgMeta = metaAlcanzada ? '#dcfce7' : '#f8fafc';
+  const borderMeta = metaAlcanzada ? '#22c55e' : '#4a90e2';
+  const textoMeta = metaAlcanzada ? '#166534' : '#4a5568';
+
+  const diasCobrador = [...new Set((DB._cache['pagos'] || [])
+    .filter(p => p.cobradorId === state.currentUser.id)
+    .map(p => p.fecha))].sort((a, b) => b.localeCompare(a));
+
+  return `
+  <div>
+    <div class="topbar"><h2>Mi Cuadre</h2><div class="topbar-user"><strong>${state.currentUser.nombre}</strong></div></div>
+    <div class="page">
+      
+      <div class="card" style="padding:16px; margin-bottom:12px; background: ${bgMeta}; border-left: 4px solid ${borderMeta}; transition: all 0.3s ease;">
+        <div class="flex-between">
+          <span style="font-size:12px; color:var(--muted); font-weight:600">OBJETIVO DE HOY</span>
+          <span style="font-size:14px; font-weight:700; color: ${textoMeta}">${formatMoney(porCobrarHoy)}</span>
+        </div>
+        <div style="font-size:12px; font-weight: 600; color: ${textoMeta}; margin-top:4px">
+          ${metaAlcanzada ? '✅ ¡Meta cumplida!' : `Faltan recoger: ${formatMoney(Math.max(0, porCobrarHoy - cuadreHoy.total))}`}
+        </div>
+      </div>
+
+      ${cuadreHoy.total > 0 ? `
+        <div class="cuadre-total">
+          <div style="font-size:13px;opacity:0.85">Ya cobrado hoy · ${formatDate(hoy)}</div>
+          <div class="amount">${formatMoney(cuadreHoy.total)}</div>
+        </div>
+        
+        <div class="payment-split">
+          <div class="payment-item"><div class="payment-icon">📱</div><div class="payment-label">Yape</div><div class="payment-amount">${formatMoney(cuadreHoy.yape)}</div></div>
+          <div class="payment-item"><div class="payment-icon">💵</div><div class="payment-label">Efectivo</div><div class="payment-amount">${formatMoney(cuadreHoy.efectivo)}</div></div>
+          <div class="payment-item"><div class="payment-icon">🏦</div><div class="payment-label">Transfer.</div><div class="payment-amount">${formatMoney(cuadreHoy.transferencia)}</div></div>
+        </div>
+        
+        <div class="card">
+          <div class="card-title">Pagos de hoy (${cuadreHoy.pagos.length})</div>
+          ${cuadreHoy.pagos.map(p => {
+            const cl = (DB._cache['clientes'] || []).find(c => c.id === p.clienteId);
+            return `
+            <div class="cuota-item">
+              <div><div style="font-weight:600;font-size:14px">${cl ? cl.nombre : '—'}</div><div style="font-size:12px;color:var(--muted)">${p.tipo}</div></div>
+              <div style="font-weight:700;color:var(--success)">${formatMoney(p.monto)}</div>
+            </div>`;
+          }).join('')}
+        </div>
+      ` : `
+        <div class="card" style="text-align:center;padding:32px 20px">
+          <div style="font-size:48px;margin-bottom:12px">📋</div>
+          <p style="color:var(--muted);font-size:15px">Sin cobros registrados hoy</p>
+        </div>
+      `}
+
+      <div class="nota-box">
+          <div class="card-title">📝 Nota del día</div>
+          <textarea class="form-control" id="notaHoy" placeholder="Observaciones..." style="resize:none;height:60px">${cuadreHoy.nota}</textarea>
+          <button class="btn btn-primary" style="margin-top:10px; width:100%" onclick="guardarNota()">Guardar nota</button>
+      </div>
+
+      <div class="card-title" style="margin-top:16px">Historial</div>
+      ${diasCobrador.slice(0, 5).map(fecha => {
+          const c = getCuadreDelDia(state.currentUser.id, fecha);
+          return `
+          <div class="card" style="padding:12px; margin-bottom: 8px">
+            <div class="flex-between">
+              <div style="font-size:13px; font-weight:600">${formatDate(fecha)}</div>
+              <div style="font-weight:700; color:var(--success)">${formatMoney(c.total)}</div>
+            </div>
+          </div>`;
+        }).join('')}
+    </div>
+  </div>`;
+}
 
   const cuadreHoy = getCuadreDelDia(state.currentUser.id, hoy);
   const pagos = DB._cache['pagos'] || [];
