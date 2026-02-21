@@ -63,7 +63,7 @@ function renderClientes() {
     <div class="page">
       <div class="search-bar">
         <span class="search-icon">🔍</span>
-        <input class="form-control" placeholder="Buscar por nombre, DNI o negocio..."
+        <input class="form-control" id="search-clientes" placeholder="Buscar por nombre, DNI o negocio..."
           value="${state.search}" oninput="updateSearch(this.value)">
       </div>
 
@@ -79,8 +79,9 @@ function renderClientes() {
           </button>`).join('')}
       </div>
 
-      <div style="font-size:12px;color:var(--muted);margin-bottom:8px">${lista.length} cliente${lista.length !== 1 ? 's' : ''}</div>
+      <div id="contador-clientes" style="font-size:12px;color:var(--muted);margin-bottom:8px">${lista.length} cliente${lista.length !== 1 ? 's' : ''}</div>
 
+      <div id="lista-clientes">
       ${lista.length === 0
         ? `<div class="empty-state"><div class="icon">👤</div><p>No se encontraron clientes</p></div>`
         : lista.map(c => {
@@ -117,6 +118,7 @@ function renderClientes() {
               <span style="font-size:11px;font-weight:700;padding:4px 8px;border-radius:20px;white-space:nowrap;${badgeStyle}">${badge}</span>
             </div>`;
           }).join('')}
+      </div>
     </div>
     <button class="fab" onclick="openModal('nuevo-cliente')">+</button>
   </div>`;
@@ -207,7 +209,17 @@ function renderEsquemaCuotas(cr) {
 
 function setFiltroClientes(f) {
   state.filtroClientes = f;
+  // Re-render completo para actualizar los botones de filtro activo
+  // pero restaurar el foco en el buscador después
+  const searchVal = document.getElementById('search-clientes')?.value || state.search;
   render();
+  // Restaurar valor del input si el render lo reinicia
+  const inp = document.getElementById('search-clientes');
+  if (inp && searchVal) {
+    inp.value = searchVal;
+    inp.focus();
+    inp.setSelectionRange(inp.value.length, inp.value.length);
+  }
 }
 
 function renderClientDetail() {
@@ -292,7 +304,96 @@ function backFromClient() {
 
 function updateSearch(v) {
   state.search = v;
-  render();
+  // Solo re-renderizar la lista, no el input para no perder el foco
+  _renderListaClientes();
+}
+
+function _renderListaClientes() {
+  const contenedor = document.getElementById('lista-clientes');
+  const contador   = document.getElementById('contador-clientes');
+  if (!contenedor) { render(); return; }
+
+  const clientes = DB._cache['clientes'] || [];
+  const creditos = DB._cache['creditos'] || [];
+  const users    = DB._cache['users']    || [];
+  const pagos    = DB._cache['pagos']    || [];
+  const isAdmin  = state.currentUser.role === 'admin';
+  const filtro   = state.filtroClientes || 'todos';
+
+  let lista = isAdmin
+    ? clientes
+    : clientes.filter(c => c.cobradorId === state.currentUser.id);
+
+  if (filtro === 'activos') {
+    lista = lista.filter(c => creditos.some(cr => cr.clienteId === c.id && cr.activo));
+  } else if (filtro === 'sin_credito') {
+    lista = lista.filter(c => {
+      const crs = creditos.filter(cr => cr.clienteId === c.id);
+      return crs.length === 0 || !crs.some(cr => cr.activo);
+    });
+  } else if (filtro === 'atrasados') {
+    lista = lista.filter(c => {
+      const cr = creditos.find(cr => cr.clienteId === c.id && cr.activo);
+      if (!cr) return false;
+      return clienteEstaAtrasado(cr, pagos);
+    });
+  } else if (filtro === 'cerrados' && isAdmin) {
+    lista = lista.filter(c => {
+      const crs = creditos.filter(cr => cr.clienteId === c.id);
+      return crs.length > 0 && !crs.some(cr => cr.activo) && crs.some(cr => !cr.activo);
+    });
+  }
+
+  if (state.search) {
+    const q = state.search.toLowerCase();
+    lista = lista.filter(c =>
+      c.nombre.toLowerCase().includes(q) ||
+      c.dni.includes(q) ||
+      (c.negocio || '').toLowerCase().includes(q)
+    );
+  }
+
+  if (contador) contador.textContent = `${lista.length} cliente${lista.length !== 1 ? 's' : ''}`;
+
+  if (lista.length === 0) {
+    contenedor.innerHTML = '<div class="empty-state"><div class="icon">👤</div><p>No se encontraron clientes</p></div>';
+    return;
+  }
+
+  contenedor.innerHTML = lista.map(c => {
+    const crs          = creditos.filter(cr => cr.clienteId === c.id);
+    const creditoActivo = crs.find(cr => cr.activo);
+    const cob          = users.find(u => u.id === c.cobradorId);
+    const atrasado     = creditoActivo ? clienteEstaAtrasado(creditoActivo, pagos) : false;
+    const numCuotaAtrasada = atrasado ? cuotaAtrasada(creditoActivo, pagos) : null;
+
+    let badge, badgeStyle;
+    if (atrasado) {
+      badge = numCuotaAtrasada ? `⚠️ Atrasado cuota ${numCuotaAtrasada}` : '⚠️ Atrasado';
+      badgeStyle = 'background:#fff5f5;color:var(--danger);border:1px solid #fed7d7';
+    } else if (creditoActivo) {
+      badge = '● Activo';
+      badgeStyle = 'background:#f0fff4;color:#276749;border:1px solid #c6f6d5';
+    } else if (crs.length > 0) {
+      badge = '🔒 Cerrado';
+      badgeStyle = 'background:#f8fafc;color:#94a3b8;border:1px solid #e2e8f0';
+    } else {
+      badge = 'Sin crédito';
+      badgeStyle = 'background:#fffbeb;color:#b7791f;border:1px solid #fde68a';
+    }
+
+    return `
+    <div class="client-item" onclick="selectClient('${c.id}')">
+      <div class="client-avatar">${c.nombre.charAt(0)}</div>
+      <div class="client-info" style="flex:1">
+        <div class="client-name">${c.nombre}</div>
+        <div class="client-dni" style="font-size:12px;color:var(--muted)">
+          DNI: ${c.dni}${c.negocio ? ` · 🏪 ${c.negocio}` : ''}${isAdmin && cob ? ` · ${cob.nombre}` : ''}
+        </div>
+      </div>
+      <span style="font-size:11px;font-weight:700;padding:4px 8px;border-radius:20px;white-space:nowrap;${badgeStyle}">${badge}</span>
+    </div>`;
+  }).join('');
 }
 
 async function guardarCliente() {

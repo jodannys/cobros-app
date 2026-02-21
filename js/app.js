@@ -13,9 +13,9 @@ function render() {
       box-shadow:0 4px 12px rgba(0,0,0,0.2)">${state.toast.msg}</div>` : ''}
     ${state.modal ? renderModal() : ''}
     ${state.selectedClient ? renderClientDetail() :
-      state.nav === 'clientes' ? renderClientes() :
-        state.nav === 'cuadre' ? renderCuadre() :
-          state.nav === 'admin' && isAdmin ? renderAdmin() : renderClientes()}
+      state.nav === 'clientes'            ? renderClientes() :
+      state.nav === 'cuadre'              ? renderCuadre()   :
+      state.nav === 'admin' && isAdmin    ? renderAdmin()    : renderClientes()}
     ${!state.selectedClient ? `
     <nav class="bottom-nav">
       <div class="nav-item ${state.nav === 'clientes' ? 'active' : ''}" onclick="navigate('clientes')">
@@ -37,7 +37,7 @@ function render() {
 
 function navigate(nav) {
   state.nav = nav;
-  state.selectedClient = null;
+  state.selectedClient  = null;
   state.selectedCobrador = null;
   // Actualizar historial para que el botón atrás funcione (P9)
   history.pushState({ nav }, '', '#' + nav);
@@ -91,16 +91,17 @@ window.addEventListener('beforeunload', (e) => {
 
     // Escuchar cambios en tiempo real — CORRECCIÓN P1:
     // onSnapshot actualiza el caché Y re-renderiza sin cerrar la app
-    fbEscuchar('pagos', (datos) => { DB._cache['pagos'] = datos; render(); });
-    fbEscuchar('creditos', (datos) => { DB._cache['creditos'] = datos; render(); });
-    fbEscuchar('clientes', (datos) => { DB._cache['clientes'] = datos; render(); });
-    fbEscuchar('users', (datos) => { DB._cache['users'] = datos; render(); });
+    fbEscuchar('pagos',         (datos) => { DB._cache['pagos']         = datos; render(); });
+    fbEscuchar('creditos',      (datos) => { DB._cache['creditos']      = datos; render(); });
+    fbEscuchar('clientes',      (datos) => { DB._cache['clientes']      = datos; render(); });
+    fbEscuchar('users',         (datos) => { DB._cache['users']         = datos; render(); });
+    fbEscuchar('notas_cuadre',  (datos) => { DB._cache['notas_cuadre']  = datos; render(); });
 
     // Pushear estado inicial en el historial
     history.replaceState({ nav: 'clientes' }, '', '#clientes');
 
     render();
-  } catch (e) {
+  } catch(e) {
     console.error('Error iniciando app:', e);
     document.getElementById('root').innerHTML = `
       <div style="display:flex;align-items:center;justify-content:center;height:100vh;
