@@ -287,7 +287,7 @@ function renderClientDetail() {
 
     <nav class="bottom-nav">
       <div class="nav-item" onclick="backFromClient()"
-        style="flex:none;padding:0 34px;font-size:14px"> ⬅️ Volver </div>
+        style="flex:none;padding:8px 34px;font-size:14px"> ⬅️ Volver </div>
     </nav>
   </div>`;
 }
