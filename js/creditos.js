@@ -4,12 +4,6 @@ function renderCreditoCard(cr) {
   const saldo = cr.total - totalPagado;
   const pagadoReal = saldo <= 0;
   const mora = calcularMora(cr);
-  // LOG temporal para debug de mora
-  if (cr.mora_activa) {
-    console.log('📊 renderCreditoCard - mora_activa=true | mora calculada:', mora,
-      '| activo:', cr.activo, '| vencido:', estaVencido(cr.fechaInicio, cr.diasTotal),
-      '| saldo:', saldo);
-  }
   const totalConMora = saldo + mora;
   const progreso = Math.min(100, Math.round((totalPagado / cr.total) * 100));
   const isAdmin = state.currentUser.role === 'admin';
@@ -23,9 +17,15 @@ function renderCreditoCard(cr) {
         <div class="text-muted" style="font-size:12px">Total: ${formatMoney(cr.total)} · Cuota: ${formatMoney(cr.cuotaDiaria)}/día</div>
         ${renderFechasCredito(cr)}
       </div>
-      <span class="tag ${!pagadoReal ? 'tag-blue' : 'tag-green'}">
-        ${!pagadoReal ? 'Debe ' + formatMoney(saldo) : '✓ Pagado'}
-      </span>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+        <span class="tag ${!pagadoReal ? 'tag-blue' : 'tag-green'}">
+          ${!pagadoReal ? 'Debe ' + formatMoney(saldo) : '✓ Pagado'}
+        </span>
+        ${isAdmin ? `
+        <button class="btn btn-sm"
+          style="background:#f8fafc;color:var(--muted);border:1px solid #e2e8f0;font-size:11px;padding:3px 10px"
+          onclick="abrirEditarCredito('${cr.id}')">✏️ Monto</button>` : ''}
+      </div>
     </div>
 
     <div class="flex-between" style="font-size:14px;margin-bottom:6px">
@@ -34,7 +34,6 @@ function renderCreditoCard(cr) {
     </div>
 
     ${mora > 0 ? isAdmin ? `
-    <!-- ADMIN: ver detalle completo de mora -->
     <div style="background:#fff5f5;border-radius:8px;padding:10px;margin:8px 0;border-left:3px solid var(--danger)">
       <div class="flex-between">
         <span style="font-size:13px;color:var(--danger);font-weight:600">⚠️ Mora acumulada</span>
@@ -46,7 +45,6 @@ function renderCreditoCard(cr) {
       </div>
       <div style="font-size:11px;color:var(--muted);margin-top:4px">S/ 5.00 por día de atraso</div>
     </div>` : `
-    <!-- COBRADOR: ver total a cobrar de forma simple -->
     <div style="background:#fff5f5;border-radius:10px;padding:12px;margin:8px 0;border-left:3px solid var(--danger)">
       <div class="flex-between">
         <span style="font-size:13px;color:var(--danger);font-weight:700">💰 Total a cobrar hoy</span>
@@ -80,14 +78,20 @@ function renderCreditoCard(cr) {
 
     ${pagos.length > 0 ? `
     <div style="margin-top:14px">
-      <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase">Últimos pagos</div>
-      ${pagos.slice(-5).reverse().map(p => `
-        <div class="cuota-item">
-          <div>
+      <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase">
+        Historial de pagos
+      </div>
+      ${pagos.slice().reverse().map(p => `
+        <div class="cuota-item" style="align-items:center">
+          <div style="flex:1">
             <div style="font-weight:600;font-size:14px">${formatDate(p.fecha)}</div>
             <div style="font-size:12px;color:var(--muted)">${p.tipo}${p.aplicadoMora ? ' · mora incluida' : ''}</div>
           </div>
-          <div style="font-weight:700;font-size:15px;color:var(--success)">${formatMoney(p.monto)}</div>
+          <div style="font-weight:700;font-size:15px;color:var(--success);margin-right:10px">${formatMoney(p.monto)}</div>
+          ${isAdmin ? `
+          <button class="btn btn-sm"
+            style="background:#eff6ff;color:var(--primary);border:1px solid #bfdbfe;font-size:12px;padding:4px 10px;flex-shrink:0"
+            onclick="abrirEditarPago('${p.id}')">✏️</button>` : ''}
         </div>`).join('')}
     </div>` : ''}
   </div>`;
@@ -188,48 +192,96 @@ async function guardarNotaCredito() {
 }
 
 async function toggleMora(crId, activar) {
-  console.group('🔔 toggleMora');
-  console.log('crId:', crId, '| activar:', activar);
-
-  // 1. Buscar crédito en caché antes de actualizar
   const creditosCache = DB._cache['creditos'] || [];
-  const crAntes = creditosCache.find(c => c.id === crId);
-  console.log('Crédito antes:', crAntes ? JSON.stringify(crAntes) : 'NO ENCONTRADO');
-
-  // 2. Verificar si está vencido (requisito para que calcularMora funcione)
-  if (crAntes) {
-    const vencido = estaVencido(crAntes.fechaInicio, crAntes.diasTotal);
-    console.log('¿Está vencido?', vencido, '| fechaInicio:', crAntes.fechaInicio, '| diasTotal:', crAntes.diasTotal);
-    const moraCalculada = calcularMora({ ...crAntes, mora_activa: activar });
-    console.log('Mora que calcularMora devolvería con mora_activa=' + activar + ':', moraCalculada);
-  }
-
-  // 3. Actualizar en Firestore
-  try {
-    await DB.update('creditos', crId, { mora_activa: activar });
-    console.log('✅ Firestore actualizado correctamente');
-  } catch (e) {
-    console.error('❌ Error al actualizar Firestore:', e);
-  }
-
-  // 4. Actualizar caché local
+  await DB.update('creditos', crId, { mora_activa: activar });
   const idx = creditosCache.findIndex(c => c.id === crId);
-  if (idx >= 0) {
-    creditosCache[idx].mora_activa = activar;
-    console.log('✅ Caché actualizado. mora_activa ahora:', creditosCache[idx].mora_activa);
-  } else {
-    console.warn('⚠️ No se encontró el crédito en caché para actualizar');
-  }
-
-  // 5. Verificar mora después del cambio
-  const crDespues = (DB._cache['creditos'] || []).find(c => c.id === crId);
-  if (crDespues) {
-    const moraFinal = calcularMora(crDespues);
-    console.log('Mora después de activar/desactivar:', moraFinal);
-    console.log('Crédito después:', JSON.stringify(crDespues));
-  }
-
-  console.groupEnd();
+  if (idx >= 0) creditosCache[idx].mora_activa = activar;
   showToast(activar ? '🔔 Mora activada — S/5 por día' : '🔕 Mora desactivada');
   render();
+}
+
+// ══════════════════════════════════════════════════════════════
+// ✅ EDITAR / ELIMINAR PAGO (solo admin)
+// ══════════════════════════════════════════════════════════════
+
+function abrirEditarPago(pagoId) {
+  const p = (DB._cache['pagos'] || []).find(x => x.id === pagoId);
+  if (!p) return;
+  state._editandoPago = p;
+  state.modal = 'editar-pago';
+  render();
+}
+
+function renderModalEditarPago() {
+  const p = state._editandoPago;
+  if (!p) return '';
+  const cliente = (DB._cache['clientes'] || []).find(c => c.id === p.clienteId);
+  return `
+  <div class="modal-handle"></div>
+  <div class="modal-title">✏️ Editar Pago</div>
+
+  <div style="background:var(--bg);border-radius:10px;padding:10px 14px;margin-bottom:14px">
+    <div style="font-size:12px;color:var(--muted)">Cliente</div>
+    <div style="font-weight:700">${cliente?.nombre || '—'}</div>
+  </div>
+
+  <div class="form-group">
+    <label>Monto (S/) *</label>
+    <input class="form-control" id="epMonto" type="number" step="0.01" value="${p.monto}">
+  </div>
+
+  <div class="form-group">
+    <label>Fecha *</label>
+    <input class="form-control" id="epFecha" type="date" value="${p.fecha}">
+  </div>
+
+  <div class="form-group">
+    <label>Tipo de pago</label>
+    <select class="form-control" id="epTipo">
+      <option value="efectivo"      ${p.tipo === 'efectivo'      ? 'selected' : ''}>💵 Efectivo</option>
+      <option value="yape"          ${p.tipo === 'yape'          ? 'selected' : ''}>📱 Yape</option>
+      <option value="transferencia" ${p.tipo === 'transferencia' ? 'selected' : ''}>🏦 Transferencia</option>
+    </select>
+  </div>
+
+  <button class="btn btn-primary" onclick="guardarPagoEditado()">💾 Guardar cambios</button>
+  <button class="btn btn-danger" style="margin-top:8px" onclick="eliminarPago('${p.id}')">🗑️ Eliminar pago</button>`;
+}
+
+async function guardarPagoEditado() {
+  const p     = state._editandoPago;
+  const monto = parseFloat(document.getElementById('epMonto').value);
+  const fecha = document.getElementById('epFecha').value;
+  const tipo  = document.getElementById('epTipo').value;
+
+  if (!monto || monto <= 0) { alert('Ingresa un monto válido'); return; }
+  if (!fecha)               { alert('Selecciona una fecha'); return; }
+
+  const updates = { monto, fecha, tipo };
+
+  try {
+    await DB.update('pagos', p.id, updates);
+    const idx = (DB._cache['pagos'] || []).findIndex(x => x.id === p.id);
+    if (idx !== -1) DB._cache['pagos'][idx] = { ...DB._cache['pagos'][idx], ...updates };
+    state._editandoPago = null;
+    state.modal = null;
+    showToast('✅ Pago actualizado');
+    render();
+  } catch(e) {
+    alert('Error al guardar: ' + e.message);
+  }
+}
+
+async function eliminarPago(pagoId) {
+  if (!confirm('¿Eliminar este pago? Esta acción no se puede deshacer y afectará el saldo del crédito.')) return;
+  try {
+    await DB.delete('pagos', pagoId);
+    DB._cache['pagos'] = (DB._cache['pagos'] || []).filter(p => p.id !== pagoId);
+    state._editandoPago = null;
+    state.modal = null;
+    showToast('Pago eliminado');
+    render();
+  } catch(e) {
+    alert('Error al eliminar: ' + e.message);
+  }
 }
