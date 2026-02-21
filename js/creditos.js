@@ -21,10 +21,6 @@ function renderCreditoCard(cr) {
         <span class="tag ${!pagadoReal ? 'tag-blue' : 'tag-green'}">
           ${!pagadoReal ? 'Debe ' + formatMoney(saldo) : '✓ Pagado'}
         </span>
-        ${isAdmin ? `
-        <button class="btn btn-sm"
-          style="background:#f8fafc;color:var(--muted);border:1px solid #e2e8f0;font-size:11px;padding:3px 10px"
-          onclick="abrirEditarCredito('${cr.id}')">✏️ Monto</button>` : ''}
       </div>
     </div>
 
@@ -231,11 +227,6 @@ function renderModalEditarPago() {
   </div>
 
   <div class="form-group">
-    <label>Fecha *</label>
-    <input class="form-control" id="epFecha" type="date" value="${p.fecha}">
-  </div>
-
-  <div class="form-group">
     <label>Tipo de pago</label>
     <select class="form-control" id="epTipo">
       <option value="efectivo"      ${p.tipo === 'efectivo'      ? 'selected' : ''}>💵 Efectivo</option>
@@ -251,13 +242,11 @@ function renderModalEditarPago() {
 async function guardarPagoEditado() {
   const p     = state._editandoPago;
   const monto = parseFloat(document.getElementById('epMonto').value);
-  const fecha = document.getElementById('epFecha').value;
   const tipo  = document.getElementById('epTipo').value;
 
   if (!monto || monto <= 0) { alert('Ingresa un monto válido'); return; }
-  if (!fecha)               { alert('Selecciona una fecha'); return; }
 
-  const updates = { monto, fecha, tipo };
+  const updates = { monto, tipo };
 
   try {
     await DB.update('pagos', p.id, updates);
