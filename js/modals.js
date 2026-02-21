@@ -39,7 +39,10 @@ function renderModalNuevoCliente() {
   <div class="form-group">
     <label>Foto de casa/negocio</label>
     <label class="upload-btn" for="nFoto">📷 Tomar o subir foto</label>
-    <input type="file" id="nFoto" accept="image/*" capture="environment" onchange="previewFoto(this,'previewNFoto')">
+    <input type="file"
+       id="nFoto"
+       accept="image/*"
+       onchange="previewFoto(this,'previewNFoto')">
     <img id="previewNFoto" style="display:none" class="uploaded-img">
   </div>
   <button class="btn btn-primary" onclick="guardarCliente()">Guardar Cliente</button>`;
@@ -58,7 +61,7 @@ function renderModalEditarCliente() {
   <div class="form-group"><label>Nombre del negocio</label><input class="form-control" id="eNegocio" value="${c.negocio || ''}"></div>
   <div class="form-group"><label>Teléfono</label><input class="form-control" id="eTelefono" value="${c.telefono || ''}"></div>
   <div class="form-group"><label>Dirección</label><input class="form-control" id="eDireccion" value="${c.direccion || ''}"></div>
-  ${renderMapaSelector(c.lat || null, c.lng || null)}</div>
+  ${renderMapaSelector(c.lat || null, c.lng || null)}
   ${isAdmin ? `
   <div class="form-group"><label>Cobrador asignado</label>
     <select class="form-control" id="eCobrador">
