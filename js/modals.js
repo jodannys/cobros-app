@@ -28,6 +28,7 @@ function renderModal() {
   let content = '';
   if (m === 'nuevo-cliente')       content = renderModalNuevoCliente();
   else if (m === 'editar-cliente') content = renderModalEditarCliente();
+  else if (m === 'editar-pago') content = renderModalEditarPago();
   else if (m === 'nuevo-credito')  content = renderModalNuevoCredito();
   else if (m === 'registrar-pago') content = renderModalRegistrarPago();
   else if (m === 'nuevo-usuario')  content = renderModalNuevoUsuario();
