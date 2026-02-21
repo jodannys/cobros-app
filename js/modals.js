@@ -29,6 +29,7 @@ function renderModalNuevoCliente() {
   <div class="modal-title">👤 Nuevo Cliente</div>
   <div class="form-group"><label>DNI *</label><input class="form-control" id="nDNI" placeholder="12345678" maxlength="8"></div>
   <div class="form-group"><label>Nombre completo *</label><input class="form-control" id="nNombre" placeholder="Juan Pérez"></div>
+  <div class="form-group"><label>Nombre del negocio</label><input class="form-control" id="nNegocio" placeholder="Bodega El Sol, Ferretería..."></div>
   <div class="form-group"><label>Teléfono</label><input class="form-control" id="nTelefono" placeholder="987654321" type="tel"></div>
   <div class="form-group"><label>Dirección</label><input class="form-control" id="nDireccion" placeholder="Av. Lima 123"></div>
   <div class="form-group"><label>Link Google Maps</label><input class="form-control" id="nUbicacion" placeholder="https://maps.google.com/..."></div>
@@ -51,6 +52,7 @@ function renderModalEditarCliente() {
   <div class="modal-title">✏️ Editar Cliente</div>
   <div class="form-group"><label>DNI</label><input class="form-control" id="eDNI" value="${c.dni}"></div>
   <div class="form-group"><label>Nombre completo</label><input class="form-control" id="eNombre" value="${c.nombre}"></div>
+  <div class="form-group"><label>Nombre del negocio</label><input class="form-control" id="eNegocio" value="${c.negocio || ''}"></div>
   <div class="form-group"><label>Teléfono</label><input class="form-control" id="eTelefono" value="${c.telefono || ''}"></div>
   <div class="form-group"><label>Dirección</label><input class="form-control" id="eDireccion" value="${c.direccion || ''}"></div>
   <div class="form-group"><label>Link Google Maps</label><input class="form-control" id="eUbicacion" value="${c.ubicacion || ''}"></div>

@@ -147,6 +147,74 @@ function renderCuadre() {
         </div>
       </div>
 
+      <!-- ALERTAS AUTOMÁTICAS: clientes con fecha vencida -->
+      ${(() => {
+        const alertas = getAlertasCreditos();
+        const vencidosHoy = alertas.filter(a => a.tipo === 'vencido');
+        const morosos     = alertas.filter(a => a.tipo === 'moroso');
+
+        if (alertas.length === 0) return `
+          <div style="background:#f0fff4;border:2px solid #c6f6d5;border-radius:14px;
+            padding:14px;margin-bottom:16px;display:flex;align-items:center;gap:10px">
+            <span style="font-size:22px">✅</span>
+            <div style="font-size:14px;font-weight:600;color:#276749">Todo al día — sin vencimientos ni atrasos</div>
+          </div>`;
+
+        return `
+        <div style="background:#fff5f5;border:2px solid #fed7d7;border-radius:14px;padding:14px;margin-bottom:16px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+            <span style="font-size:22px">🚨</span>
+            <div>
+              <div style="font-weight:800;font-size:15px;color:var(--danger)">
+                ${vencidosHoy.length > 0 ? `${vencidosHoy.length} crédito${vencidosHoy.length > 1 ? 's' : ''} vencido${vencidosHoy.length > 1 ? 's' : ''}` : ''}
+                ${vencidosHoy.length > 0 && morosos.length > 0 ? ' · ' : ''}
+                ${morosos.length > 0 ? `${morosos.length} con atraso` : ''}
+              </div>
+              <div style="font-size:12px;color:var(--muted)">Requieren atención inmediata</div>
+            </div>
+          </div>
+
+          ${vencidosHoy.length > 0 ? `
+          <div style="font-size:11px;font-weight:800;text-transform:uppercase;color:var(--danger);
+            margin-bottom:6px;letter-spacing:0.5px">🔴 Vencidos</div>
+          ${vencidosHoy.map(a => `
+            <div style="background:white;border-radius:10px;padding:10px 12px;margin-bottom:6px;
+              border-left:4px solid var(--danger);display:flex;justify-content:space-between;align-items:center">
+              <div>
+                <div style="font-weight:700;font-size:14px">${a.cliente?.nombre || '—'}</div>
+                <div style="font-size:12px;color:var(--muted)">
+                  👤 ${a.cobrador?.nombre || '—'} · Saldo: ${formatMoney(a.saldo)}
+                </div>
+                <div style="font-size:11px;color:var(--danger);margin-top:2px">
+                  Venció el ${calcularFechaFin(a.cr.fechaInicio, a.cr.diasTotal)}
+                </div>
+              </div>
+              <button class="btn btn-sm" style="background:var(--danger);color:white;white-space:nowrap;font-size:11px"
+                onclick="abrirGestionCredito('${a.cr.id}','${a.cliente?.id}')">Gestionar</button>
+            </div>`).join('')}` : ''}
+
+          ${morosos.length > 0 ? `
+          <div style="font-size:11px;font-weight:800;text-transform:uppercase;color:#b7791f;
+            margin-top:${vencidosHoy.length > 0 ? '10px' : '0'};margin-bottom:6px;letter-spacing:0.5px">
+            ⚠️ Con atraso en pagos</div>
+          ${morosos.map(a => `
+            <div style="background:white;border-radius:10px;padding:10px 12px;margin-bottom:6px;
+              border-left:4px solid #f59e0b;display:flex;justify-content:space-between;align-items:center">
+              <div>
+                <div style="font-weight:700;font-size:14px">${a.cliente?.nombre || '—'}</div>
+                <div style="font-size:12px;color:var(--muted)">
+                  👤 ${a.cobrador?.nombre || '—'} · Saldo: ${formatMoney(a.saldo)}
+                </div>
+                <div style="font-size:11px;color:#b7791f;margin-top:2px">
+                  ${a.dias} día${a.dias > 1 ? 's' : ''} sin pagar
+                </div>
+              </div>
+              <button class="btn btn-sm" style="background:#f59e0b;color:white;white-space:nowrap;font-size:11px"
+                onclick="abrirGestionCredito('${a.cr.id}','${a.cliente?.id}')">Gestionar</button>
+            </div>`).join('')}` : ''}
+        </div>`;
+      })()}
+
       <div class="card-title">Rendimiento por Cobrador</div>
       ${cobradores.map(u => {
         const c    = getCuadreDelDia(u.id, hoy);

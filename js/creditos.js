@@ -57,6 +57,8 @@ function renderCreditoCard(cr) {
       ✅ Crédito cerrado
     </div>`}
 
+    ${renderEsquemaCuotas(cr)}
+
     ${pagos.length > 0 ? `
     <div style="margin-top:14px">
       <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase">Últimos pagos</div>
