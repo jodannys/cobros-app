@@ -105,13 +105,14 @@ function renderCuadre() {
       .filter(cr => cr.activo === true && cr.fechaInicio <= hoy)
       .reduce((s, cr) => s + (Number(cr.cuotaDiaria) || 0), 0);
 
-    const pagosHoy = (DB._cache['pagos'] || []).filter(p => p.fecha === hoy);
+    const cobradores = usuarios.filter(u => u.role === 'cobrador');
+    const cobradorIds = cobradores.map(u => u.id);
+    // Solo pagos de cobradores registrados (evita contar pagos de admin u otros)
+    const pagosHoy = (DB._cache['pagos'] || []).filter(p => p.fecha === hoy && cobradorIds.includes(p.cobradorId));
     const totalRecaudadoGlobal = pagosHoy.reduce((s, p) => s + (Number(p.monto) || 0), 0);
     const porcentajeGlobal = totalObjetivoGlobal > 0
       ? Math.round((totalRecaudadoGlobal / totalObjetivoGlobal) * 100)
       : 0;
-
-    const cobradores = usuarios.filter(u => u.role === 'cobrador');
 
     return `
     <div class="topbar">

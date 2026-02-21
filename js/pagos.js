@@ -19,11 +19,20 @@ async function guardarPago() {
   if (!fecha) { alert('Selecciona una fecha'); return; }
 
   const id = genId();
+
+  // Si el admin registra el pago desde el perfil de un cliente,
+  // usar el cobradorId del cliente para que aparezca en el cuadre correcto
+  const clienteDelCr = (DB._cache['clientes'] || []).find(c => c.id === cr.clienteId);
+  const cobradorId = state.currentUser.role === 'admin' && clienteDelCr?.cobradorId
+    ? clienteDelCr.cobradorId
+    : state.currentUser.id;
+
   const nuevoPago = {
     id,
     creditoId:  cr.id,
     clienteId:  cr.clienteId,
-    cobradorId: state.currentUser.id,
+    cobradorId,
+    registradoPor: state.currentUser.id, // quién lo registró realmente
     monto,
     tipo,
     fecha,
