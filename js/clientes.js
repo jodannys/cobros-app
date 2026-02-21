@@ -68,13 +68,10 @@ function renderClientes() {
       </div>
 
       <!-- FILTROS -->
-      <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:12px;-webkit-overflow-scrolling:touch">
+      <div class="filtros-scroll">
         ${filtros.map(f => `
           <button onclick="setFiltroClientes('${f.key}')"
-            style="white-space:nowrap;padding:6px 14px;border-radius:20px;border:2px solid ${filtro === f.key ? 'var(--primary)' : '#e2e8f0'};
-            background:${filtro === f.key ? 'var(--primary)' : 'white'};
-            color:${filtro === f.key ? 'white' : '#64748b'};
-            font-size:13px;font-weight:600;cursor:pointer">
+            class="filtro-btn ${filtro === f.key ? 'active' : ''}">
             ${f.label}
           </button>`).join('')}
       </div>
@@ -193,16 +190,11 @@ function renderEsquemaCuotas(cr) {
       ${atrasadas > 0 ? `<span style="font-size:11px;background:#fee2e2;color:#991b1b;padding:3px 8px;border-radius:20px;font-weight:700">⚠️ ${atrasadas} atrasadas</span>` : ''}
       <span style="font-size:11px;background:#f1f5f9;color:#64748b;padding:3px 8px;border-radius:20px;font-weight:700">🔘 ${pendientes} pendientes</span>
     </div>
-    <div style="display:flex;flex-wrap:wrap;gap:5px;justify-content:center">
-      ${cuotas.map(c => {
-        const col = colores[c.estado];
-        return `<div title="Cuota ${c.num}"
-          style="width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;
-          font-size:10px;font-weight:700;
-          background:${col.bg};color:${col.color};border:1px solid ${col.border}">
+    <div class="cuotas-grid">
+      ${cuotas.map(c => `
+        <div title="Cuota ${c.num}" class="cuota-burbuja cuota-${c.estado}">
           ${c.num}
-        </div>`;
-      }).join('')}
+        </div>`).join('')}
     </div>
   </div>`;
 }
