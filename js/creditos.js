@@ -2,6 +2,8 @@ function renderCreditoCard(cr) {
   const pagos = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id);
   const totalPagado = pagos.reduce((s, p) => s + p.monto, 0);
   const saldo = cr.total - totalPagado;
+  const mora = calcularMora(cr);
+  const totalConMora = saldo + mora;
   const progreso = Math.min(100, Math.round((totalPagado / cr.total) * 100));
   const isAdmin = state.currentUser.role === 'admin';
   return `
@@ -18,12 +20,28 @@ function renderCreditoCard(cr) {
       <span class="text-muted">Pagado: <strong class="text-success">${formatMoney(totalPagado)}</strong></span>
       <span class="text-muted">Saldo: <strong class="${saldo > 0 ? 'text-danger' : 'text-success'}">${formatMoney(saldo)}</strong></span>
     </div>
+    ${mora > 0 ? `
+    <div style="background:#fff5f5;border-radius:8px;padding:10px;margin:8px 0;border-left:3px solid var(--danger)">
+      <div class="flex-between">
+        <span style="font-size:13px;color:var(--danger);font-weight:600">⚠️ Mora acumulada</span>
+        <span style="font-weight:800;color:var(--danger)">${formatMoney(mora)}</span>
+      </div>
+      <div class="flex-between mt-2">
+        <span style="font-size:13px;font-weight:700">Total con mora</span>
+        <span style="font-weight:800;font-size:16px;color:var(--danger)">${formatMoney(totalConMora)}</span>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px">S/ 5.00 por día de atraso</div>
+    </div>` : ''}
     <div class="progress-bar"><div class="progress-fill" style="width:${progreso}%"></div></div>
     <div style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:8px">${progreso}% pagado · ${pagos.length} de ${cr.diasTotal} cuotas</div>
     ${cr.activo ? `
-    <div style="display:flex;gap:8px">
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn btn-success btn-sm" onclick="openRegistrarPago('${cr.id}')">💰 Registrar pago</button>
-      ${isAdmin ? `<button class="btn btn-outline btn-sm" onclick="cerrarCredito('${cr.id}')">✓ Cerrar</button>` : ''}
+      ${isAdmin ? `
+        <button class="btn btn-outline btn-sm" onclick="cerrarCredito('${cr.id}')">✓ Cerrar</button>
+        <button class="btn btn-sm" style="background:${cr.mora_activa ? '#fff5f5' : '#f0fff4'};color:${cr.mora_activa ? 'var(--danger)' : 'var(--success)'};border:2px solid ${cr.mora_activa ? '#fed7d7' : '#c6f6d5'}" onclick="toggleMora('${cr.id}',${cr.mora_activa ? 'false' : 'true'})">
+          ${cr.mora_activa ? '🔕 Desactivar mora' : '🔔 Activar mora'}
+        </button>` : ''}
     </div>` : ''}
     ${pagos.length > 0 ? `
     <div style="margin-top:12px">
@@ -110,5 +128,13 @@ async function guardarNotaCredito() {
   await DB.update('creditos', state.selectedCredito.id, { nota });
   state.selectedCredito = { ...state.selectedCredito, nota };
   showToast('Nota guardada');
+  render();
+}
+async function toggleMora(crId, activar) {
+  await DB.update('creditos', crId, { mora_activa: activar });
+  const creditos = DB._cache['creditos'] || [];
+  const idx = creditos.findIndex(c => c.id === crId);
+  if (idx >= 0) creditos[idx].mora_activa = activar;
+  showToast(activar ? '🔔 Mora activada — S/5 por día' : '🔕 Mora desactivada');
   render();
 }

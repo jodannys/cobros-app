@@ -8,6 +8,7 @@ function renderModal() {
   else if (m === 'nuevo-usuario') content = renderModalNuevoUsuario();
   else if (m === 'gestionar-credito') content = renderModalGestionarCredito();
   else if (m === 'banner-alertas') content = renderModalBannerAlertas();
+  else if (m === 'editar-usuario') content = renderModalEditarUsuario();
   return `<div class="modal-overlay" onclick="closeModal(event)"><div class="modal" onclick="event.stopPropagation()">${content}</div></div>`;
 }
 
@@ -190,6 +191,23 @@ function renderModalBannerAlertas() {
   <button class="btn btn-primary" style="margin-top:8px" onclick="closeModal(event);navigate('admin')">Ver en Admin</button>
   <button class="btn btn-outline" style="margin-top:8px" onclick="closeModal(event)">Cerrar</button>`;
 }
-
+function renderModalEditarUsuario() {
+  const users = DB._cache['users'] || [];
+  const u = users.find(x => x.id === state.selectedCobrador);
+  if (!u) return '';
+  return `
+  <div class="modal-handle"></div>
+  <div class="modal-title">✏️ Editar Usuario</div>
+  <div class="form-group"><label>Nombre completo</label><input class="form-control" id="euNombre" value="${u.nombre}"></div>
+  <div class="form-group"><label>Usuario</label><input class="form-control" id="euUser" value="${u.user}"></div>
+  <div class="form-group"><label>Nueva contraseña</label><input class="form-control" id="euPass" type="password" placeholder="Dejar vacío para no cambiar"></div>
+  <div class="form-group"><label>Rol</label>
+    <select class="form-control" id="euRol">
+      <option value="cobrador" ${u.role === 'cobrador' ? 'selected' : ''}>Cobrador</option>
+      <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>Administrador</option>
+    </select>
+  </div>
+  <button class="btn btn-primary" onclick="actualizarUsuario()">Actualizar</button>`;
+}
 function openModal(m) { state.modal = m; render(); }
 function closeModal(e) { state.modal = null; state.selectedCredito = null; render(); }

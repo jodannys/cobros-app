@@ -111,12 +111,15 @@ function renderAdminCobrador() {
     <div class="topbar">
       <button class="back-btn" onclick="state.selectedCobrador=null;render()">←</button>
       <h2>${cobrador.nombre}</h2>
+      <button class="btn btn-sm btn-outline" onclick="openModal('editar-usuario')">✏️ Editar</button>
     </div>
     <div class="page">
       <div class="card"><div class="info-grid">
         <div class="info-item"><div class="info-label">Usuario</div><div class="info-value">${cobrador.user}</div></div>
         <div class="info-item"><div class="info-label">Clientes</div><div class="info-value">${clientes.length}</div></div>
-      </div></div>
+      </div>
+      <button class="btn btn-danger btn-sm" style="margin-top:8px" onclick="eliminarCobrador('${cobrador.id}')">🗑️ Eliminar cobrador</button>
+      </div>
       <div class="card-title">Clientes</div>
       ${clientes.map(c => {
         const crs = creditos.filter(cr => cr.clienteId === c.id && cr.activo);
@@ -138,11 +141,18 @@ function renderAdminCobrador() {
               <div class="fw-bold text-success">${formatMoney(c.total)}</div>
             </div>
             <div class="text-muted" style="font-size:12px;margin-top:4px">📱 ${formatMoney(c.yape)} · 💵 ${formatMoney(c.efectivo)} · 🏦 ${formatMoney(c.transferencia)}</div>
-            ${c.nota ? `<div class="text-muted" style="font-size:12px;margin-top:4px">📝 ${c.nota}</div>` : ''}
           </div>`;
         }).join('')}
     </div>
   </div>`;
+}
+
+async function eliminarCobrador(id) {
+  if (!confirm('¿Eliminar este cobrador? Sus clientes quedarán sin cobrador asignado.')) return;
+  await DB.delete('users', id);
+  state.selectedCobrador = null;
+  showToast('Cobrador eliminado');
+  render();
 }
 
 function abrirGestionCredito(crId, clienteId) {
@@ -169,4 +179,22 @@ async function guardarUsuario() {
   await DB.set('users', id, { id, nombre, user, pass, role });
   state.modal = null;
   showToast('Usuario creado exitosamente');
+}
+function renderModalEditarUsuario() {
+  const users = DB._cache['users'] || [];
+  const u = users.find(x => x.id === state.selectedCobrador);
+  if (!u) return '';
+  return `
+  <div class="modal-handle"></div>
+  <div class="modal-title">✏️ Editar Usuario</div>
+  <div class="form-group"><label>Nombre completo</label><input class="form-control" id="euNombre" value="${u.nombre}"></div>
+  <div class="form-group"><label>Usuario</label><input class="form-control" id="euUser" value="${u.user}"></div>
+  <div class="form-group"><label>Nueva contraseña</label><input class="form-control" id="euPass" type="password" placeholder="Dejar vacío para no cambiar"></div>
+  <div class="form-group"><label>Rol</label>
+    <select class="form-control" id="euRol">
+      <option value="cobrador" ${u.role === 'cobrador' ? 'selected' : ''}>Cobrador</option>
+      <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>Administrador</option>
+    </select>
+  </div>
+  <button class="btn btn-primary" onclick="actualizarUsuario()">Actualizar</button>`;
 }

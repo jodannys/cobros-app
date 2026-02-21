@@ -67,3 +67,16 @@ function getAlertasCreditos() {
 
   return alertas;
 }
+function calcularMora(cr) {
+  if (!cr.activo || !cr.mora_activa) return 0;
+  const pagos = DB._cache['pagos'] || [];
+  const totalPagado = pagos.filter(p => p.creditoId === cr.id).reduce((s, p) => s + p.monto, 0);
+  const saldo = cr.total - totalPagado;
+  if (saldo <= 0) return 0;
+  const vencido = estaVencido(cr.fechaInicio, cr.diasTotal);
+  if (!vencido) return 0;
+  const fin = new Date(cr.fechaInicio + 'T00:00:00');
+  fin.setDate(fin.getDate() + cr.diasTotal);
+  const diasMora = Math.floor((new Date() - fin) / (1000 * 60 * 60 * 24));
+  return diasMora > 0 ? diasMora * 5 : 0;
+}
