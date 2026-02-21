@@ -451,16 +451,24 @@ async function actualizarCliente() {
 async function eliminarCliente() {
   if (!confirm('¿Eliminar este cliente? Se borrarán también sus créditos y pagos. Esta acción no se puede deshacer.')) return;
   const c = state.selectedClient;
+
   await DB.delete('clientes', c.id);
+  DB._cache['clientes'] = (DB._cache['clientes'] || []).filter(x => x.id !== c.id);
+
   const creditos = DB._cache['creditos'] || [];
   for (const cr of creditos.filter(x => x.clienteId === c.id)) {
     await DB.delete('creditos', cr.id);
   }
+  DB._cache['creditos'] = (DB._cache['creditos'] || []).filter(x => x.clienteId !== c.id);
+
   const pagos = DB._cache['pagos'] || [];
   for (const p of pagos.filter(x => x.clienteId === c.id)) {
     await DB.delete('pagos', p.id);
   }
+  DB._cache['pagos'] = (DB._cache['pagos'] || []).filter(x => x.clienteId !== c.id);
+
   state.selectedClient = null;
   state.modal = null;
   showToast('Cliente eliminado');
+  render();
 }
