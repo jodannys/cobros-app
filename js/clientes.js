@@ -188,12 +188,12 @@ function renderEsquemaCuotas(cr) {
     <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase">
       📊 Esquema de Cuotas
     </div>
-    <div style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+    <div style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap;justify-content:center">
       <span style="font-size:11px;background:#dcfce7;color:#166534;padding:3px 8px;border-radius:20px;font-weight:700">✅ ${pagadas} pagadas</span>
       ${atrasadas > 0 ? `<span style="font-size:11px;background:#fee2e2;color:#991b1b;padding:3px 8px;border-radius:20px;font-weight:700">⚠️ ${atrasadas} atrasadas</span>` : ''}
       <span style="font-size:11px;background:#f1f5f9;color:#64748b;padding:3px 8px;border-radius:20px;font-weight:700">🔘 ${pendientes} pendientes</span>
     </div>
-    <div style="display:flex;flex-wrap:wrap;gap:5px">
+    <div style="display:flex;flex-wrap:wrap;gap:5px;justify-content:center">
       ${cuotas.map(c => {
         const col = colores[c.estado];
         return `<div title="Cuota ${c.num}"
