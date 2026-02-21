@@ -6,44 +6,39 @@ function openRegistrarPago(crId) {
 
 async function guardarPago() {
   const cr = state.selectedCredito;
-  const monto = parseFloat(document.getElementById('pMonto').value) || 0;
-  if (monto <= 0) { alert('Ingresa el monto'); return; }
+  // ... (tu código de validación de monto)
   
-  const id = genId();
-  const tipo = document.getElementById('pTipo').value;
-  const fecha = document.getElementById('pFecha').value;
-  const nota = document.getElementById('pNota').value.trim();
-
-  // 1. Guardamos el pago en la DB
-  await DB.set('pagos', id, {
+  const nuevoPago = {
     id,
     creditoId: cr.id,
-    clienteId: cr.clienteId, // Usamos cr.clienteId para mayor seguridad
+    clienteId: cr.clienteId,
     cobradorId: state.currentUser.id,
     monto,
     tipo,
     fecha,
     nota
-  });
+  };
 
-  // 2. Calculamos el total pagado sumando: 
-  // Lo que ya había en caché + el monto que estamos pagando AHORA
-  const pagosEnCache = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id);
-  const totalPagadoCalculado = pagosEnCache.reduce((s, p) => s + p.monto, 0) + monto;
+  // 1. Guardar en la DB
+  await DB.set('pagos', id, nuevoPago);
 
-  // 3. Verificamos si con este pago se llega al TOTAL (monto + 20%)
-  if (totalPagadoCalculado >= cr.total) {
+  // 2. ¡IMPORTANTE! Actualizar el caché local de inmediato
+  if (!DB._cache['pagos']) DB._cache['pagos'] = [];
+  DB._cache['pagos'].push(nuevoPago);
+
+  // 3. Verificación de cierre (usando el acumulado real)
+  const pagosDelCr = DB._cache['pagos'].filter(p => p.creditoId === cr.id);
+  const totalPagado = pagosDelCr.reduce((s, p) => s + (Number(p.monto) || 0), 0);
+
+  if (totalPagado >= cr.total) {
     await DB.update('creditos', cr.id, { activo: false });
-    showToast('¡Crédito cancelado en su totalidad! ✓');
-  } else {
-    showToast(`Pago de ${formatMoney(monto)} registrado ✓`);
+    // También actualizamos el crédito en el caché para que el render lo vea apagado
+    const crIndex = (DB._cache['creditos'] || []).findIndex(x => x.id === cr.id);
+    if (crIndex !== -1) DB._cache['creditos'][crIndex].activo = false;
   }
 
-  // 4. Limpiamos estado y refrescamos
   state.modal = null;
   state.selectedCredito = null;
-  
-  // Si tienes una función que actualiza el cache localmente antes del render, úsala.
-  // Si no, el fbEscuchar() que tienes en app.js se encargará de re-renderizar.
   render(); 
+  showToast('Pago registrado correctamente');
 }
