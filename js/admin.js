@@ -151,23 +151,7 @@ function renderAdminCobrador() {
         <button class="btn btn-danger btn-sm" style="margin-top:8px" onclick="eliminarCobrador('${cobrador.id}')">🗑️ Eliminar cobrador</button>
       </div>
 
-      <div class="card-title">Clientes</div>
-      ${clientes.map(c => {
-        const crs = creditos.filter(cr => cr.clienteId === c.id && cr.activo);
-        return `
-        <div class="client-item" onclick="selectClient('${c.id}')">
-          <div class="client-avatar">${c.nombre.charAt(0)}</div>
-          <div class="client-info">
-            <div class="client-name">${c.nombre}</div>
-            <div class="client-dni">DNI: ${c.dni}</div>
-          </div>
-          <span class="client-badge ${crs.length > 0 ? 'badge-active' : 'badge-done'}">
-            ${crs.length > 0 ? 'Activo' : 'Sin crédito'}
-          </span>
-        </div>`;
-      }).join('')}
-
-      <div class="card-title" style="margin-top:16px">Cuadres recientes</div>
+      <div class="card-title">Cuadres recientes</div>
       ${diasCobrador.length === 0
         ? `<div class="empty-state"><div class="icon">📊</div><p>Sin registros</p></div>`
         : diasCobrador.map(fecha => {
@@ -195,10 +179,25 @@ function renderAdminCobrador() {
               ${c.nota ? `<div style="margin-top:8px;font-size:12px;color:var(--muted);font-style:italic">📝 ${c.nota}</div>` : ''}
             </div>`;
           }).join('')}
+
+      <div class="card-title" style="margin-top:16px">Clientes</div>
+      ${clientes.map(c => {
+        const crs = creditos.filter(cr => cr.clienteId === c.id && cr.activo);
+        return `
+        <div class="client-item" onclick="selectClient('${c.id}')">
+          <div class="client-avatar">${c.nombre.charAt(0)}</div>
+          <div class="client-info">
+            <div class="client-name">${c.nombre}</div>
+            <div class="client-dni">DNI: ${c.dni}</div>
+          </div>
+          <span class="client-badge ${crs.length > 0 ? 'badge-active' : 'badge-done'}">
+            ${crs.length > 0 ? 'Activo' : 'Sin crédito'}
+          </span>
+        </div>`;
+      }).join('')}
     </div>
   </div>`;
 }
-
 async function eliminarCobrador(id) {
   if (!confirm('¿Eliminar este cobrador? Sus clientes quedarán sin cobrador asignado. Esta acción no se puede deshacer.')) return;
   await DB.delete('users', id);
