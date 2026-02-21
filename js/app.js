@@ -27,8 +27,19 @@ function navigate(nav) {
   render();
 }
 
-// INIT
-DB.init();
-render();
-
-
+// INIT ASYNC
+(async () => {
+  try {
+    await DB.init();
+    render();
+  } catch(e) {
+    console.error('Error iniciando app:', e);
+    document.getElementById('root').innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:12px;padding:20px;text-align:center">
+        <div style="font-size:40px">⚠️</div>
+        <div style="font-size:16px;color:#e53e3e;font-family:sans-serif">Error conectando con la base de datos</div>
+        <div style="font-size:13px;color:#718096;font-family:sans-serif">${e.message}</div>
+        <button onclick="location.reload()" style="margin-top:12px;padding:10px 20px;background:#1a56db;color:white;border:none;border-radius:10px;cursor:pointer;font-size:14px">Reintentar</button>
+      </div>`;
+  }
+})();
