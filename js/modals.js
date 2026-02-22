@@ -58,11 +58,11 @@ function renderModalNuevoCliente() {
   return `
   <div class="modal-handle"></div>
   <div class="modal-title">👤 Nuevo Cliente</div>
-  <div class="form-group"><label>DNI *</label><input class="form-control" id="nDNI" placeholder="12345678" maxlength="8"></div>
-  <div class="form-group"><label>Nombre completo *</label><input class="form-control" id="nNombre" placeholder="Juan Pérez"></div>
-  <div class="form-group"><label>Nombre del negocio</label><input class="form-control" id="nNegocio" placeholder="Bodega El Sol, Ferretería..."></div>
-  <div class="form-group"><label>Teléfono</label><input class="form-control" id="nTelefono" placeholder="987654321" type="tel"></div>
-  <div class="form-group"><label>Dirección</label><input class="form-control" id="nDireccion" placeholder="Av. Lima 123"></div>
+  <div class="form-group"><label>DNI *</label><input class="form-control" id="nDNI" placeholder="" maxlength="8"></div>
+  <div class="form-group"><label>Nombre completo *</label><input class="form-control" id="nNombre" placeholder="ej. Juan Pérez"></div>
+  <div class="form-group"><label>Nombre del negocio</label><input class="form-control" id="nNegocio" placeholder=" ej. Bodega El Sol, Ferretería..."></div>
+  <div class="form-group"><label>Teléfono</label><input class="form-control" id="nTelefono" placeholder="" type="tel"></div>
+  <div class="form-group"><label>Dirección</label><input class="form-control" id="nDireccion" placeholder="ej. Av. Lima 123"></div>
   ${renderMapaSelector(null, null)}
   ${isAdmin ? `<div class="form-group"><label>Cobrador asignado</label><select class="form-control" id="nCobrador">${cobradores.map(u => `<option value="${u.id}">${u.nombre}</option>`).join('')}</select></div>` : ''}
   <div class="form-group">
@@ -138,8 +138,8 @@ function renderModalNuevoUsuario() {
   return `
   <div class="modal-handle"></div>
   <div class="modal-title">👤 Nuevo Usuario</div>
-  <div class="form-group"><label>Nombre completo *</label><input class="form-control" id="uNombre" placeholder="Juan Pérez"></div>
-  <div class="form-group"><label>Usuario *</label><input class="form-control" id="uUser" placeholder="juanperez" autocomplete="off"></div>
+  <div class="form-group"><label>Nombre completo *</label><input class="form-control" id="uNombre" placeholder=""></div>
+  <div class="form-group"><label>Usuario *</label><input class="form-control" id="uUser" placeholder="" autocomplete="off"></div>
   <div class="form-group">
     <label>Contraseña *</label>
     <div style="position:relative">
@@ -267,9 +267,14 @@ function renderModalEditarUsuario() {
       <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>Administrador</option>
     </select>
   </div>
-  <button class="btn btn-primary" onclick="actualizarUsuario()">Actualizar</button>`;
+  <button class="btn btn-primary" onclick="actualizarUsuario()">Actualizar</button>
+  <div style="margin-top:16px;padding-top:16px;border-top:1px solid #fee2e2">
+    <button class="btn btn-danger" style="width:100%"
+      onclick="state.modal=null;render();eliminarCobrador('${u.id}')">
+      🗑️ Eliminar cobrador
+    </button>
+  </div>`;
 }
-
 // ============================================================
 // MODAL EDITAR / CREAR ADMIN
 // ============================================================

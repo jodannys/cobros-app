@@ -8,60 +8,97 @@
 // ── Helpers de caja chica ─────────────────────────────────────
 
 function getCajaChicaDelDia(cobradorId, fecha) {
-  const users   = DB._cache['users']   || [];
-  const gastos  = DB._cache['gastos']  || [];
+  const users    = DB._cache['users']    || [];
+  const gastos   = DB._cache['gastos']   || [];
+  const creditos = DB._cache['creditos'] || [];
+  const clientes = DB._cache['clientes'] || [];
   const cobrador = users.find(u => u.id === cobradorId);
-  
+
   const cajaInicial  = Number(cobrador?.cajachica) || 0;
   const gastosDelDia = gastos.filter(g => g.cobradorId === cobradorId && g.fecha === fecha);
   const totalGastos  = gastosDelDia.reduce((s, g) => s + Number(g.monto), 0);
   const cuadreDelDia = getCuadreDelDia(cobradorId, fecha);
   const cobrosDelDia = cuadreDelDia.total;
 
-  // Saldo = caja inicial + cobros - gastos
-  const saldo = cajaInicial + cobrosDelDia - totalGastos;
+  // Préstamos entregados hoy por este cobrador
+  const prestamosHoy = creditos.filter(cr => {
+    const cliente = clientes.find(c => c.id === cr.clienteId);
+    return cr.fechaInicio === fecha && cliente?.cobradorId === cobradorId;
+  });
+  const totalPrestadoHoy = prestamosHoy.reduce((s, cr) => s + Number(cr.monto), 0);
 
-  return { cajaInicial, cobrosDelDia, totalGastos, saldo, gastos: gastosDelDia };
+  const saldo = cajaInicial + cobrosDelDia - totalPrestadoHoy - totalGastos;
+
+  return { cajaInicial, cobrosDelDia, totalGastos, totalPrestadoHoy, prestamosHoy, saldo, gastos: gastosDelDia };
 }
 
 // ── Render panel caja chica (para cobrador en cuadre) ─────────
 
 function renderPanelCajaChica() {
-  const hoy   = today();
-  const caja  = getCajaChicaDelDia(state.currentUser.id, hoy);
+  const hoy    = today();
+  const caja   = getCajaChicaDelDia(state.currentUser.id, hoy);
   const gastos = caja.gastos;
+  const cuadre = getCuadreDelDia(state.currentUser.id, hoy);
+  const mostrarTodosGastos = state._verTodosGastos || false;
+  const gastosVisibles = mostrarTodosGastos ? gastos : gastos.slice(0, 3);
 
   return `
   <div class="card" style="margin-bottom:12px;padding:0;overflow:hidden">
-    <!-- Header oscuro -->
+    <!-- Header oscuro: caja + métodos de pago -->
     <div style="background:#1e293b;padding:14px 16px;color:white">
       <div style="font-size:11px;opacity:0.7;font-weight:700;text-transform:uppercase;margin-bottom:10px">
         💼 Caja Chica — Hoy
       </div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;text-align:center">
+      <!-- Grid caja -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;text-align:center">
         <div>
           <div style="font-size:10px;opacity:0.6">CAJA INICIAL</div>
           <div style="font-size:18px;font-weight:800">${formatMoney(caja.cajaInicial)}</div>
         </div>
         <div>
           <div style="font-size:10px;opacity:0.6">COBROS DEL DÍA</div>
-          <div style="font-size:18px;font-weight:800;color:#4ade80">+${formatMoney(caja.cobrosDelDia)}</div>
+          <div style="font-size:18px;font-weight:800;color:#4ade80">${formatMoney(caja.cobrosDelDia)}</div>
+        </div>
+        <div>
+          <div style="font-size:10px;opacity:0.6">PRÉSTAMOS HOY</div>
+          <div style="font-size:18px;font-weight:800;color:#f87171">${formatMoney(caja.totalPrestadoHoy)}</div>
         </div>
         <div>
           <div style="font-size:10px;opacity:0.6">GASTOS</div>
-          <div style="font-size:18px;font-weight:800;color:#f87171">-${formatMoney(caja.totalGastos)}</div>
+          <div style="font-size:18px;font-weight:800;color:#f87171">${formatMoney(caja.totalGastos)}</div>
         </div>
-        <div>
-          <div style="font-size:10px;opacity:0.6">SALDO EN CAJA</div>
-          <div style="font-size:18px;font-weight:800;color:${caja.saldo >= caja.cajaInicial ? '#4ade80' : '#fbbf24'}">
-            ${formatMoney(caja.saldo)}
-          </div>
+      </div>
+
+      <!-- Saldo destacado -->
+      <div style="background:rgba(255,255,255,0.08);border-radius:10px;padding:10px;text-align:center;margin-bottom:14px">
+        <div style="font-size:10px;opacity:0.6;margin-bottom:4px">SALDO EN CAJA</div>
+        <div style="font-size:24px;font-weight:800;color:${caja.saldo >= caja.cajaInicial ? '#4ade80' : '#fbbf24'}">
+          ${formatMoney(caja.saldo)}
+        </div>
+      </div>
+
+      <!-- Métodos de pago -->
+      <div style="font-size:10px;opacity:0.6;font-weight:700;text-transform:uppercase;margin-bottom:8px">
+        Cobros por método
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center">
+        <div style="background:rgba(255,255,255,0.08);border-radius:8px;padding:8px">
+          <div style="font-size:10px;opacity:0.7">📱 Yape/Plin</div>
+          <div style="font-weight:800;font-size:15px">${formatMoney(cuadre.yape)}</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.08);border-radius:8px;padding:8px">
+          <div style="font-size:10px;opacity:0.7">💵 Efectivo</div>
+          <div style="font-weight:800;font-size:15px">${formatMoney(cuadre.efectivo)}</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.08);border-radius:8px;padding:8px">
+          <div style="font-size:10px;opacity:0.7">🏦 Transf.</div>
+          <div style="font-weight:800;font-size:15px">${formatMoney(cuadre.transferencia)}</div>
         </div>
       </div>
     </div>
 
-    <!-- Lista de gastos del día -->
+    <!-- Gastos del día -->
     <div style="padding:12px 16px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase">
@@ -72,15 +109,21 @@ function renderPanelCajaChica() {
       </div>
       ${gastos.length === 0
         ? '<div style="text-align:center;color:var(--muted);font-size:13px;padding:10px 0">Sin gastos registrados hoy</div>'
-        : gastos.map(g => `
+        : `${gastosVisibles.map(g => `
           <div style="display:flex;justify-content:space-between;align-items:center;
             padding:8px 0;border-bottom:1px solid #f1f5f9">
             <div>
               <div style="font-size:14px;font-weight:600">${g.descripcion}</div>
               <div style="font-size:11px;color:var(--muted)">${formatDate(g.fecha)}</div>
             </div>
-            <div style="font-weight:800;color:var(--danger)">-${formatMoney(g.monto)}</div>
+            <div style="font-weight:800;color:var(--danger)">${formatMoney(g.monto)}</div>
           </div>`).join('')}
+          ${gastos.length > 3 ? `
+          <button onclick="state._verTodosGastos=${!mostrarTodosGastos};render()"
+            style="width:100%;margin-top:10px;padding:8px;border-radius:8px;border:1px solid #e2e8f0;
+            background:white;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer">
+            ${mostrarTodosGastos ? '▲ Ver menos' : `▼ Ver todos (${gastos.length})`}
+          </button>` : ''}`}
     </div>
   </div>`;
 }
@@ -102,9 +145,12 @@ function renderCajaChicaAdmin(cobradorId, fecha) {
         Cobros: <strong style="color:var(--success)">+${formatMoney(caja.cobrosDelDia)}</strong>
       </div>
       <div style="font-size:12px;color:var(--muted)">
+        Préstamos: <strong style="color:var(--danger)">-${formatMoney(caja.totalPrestadoHoy)}</strong>
+      </div>
+      <div style="font-size:12px;color:var(--muted)">
         Gastos: <strong style="color:var(--danger)">-${formatMoney(caja.totalGastos)}</strong>
       </div>
-      <div style="font-size:12px;font-weight:800">
+      <div style="font-size:12px;font-weight:800;grid-column:span 2">
         Saldo: <span style="color:${caja.saldo >= caja.cajaInicial ? 'var(--success)' : '#f59e0b'}">${formatMoney(caja.saldo)}</span>
       </div>
     </div>
@@ -175,7 +221,7 @@ function renderModalNuevoGasto() {
   </div>` : ''}
   <div class="form-group">
     <label>Descripción *</label>
-    <input class="form-control" id="gDescripcion" placeholder="Ej: gasolina, almuerzo, papelería...">
+    <input class="form-control" id="gDescripcion" placeholder="Ej: gasolina, aceite...">
   </div>
   <div class="form-group">
     <label>Monto (S/) *</label>

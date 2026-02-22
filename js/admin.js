@@ -148,21 +148,25 @@ function renderAdminCobrador() {
           <div class="info-item"><div class="info-label">Usuario</div><div class="info-value">${cobrador.user}</div></div>
           <div class="info-item"><div class="info-label">Clientes</div><div class="info-value">${clientes.length}</div></div>
         </div>
-        <button class="btn btn-danger btn-sm" style="margin-top:8px" onclick="eliminarCobrador('${cobrador.id}')">🗑️ Eliminar cobrador</button>
       </div>
 
       <div class="card-title">Cuadres recientes</div>
       ${diasCobrador.length === 0
         ? `<div class="empty-state"><div class="icon">📊</div><p>Sin registros</p></div>`
         : diasCobrador.map(fecha => {
-            const c = getCuadreDelDia(state.selectedCobrador, fecha);
+            const c    = getCuadreDelDia(state.selectedCobrador, fecha);
+            const caja = getCajaChicaDelDia(state.selectedCobrador, fecha);
             return `
             <div class="card" style="padding:14px">
-              <div class="flex-between">
+
+              <!-- Fecha + total cobrado -->
+              <div class="flex-between" style="margin-bottom:10px">
                 <div class="fw-bold">${formatDate(fecha)}</div>
                 <div class="fw-bold text-success">${formatMoney(c.total)}</div>
               </div>
-              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center;margin-top:8px">
+
+              <!-- Métodos de pago -->
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center;margin-bottom:10px">
                 <div style="background:var(--bg);border-radius:8px;padding:6px">
                   <div style="font-size:11px;color:var(--muted)">📱 Yape</div>
                   <div style="font-weight:700;font-size:13px">${formatMoney(c.yape)}</div>
@@ -176,7 +180,21 @@ function renderAdminCobrador() {
                   <div style="font-weight:700;font-size:13px">${formatMoney(c.transferencia)}</div>
                 </div>
               </div>
-              ${c.nota ? `<div style="margin-top:8px;font-size:12px;color:var(--muted);font-style:italic">📝 ${c.nota}</div>` : ''}
+
+              <!-- Préstamos y gastos -->
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+                <div style="background:#fff5f5;border-radius:8px;padding:8px;text-align:center">
+                  <div style="font-size:11px;color:var(--muted)">💸 Préstamos</div>
+                  <div style="font-weight:700;font-size:13px;color:var(--danger)">${formatMoney(caja.totalPrestadoHoy)}</div>
+                </div>
+                <div style="background:#fff5f5;border-radius:8px;padding:8px;text-align:center">
+                  <div style="font-size:11px;color:var(--muted)">🧾 Gastos</div>
+                  <div style="font-weight:700;font-size:13px;color:var(--danger)">${formatMoney(caja.totalGastos)}</div>
+                </div>
+              </div>
+
+              <!-- Nota -->
+              ${c.nota ? `<div style="font-size:12px;color:var(--muted);font-style:italic;border-top:1px solid #f1f5f9;padding-top:8px">📝 ${c.nota}</div>` : ''}
             </div>`;
           }).join('')}
 

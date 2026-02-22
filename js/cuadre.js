@@ -1,8 +1,8 @@
 function getCuadreDelDia(cobradorId, fecha) {
   const pagos = DB._cache['pagos'] || [];
   const pagosDia = pagos.filter(p => p.cobradorId === cobradorId && p.fecha === fecha);
-  const yape          = pagosDia.filter(p => p.tipo === 'yape').reduce((s, p) => s + p.monto, 0);
-  const efectivo      = pagosDia.filter(p => p.tipo === 'efectivo').reduce((s, p) => s + p.monto, 0);
+  const yape = pagosDia.filter(p => p.tipo === 'yape').reduce((s, p) => s + p.monto, 0);
+  const efectivo = pagosDia.filter(p => p.tipo === 'efectivo').reduce((s, p) => s + p.monto, 0);
   const transferencia = pagosDia.filter(p => p.tipo === 'transferencia').reduce((s, p) => s + p.monto, 0);
 
   const notas = DB._cache['notas_cuadre'] || [];
@@ -38,7 +38,7 @@ async function guardarNota() {
 function calcularMetaReal(cobradorId, fecha) {
   const creditos = DB._cache['creditos'] || [];
   const clientes = DB._cache['clientes'] || [];
-  const pagos    = DB._cache['pagos']    || [];
+  const pagos = DB._cache['pagos'] || [];
 
   const misClientesIds = clientes
     .filter(c => c.cobradorId === cobradorId)
@@ -57,7 +57,7 @@ function calcularMetaReal(cobradorId, fecha) {
 
   creditosActivos.forEach(cr => {
     const cliente = clientes.find(c => c.id === cr.clienteId);
-    const cuota   = Number(cr.cuotaDiaria) || 0;
+    const cuota = Number(cr.cuotaDiaria) || 0;
 
     const pagosHoyCliente = pagos.filter(
       p => p.creditoId === cr.id && p.fecha === fecha
@@ -77,25 +77,20 @@ function calcularMetaReal(cobradorId, fecha) {
 }
 
 function renderCuadre() {
-  const isAdmin  = state.currentUser.role === 'admin';
-  const hoy      = today();
+  const isAdmin = state.currentUser.role === 'admin';
+  const hoy = today();
   const creditos = DB._cache['creditos'] || [];
   const clientes = DB._cache['clientes'] || [];
-  const usuarios = DB._cache['users']    || [];
+  const usuarios = DB._cache['users'] || [];
 
-  // ─── VISTA ADMINISTRADOR ───────────────────────────────────────────────────
   if (isAdmin) {
-    // ✅ CORREGIDO: cobradores y cobradorIds definidos ANTES de usarlos
-    const cobradores  = usuarios.filter(u => u.role === 'cobrador');
+    const cobradores = usuarios.filter(u => u.role === 'cobrador');
     const cobradorIds = cobradores.map(u => u.id);
 
     const totalObjetivoGlobal = creditos
       .filter(cr => {
         const cliente = clientes.find(c => c.id === cr.clienteId);
-        return cr.activo === true &&
-               cr.fechaInicio <= hoy &&
-               cliente &&
-               cobradorIds.includes(cliente.cobradorId);
+        return cr.activo === true && cr.fechaInicio <= hoy && cliente && cobradorIds.includes(cliente.cobradorId);
       })
       .reduce((s, cr) => s + (Number(cr.cuotaDiaria) || 0), 0);
 
@@ -124,25 +119,25 @@ function renderCuadre() {
           </div>
         </div>
         <div style="margin-top:12px;background:rgba(255,255,255,0.1);height:8px;border-radius:4px;overflow:hidden">
-          <div style="width:${Math.min(100,porcentajeGlobal)}%;background:#22c55e;height:100%"></div>
+          <div style="width:${Math.min(100, porcentajeGlobal)}%;background:#22c55e;height:100%"></div>
         </div>
         <div class="flex-between" style="margin-top:8px">
           <span style="font-size:13px;opacity:0.8">
             ${totalObjetivoGlobal === 0
-              ? 'Sin créditos activos hoy'
-              : totalRecaudadoGlobal >= totalObjetivoGlobal
-                ? `✅ Meta superada (+${formatMoney(totalRecaudadoGlobal - totalObjetivoGlobal)})`
-                : `Faltan: ${formatMoney(totalObjetivoGlobal - totalRecaudadoGlobal)}`}
-          </span>
-          <span style="font-size:13px;font-weight:700">${Math.min(100, porcentajeGlobal)}%</span>
-        </div>
-      </div>
+        ? 'Sin créditos activos hoy'
+        : totalRecaudadoGlobal >= totalObjetivoGlobal
+          ? `✅ Meta superada (+${formatMoney(totalRecaudadoGlobal - totalObjetivoGlobal)})`
+          : `Faltan: ${formatMoney(totalObjetivoGlobal - totalRecaudadoGlobal)}`
+      }
+          </span >
+    <span style="font-size:13px;font-weight:700">${Math.min(100, porcentajeGlobal)}%</span>
+        </div >
+      </div >
 
-      <!-- ALERTAS -->
-      ${(() => {
+    ${(() => {
         const alertas = getAlertasCreditos();
         const vencidosHoy = alertas.filter(a => a.tipo === 'vencido');
-        const morosos     = alertas.filter(a => a.tipo === 'moroso');
+        const morosos = alertas.filter(a => a.tipo === 'moroso');
 
         if (alertas.length === 0) return `
           <div style="background:#f0fff4;border:2px solid #c6f6d5;border-radius:14px;
@@ -164,7 +159,6 @@ function renderCuadre() {
               <div style="font-size:12px;color:var(--muted)">Requieren atención inmediata</div>
             </div>
           </div>
-
           ${vencidosHoy.length > 0 ? `
           <div style="font-size:11px;font-weight:800;text-transform:uppercase;color:var(--danger);
             margin-bottom:6px;letter-spacing:0.5px">🔴 Vencidos</div>
@@ -183,7 +177,6 @@ function renderCuadre() {
               <button class="btn btn-sm" style="background:var(--danger);color:white;white-space:nowrap;font-size:11px"
                 onclick="abrirGestionCredito('${a.cr.id}','${a.cliente?.id}')">Gestionar</button>
             </div>`).join('')}` : ''}
-
           ${morosos.length > 0 ? `
           <div style="font-size:11px;font-weight:800;text-transform:uppercase;color:#b7791f;
             margin-top:${vencidosHoy.length > 0 ? '10px' : '0'};margin-bottom:6px;letter-spacing:0.5px">
@@ -204,144 +197,193 @@ function renderCuadre() {
                 onclick="abrirGestionCredito('${a.cr.id}','${a.cliente?.id}')">Gestionar</button>
             </div>`).join('')}` : ''}
         </div>`;
-      })()}
+      })()
+      }
 
-      <div class="card-title">Rendimiento por Cobrador</div>
+  <div class="card-title">Rendimiento por Cobrador</div>
       ${cobradores.map(u => {
-        const c    = getCuadreDelDia(u.id, hoy);
+        const c = getCuadreDelDia(u.id, hoy);
         const meta = calcularMetaReal(u.id, hoy);
+        const caja = getCajaChicaDelDia(u.id, hoy);
+        const expandido = state._expandCobrador === u.id;
+        const metaCumplida = meta.pendiente === 0 && meta.metaTotal > 0;
+
         return `
-        <div class="card" style="padding:14px;margin-bottom:10px">
-          <div class="flex-between" style="margin-bottom:10px">
-            <div style="font-weight:700;font-size:15px">${u.nombre}</div>
-            <div style="font-weight:800;font-size:15px;color:var(--success)">${formatMoney(c.total)}</div>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center;margin-bottom:10px">
-            <div style="background:var(--bg);border-radius:10px;padding:10px 8px">
-              <div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:2px">📱 YAPE</div>
-              <div style="font-weight:800;font-size:17px">${formatMoney(c.yape)}</div>
+        <div class="card" style="padding:0;margin-bottom:12px;overflow:hidden">
+
+          <div style="padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer"
+            onclick="state._expandCobrador = '${u.id}' === state._expandCobrador ? null : '${u.id}';render()">
+            <div class="client-avatar" style="width:44px;height:44px;font-size:18px;flex-shrink:0">${u.nombre.charAt(0)}</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:800;font-size:15px">${u.nombre}</div>
+              <div style="font-size:12px;color:var(--muted);margin-top:2px">
+                ${meta.detalle.length} clientes ·
+                <span style="color:${metaCumplida ? 'var(--success)' : 'var(--danger)'};font-weight:600">
+                  ${metaCumplida ? '✅ Meta cumplida' : '⏳ Pendiente ' + formatMoney(meta.pendiente)}
+                </span>
+              </div>
             </div>
-            <div style="background:var(--bg);border-radius:10px;padding:10px 8px">
-              <div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:2px">💵 EFECTIVO</div>
-              <div style="font-weight:800;font-size:17px">${formatMoney(c.efectivo)}</div>
+            <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+  <div style="font-weight:800;font-size:17px;color:var(--success)">
+    ${formatMoney(c.total)}
+  </div>
+  <div style="font-size:16px;color:var(--muted)">
+    ${expandido ? '▸':'▾' }
+  </div>
+</div>
+          </div>
+
+          ${expandido ? `
+          <div style="border-top:1px solid #f1f5f9">
+
+            <div style="padding:12px 16px;background:#f8fafc">
+              <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:8px">
+                💰 Cobros del día
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center">
+                <div style="background:white;border-radius:10px;padding:10px 8px;box-shadow:var(--shadow)">
+                  <div style="font-size:11px;color:var(--muted);font-weight:600">📱 Yape/ Plin</div>
+                  <div style="font-weight:800;font-size:16px;margin-top:2px">${formatMoney(c.yape)}</div>
+                </div>
+                <div style="background:white;border-radius:10px;padding:10px 8px;box-shadow:var(--shadow)">
+                  <div style="font-size:11px;color:var(--muted);font-weight:600">💵 Efectivo</div>
+                  <div style="font-weight:800;font-size:16px;margin-top:2px">${formatMoney(c.efectivo)}</div>
+                </div>
+                <div style="background:white;border-radius:10px;padding:10px 8px;box-shadow:var(--shadow)">
+                  <div style="font-size:11px;color:var(--muted);font-weight:600">🏦 Transf.</div>
+                  <div style="font-weight:800;font-size:16px;margin-top:2px">${formatMoney(c.transferencia)}</div>
+                </div>
+              </div>
             </div>
-            <div style="background:var(--bg);border-radius:10px;padding:10px 8px">
-              <div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:2px">🏦 TRANSF.</div>
-              <div style="font-weight:800;font-size:17px">${formatMoney(c.transferencia)}</div>
+
+            <div style="padding:12px 16px;border-top:1px solid #f1f5f9">
+              <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:8px">
+                💼 Caja
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+                <div style="background:#f8fafc;border-radius:10px;padding:10px 12px">
+                  <div style="font-size:11px;color:var(--muted)">Inicial</div>
+                  <div style="font-weight:800;font-size:16px">${formatMoney(caja.cajaInicial)}</div>
+                </div>
+                <div style="background:#f0fff4;border-radius:10px;padding:10px 12px">
+                  <div style="font-size:11px;color:#276749"> Cobros</div>
+                  <div style="font-weight:800;font-size:16px;color:#276749">${formatMoney(caja.cobrosDelDia)}</div>
+                </div>
+                <div style="background:#fff5f5;border-radius:10px;padding:10px 12px">
+                  <div style="font-size:11px;color:var(--danger)"> Préstamos</div>
+                  <div style="font-weight:800;font-size:16px;color:var(--danger)">${formatMoney(caja.totalPrestadoHoy)}</div>
+                </div>
+                <div style="background:#fff5f5;border-radius:10px;padding:10px 12px">
+                  <div style="font-size:11px;color:var(--danger)"> Gastos</div>
+                  <div style="font-weight:800;font-size:16px;color:var(--danger)">${formatMoney(caja.totalGastos)}</div>
+                </div>
+              </div>
+              <div style="background:#1e293b;border-radius:10px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center">
+                <div style="font-size:13px;color:rgba(255,255,255,0.7);font-weight:600">Saldo en caja</div>
+                <div style="font-size:20px;font-weight:800;color:${caja.saldo >= caja.cajaInicial ? '#4ade80' : '#fbbf24'}">
+                  ${formatMoney(caja.saldo)}
+                </div>
+              </div>
             </div>
-          </div>
-          <div style="font-size:13px;color:var(--muted);margin-bottom:10px">
-            Meta: <strong>${formatMoney(meta.metaTotal)}</strong> · Pendiente:
-            <strong style="color:${meta.pendiente > 0 ? 'var(--danger)' : 'var(--success)'}">
-              ${formatMoney(meta.pendiente)}
-            </strong>
-          </div>
-          ${renderCajaChicaAdmin(u.id, hoy)}
-          <div style="display:flex;gap:8px;margin-top:12px">
-            <button class="btn btn-sm" style="flex:1;background:#eff6ff;color:var(--primary);border:1px solid #bfdbfe;font-size:13px;padding:10px"
-              onclick="abrirAsignarCaja('${u.id}')">💼 Caja chica</button>
-            <button class="btn btn-sm" style="flex:1;background:#fff5f5;color:var(--danger);border:1px solid #fed7d7;font-size:13px;padding:10px"
-              onclick="abrirNuevoGastoAdmin('${u.id}')">➕ Gasto</button>
-          </div>
+
+            ${caja.gastos.length > 0 ? `
+            <div style="padding:12px 16px;border-top:1px solid #f1f5f9">
+              <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:8px">
+                🧾 Gastos (${caja.gastos.length})
+              </div>
+              ${caja.gastos.map(g => `
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f8fafc">
+                  <div style="font-size:14px;font-weight:600">${g.descripcion}</div>
+                  <div style="font-weight:700;color:var(--danger)">${formatMoney(g.monto)}</div>
+                </div>`).join('')}
+            </div>` : ''}
+
+            <div style="padding:12px 16px;border-top:1px solid #f1f5f9;display:flex;gap:8px">
+              <button class="btn btn-sm" style="flex:1;background:#eff6ff;color:var(--primary);border:1px solid #bfdbfe;font-size:13px;padding:10px"
+                onclick="abrirAsignarCaja('${u.id}')">💼 Caja chica</button>
+              <button class="btn btn-sm" style="flex:1;background:#fff5f5;color:var(--danger);border:1px solid #fed7d7;font-size:13px;padding:10px"
+                onclick="abrirNuevoGastoAdmin('${u.id}')">➕ Gasto</button>
+            </div>
+
+          </div>` : ''}
         </div>`;
-      }).join('')}
-    </div>`;
+      }).join('')
+      }
+    </div > `;
   }
 
   // ─── VISTA COBRADOR ────────────────────────────────────────────────────────
   const cuadreHoy = getCuadreDelDia(state.currentUser.id, hoy);
-  const meta      = calcularMetaReal(state.currentUser.id, hoy);
+  const meta = calcularMetaReal(state.currentUser.id, hoy);
   const metaAlcanzada = meta.pendiente === 0 && meta.metaTotal > 0;
   const notaActual = cuadreHoy.nota || '';
 
   return `
-  <div class="topbar">
+    <div class="topbar">
     <h2>Mi Cuadre</h2>
     <div class="topbar-user"><strong>${state.currentUser.nombre}</strong></div>
-  </div>
-  <div class="page">
+  </div >
+    <div class="page">
 
-    ${renderPanelCajaChica()}
+      ${renderPanelCajaChica()}
 
-    <div class="card" style="padding:16px;margin-bottom:12px;background:${metaAlcanzada ? '#f0fdf4' : '#fffbeb'};border-left:4px solid ${metaAlcanzada ? '#22c55e' : '#f59e0b'}">
-      <div class="flex-between">
-        <div>
-          <div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase">Meta Diaria</div>
-          <div style="font-size:22px;font-weight:800;color:#1e293b">${formatMoney(meta.metaTotal)}</div>
+      <div class="card" style="padding:16px;margin-bottom:12px;background:${metaAlcanzada ? '#f0fdf4' : '#fffbeb'};border-left:4px solid ${metaAlcanzada ? '#22c55e' : '#f59e0b'}">
+        <div class="flex-between">
+          <div>
+            <div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase">Meta Diaria</div>
+            <div style="font-size:22px;font-weight:800;color:#1e293b">${formatMoney(meta.metaTotal)}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase">Recaudado</div>
+            <div style="font-size:22px;font-weight:800;color:${metaAlcanzada ? '#16a34a' : '#1e293b'}">${formatMoney(cuadreHoy.total)}</div>
+          </div>
         </div>
-        <div style="text-align:right">
-          <div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase">Recaudado</div>
-          <div style="font-size:22px;font-weight:800;color:${metaAlcanzada ? '#16a34a' : '#1e293b'}">${formatMoney(cuadreHoy.total)}</div>
+        <div style="margin-top:10px;font-size:14px;font-weight:600;color:${metaAlcanzada ? '#166534' : '#92400e'}">
+          ${metaAlcanzada
+      ? cuadreHoy.total > meta.metaTotal
+        ? `✅ ¡Meta cumplida! Superaste por ${formatMoney(cuadreHoy.total - meta.metaTotal)}`
+        : `✅ ¡Meta cumplida!`
+      : `Faltan ${formatMoney(meta.pendiente)} para la meta`}
         </div>
       </div>
-      <div style="margin-top:10px;font-size:14px;font-weight:600;color:${metaAlcanzada ? '#166534' : '#92400e'}">
-        ${metaAlcanzada
-          ? `✅ ¡Meta cumplida! Superaste por ${formatMoney(cuadreHoy.total - meta.metaTotal)}`
-          : `Faltan ${formatMoney(meta.pendiente)} para la meta`}
-      </div>
-    </div>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px">
-      <div style="background:white;padding:12px 8px;border-radius:12px;text-align:center;border:1px solid #e2e8f0;box-shadow:var(--shadow)">
-        <div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:4px">📱 YAPE</div>
-        <div style="font-weight:800;font-size:16px;color:#1e293b">${formatMoney(cuadreHoy.yape)}</div>
-      </div>
-      <div style="background:white;padding:12px 8px;border-radius:12px;text-align:center;border:1px solid #e2e8f0;box-shadow:var(--shadow)">
-        <div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:4px">💵 EFECTIVO</div>
-        <div style="font-weight:800;font-size:16px;color:#1e293b">${formatMoney(cuadreHoy.efectivo)}</div>
-      </div>
-      <div style="background:white;padding:12px 8px;border-radius:12px;text-align:center;border:1px solid #e2e8f0;box-shadow:var(--shadow)">
-        <div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:4px">🏦 TRANSF.</div>
-        <div style="font-weight:800;font-size:16px;color:#1e293b">${formatMoney(cuadreHoy.transferencia)}</div>
-      </div>
-    </div>
-
-    <div class="card" style="margin-bottom:12px">
-      <div class="card-title">Estado por cliente (hoy)</div>
-      ${meta.detalle.length === 0
-        ? '<p style="padding:16px;text-align:center;color:#94a3b8;font-size:14px">No hay créditos activos asignados</p>'
-        : meta.detalle.map(d => `
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f1f5f9">
-            <div style="flex:1">
-              <div style="font-weight:700;font-size:14px">${d.cliente ? d.cliente.nombre : '—'}</div>
-              <div style="font-size:12px;color:var(--muted)">Cuota: ${formatMoney(d.cuota)}</div>
-            </div>
-            <div style="text-align:right">
-              ${d.completo
-                ? `<span style="background:#f0fff4;color:#276749;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:700">✅ Pagó</span>`
-                : d.montoPagadoHoy > 0
-                  ? `<span style="background:#fffbeb;color:#b7791f;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:700">⚠️ Parcial ${formatMoney(d.montoPagadoHoy)}</span>`
-                  : `<span style="background:#fff5f5;color:var(--danger);padding:4px 10px;border-radius:20px;font-size:12px;font-weight:700">❌ Sin pagar</span>`}
-            </div>
-          </div>`).join('')}
-    </div>
-
-    <div class="card" style="margin-bottom:12px">
-      <div class="card-title">Cobros del día (${cuadreHoy.pagos.length})</div>
-      ${cuadreHoy.pagos.length === 0
-        ? '<p style="padding:16px;text-align:center;color:#94a3b8;font-size:14px">No hay cobros registrados</p>'
-        : cuadreHoy.pagos.map(p => {
-            const cl = clientes.find(c => c.id === p.clienteId);
-            return `
-            <div class="cuota-item" style="border-bottom:1px solid #f1f5f9;padding:10px 0">
-              <div>
-                <div style="font-weight:700;font-size:14px">${cl ? cl.nombre : 'Cliente'}</div>
-                <div style="font-size:12px;color:#64748b">${p.tipo.toUpperCase()}</div>
+      <div class="card" style="margin-bottom:12px">
+        <div class="card-title">Clientes de hoy (${meta.detalle.length})</div>
+        ${meta.detalle.length === 0
+      ? '<p style="padding:16px;text-align:center;color:#94a3b8;font-size:14px">No hay créditos activos asignados</p>'
+      : meta.detalle.map(d => {
+        const pagosCliente = cuadreHoy.pagos.filter(p => p.clienteId === d.cliente?.id);
+        const metodoPago = pagosCliente.map(p => p.tipo.toUpperCase()).join(', ') || '—';
+        return `
+            <div style="display:flex;align-items:center;justify-content:space-between;
+              padding:10px 0;border-bottom:1px solid #f1f5f9">
+              <div style="flex:1">
+                <div style="font-weight:700;font-size:14px">${d.cliente?.nombre || '—'}</div>
+                <div style="font-size:12px;color:var(--muted)">
+                  Cuota: ${formatMoney(d.cuota)}
+                  ${d.montoPagadoHoy > 0 ? ' · ' + metodoPago : ''}
+                </div>
               </div>
-              <div style="font-weight:800;font-size:15px;color:#059669">${formatMoney(p.monto)}</div>
+              <div style="text-align:right">
+                ${d.completo
+            ? `<span style="background:#f0fff4;color:#276749;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:700;min-width:80px;text-align:center;display:inline-block">✅ ${formatMoney(d.montoPagadoHoy)}</span>`
+            : d.montoPagadoHoy > 0
+              ? `<span style="background:#fffbeb;color:#b7791f;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:700;min-width:80px;text-align:center;display:inline-block">⚠️ ${formatMoney(d.montoPagadoHoy)}</span>`
+              : `<span style="background:#fff5f5;color:var(--danger);padding:4px 10px;border-radius:20px;font-size:12px;font-weight:700;min-width:80px;text-align:center;display:inline-block">❌ Sin pagar</span>`}
+              </div>
             </div>`;
-          }).join('')}
-    </div>
+      }).join('')}
+      </div>
 
-    <div class="card" style="padding:14px">
-      <div style="font-weight:700;font-size:13px;margin-bottom:8px">📝 NOTA DEL DÍA</div>
-      <textarea id="notaHoy" class="form-control" style="height:70px;font-size:14px;resize:none"
-        placeholder="Escribe aquí novedades del día...">${notaActual}</textarea>
-      <button class="btn btn-primary" style="width:100%;margin-top:10px;font-size:14px"
-        onclick="guardarNota()">
-        💾 Guardar Nota
-      </button>
-    </div>
+      <div class="card" style="padding:14px">
+        <div style="font-weight:700;font-size:13px;margin-bottom:8px">📝 NOTA DEL DÍA</div>
+        <textarea id="notaHoy" class="form-control" style="height:70px;font-size:14px;resize:none"
+          placeholder="Escribe aquí novedades del día...">${notaActual}</textarea>
+        <button class="btn btn-primary" style="width:100%;margin-top:10px;font-size:14px"
+          onclick="guardarNota()">
+          💾 Guardar Nota
+        </button>
+      </div>
 
-  </div>`;
+    </div>`;
 }
