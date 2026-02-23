@@ -192,7 +192,21 @@ function renderAdminCobrador() {
                   <div style="font-weight:700;font-size:13px;color:var(--danger)">${formatMoney(caja.totalGastos)}</div>
                 </div>
               </div>
-
+<div class="card">
+  <div class="info-grid">
+    <div class="info-item"><div class="info-label">Usuario</div><div class="info-value">${cobrador.user}</div></div>
+    <div class="info-item"><div class="info-label">Clientes</div><div class="info-value">${clientes.length}</div></div>
+  </div>
+  <!-- Caja chica actual -->
+  <div style="margin-top:12px;padding:10px;background:#eff6ff;border-radius:10px;display:flex;justify-content:space-between;align-items:center">
+    <div>
+      <div style="font-size:11px;color:var(--muted)">💼 Caja Chica asignada</div>
+      <div style="font-size:18px;font-weight:800;color:var(--primary)">${formatMoney(cobrador.cajachica || 0)}</div>
+    </div>
+    <button class="btn btn-sm" style="background:var(--primary);color:white"
+      onclick="abrirAsignarCaja('${cobrador.id}')">✏️ Editar</button>
+  </div>
+</div>
               <!-- Nota -->
               ${c.nota ? `<div style="font-size:12px;color:var(--muted);font-style:italic;border-top:1px solid #f1f5f9;padding-top:8px">📝 ${c.nota}</div>` : ''}
             </div>`;
