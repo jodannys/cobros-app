@@ -219,7 +219,7 @@ const totalRecuperado = totalPrestado > 0
           <div style="background:#f0fff4;border:2px solid #c6f6d5;border-radius:14px;
             padding:14px;margin-bottom:16px;display:flex;align-items:center;gap:10px">
             <span style="font-size:22px">✅</span>
-            <div style="font-size:14px;font-weight:600;color:#276749">Todo al día — sin vencimientos ni atrasos</div>
+            <div style="font-size:14px;font-weight:600;color:#276749">Todo al día — sin vencimientos</div>
           </div>`;
 
         return `
