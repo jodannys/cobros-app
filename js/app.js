@@ -117,8 +117,9 @@ function renderHistorial() {
       <div class="flex-between" style="margin-bottom:12px">
         <div style="font-weight:700">Pagos del ${formatDate(filtroFecha)}</div>
         <div style="font-weight:800;color:var(--success)">${formatMoney(totalPagos)}</div>
-      </div>
-      ${pagosFiltrados.length === 0
+        </div>
+        <hr style="border:0; border-top: 1px solid #4b49496b; margin: 10px 0;">
+        ${pagosFiltrados.length === 0
         ? `<p style="text-align:center;color:var(--muted);font-size:14px;padding:16px">Sin pagos este día</p>`
         : pagosFiltrados.map(p => {
           const cl = clientes.find(c => c.id === p.clienteId);
@@ -139,11 +140,12 @@ function renderHistorial() {
     <!-- VISTA: GASTOS -->
     ${filtroVista === 'gastos' ? `
       <div class="card" style="padding:14px;border-left:4px solid var(--danger)">
-    <div class="card" style="padding:14px">
+      <div class="card" style="padding:14px">
       <div class="flex-between" style="margin-bottom:12px">
-        <div style="font-weight:700">Gastos del ${formatDate(filtroFecha)}</div>
-<div style="font-weight:800;font-size:18px;color:var(--danger)">${formatMoney(totalGastos)}</div>
+      <div style="font-weight:700">Gastos del ${formatDate(filtroFecha)}</div>
+      <div style="font-weight:800;font-size:18px;color:var(--danger)">${formatMoney(totalGastos)}</div>
       </div>
+      <hr style="border:0; border-top: 1px solid #4b49496b; margin: 10px 0;">
       ${gastosFiltrados.length === 0
         ? `<p style="text-align:center;color:var(--muted);font-size:14px;padding:16px">Sin gastos este día</p>`
         : gastosFiltrados.map(g => {
