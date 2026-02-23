@@ -1,8 +1,13 @@
 const genId = () => '_' + Math.random().toString(36).substr(2, 9);
 const today = () => new Date().toISOString().split('T')[0];
 const formatDate = (d) => { if (!d) return ''; const [y, m, dd] = d.split('-'); return `${dd}/${m}/${y}`; };
-const formatMoney = (n) => 'S/ ' + Number(n).toFixed(2);
-
+function formatMoney(amount) {
+  const num = Number(amount) || 0;
+  return 'S/ ' + num.toLocaleString('es-PE', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+}
 function showToast(msg, type = 'success') {
   state.toast = { msg, type };
   render();

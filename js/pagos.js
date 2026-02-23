@@ -148,7 +148,7 @@ function renderModalRegistrarPago() {
     <label>Forma de pago</label>
     <select class="form-control" id="pTipo">
       <option value="efectivo">💵 Efectivo</option>
-      <option value="yape">📱 Yape</option>
+      <option value="yape">📱 Yape/Plin</option>
       <option value="transferencia">🏦 Transferencia</option>
     </select>
   </div>

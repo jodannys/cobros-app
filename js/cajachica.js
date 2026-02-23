@@ -8,15 +8,21 @@
 // ── Helpers de caja chica ─────────────────────────────────────
 
 function getCajaChicaDelDia(cobradorId, fecha) {
-  const users    = DB._cache['users']    || [];
-  const gastos   = DB._cache['gastos']   || [];
+  const users = DB._cache['users'] || [];
+  const gastos = DB._cache['gastos'] || [];
   const creditos = DB._cache['creditos'] || [];
   const clientes = DB._cache['clientes'] || [];
   const cobrador = users.find(u => u.id === cobradorId);
 
-  const cajaInicial  = Number(cobrador?.cajachica) || 0;
+  const cajas = DB._cache['cajas'] || [];
+  const cajaDelDia = cajas.find(c => c.cobradorId === cobradorId && c.fecha === fecha);
+  // Si no hay caja asignada ese día, busca la más reciente anterior
+  const cajaAnterior = cajas
+    .filter(c => c.cobradorId === cobradorId && c.fecha <= fecha)
+    .sort((a, b) => b.fecha.localeCompare(a.fecha))[0];
+  const cajaInicial = Number(cajaDelDia?.monto ?? cajaAnterior?.monto ?? cobrador?.cajachica) || 0;
   const gastosDelDia = gastos.filter(g => g.cobradorId === cobradorId && g.fecha === fecha);
-  const totalGastos  = gastosDelDia.reduce((s, g) => s + Number(g.monto), 0);
+  const totalGastos = gastosDelDia.reduce((s, g) => s + Number(g.monto), 0);
   const cuadreDelDia = getCuadreDelDia(cobradorId, fecha);
   const cobrosDelDia = cuadreDelDia.total;
 
@@ -35,8 +41,8 @@ function getCajaChicaDelDia(cobradorId, fecha) {
 // ── Render panel caja chica (para cobrador en cuadre) ─────────
 
 function renderPanelCajaChica() {
-  const hoy    = today();
-  const caja   = getCajaChicaDelDia(state.currentUser.id, hoy);
+  const hoy = today();
+  const caja = getCajaChicaDelDia(state.currentUser.id, hoy);
   const gastos = caja.gastos;
   const cuadre = getCuadreDelDia(state.currentUser.id, hoy);
   const mostrarTodosGastos = state._verTodosGastos || false;
@@ -108,8 +114,8 @@ function renderPanelCajaChica() {
           onclick="openModal('nuevo-gasto')">+ Gasto</button>
       </div>
       ${gastos.length === 0
-        ? '<div style="text-align:center;color:var(--muted);font-size:13px;padding:10px 0">Sin gastos registrados hoy</div>'
-        : `${gastosVisibles.map(g => `
+      ? '<div style="text-align:center;color:var(--muted);font-size:13px;padding:10px 0">Sin gastos registrados hoy</div>'
+      : `${gastosVisibles.map(g => `
           <div style="display:flex;justify-content:space-between;align-items:center;
             padding:8px 0;border-bottom:1px solid #f1f5f9">
             <div>
@@ -168,13 +174,13 @@ function renderCajaChicaAdmin(cobradorId, fecha) {
 // ── Guardar gasto ─────────────────────────────────────────────
 
 async function guardarGasto() {
-  const monto       = parseFloat(document.getElementById('gMonto').value);
+  const monto = parseFloat(document.getElementById('gMonto').value);
   const descripcion = document.getElementById('gDescripcion').value.trim();
-  const fecha       = document.getElementById('gFecha').value;
+  const fecha = document.getElementById('gFecha').value;
 
   if (!monto || monto <= 0) { alert('Ingresa un monto válido'); return; }
-  if (!descripcion)          { alert('Ingresa una descripción'); return; }
-  if (!fecha)                { alert('Selecciona una fecha'); return; }
+  if (!descripcion) { alert('Ingresa una descripción'); return; }
+  if (!fecha) { alert('Selecciona una fecha'); return; }
 
   // Si es admin registrando desde el perfil de un cobrador
   const cobradorId = state.currentUser.role === 'admin' && state._gastoCobradorId
@@ -197,7 +203,7 @@ async function guardarGasto() {
     state._gastoCobradorId = null;
     showToast('Gasto registrado');
     render();
-  } catch(e) {
+  } catch (e) {
     alert('Error al guardar gasto: ' + e.message);
   }
 }
@@ -239,29 +245,81 @@ function renderModalNuevoGasto() {
 function renderModalAsignarCaja() {
   const u = state._cajaCobrador;
   if (!u) return '';
+  const fechaModal = state._fechaCobrador || today();
+  
+  const cajas = DB._cache['cajas'] || [];
+  const cajaExistente = cajas.find(c => c.cobradorId === u.id && c.fecha === fechaModal);
+  
+  console.log('🏦 Modal abierto — fecha:', fechaModal);
+  console.log('🏦 cajas en cache:', cajas.length);
+  console.log('🏦 cajaExistente:', cajaExistente);
+
   return `
   <div class="modal-handle"></div>
   <div class="modal-title">💼 Caja Chica — ${u.nombre}</div>
-  <div style="background:var(--bg);border-radius:12px;padding:14px;margin-bottom:16px">
-    <div style="font-size:13px;color:var(--muted)">Monto actual asignado</div>
-    <div style="font-size:22px;font-weight:800">${formatMoney(u.cajachica || 0)}</div>
-  </div>
+
   <div class="form-group">
-    <label>Nuevo monto de caja chica (S/)</label>
+    <label>Fecha</label>
+    <input class="form-control" id="cajaFecha" type="date" 
+      value="${fechaModal}"
+      onchange="
+        const nuevaFecha = this.value;
+        console.log('📅 fecha cambiada a:', nuevaFecha);
+        state._fechaCobrador = nuevaFecha;
+        const cajas = DB._cache['cajas'] || [];
+        console.log('🏦 cajas disponibles:', cajas.length, cajas);
+        const existe = cajas.find(c => c.cobradorId === '${u.id}' && c.fecha === nuevaFecha);
+        console.log('🏦 existe para fecha:', existe);
+        document.getElementById('cajaMonto').value = '';
+        const elActual = document.getElementById('cajaMontoActual');
+        if (elActual) {
+          elActual.textContent = existe ? 'S/ ' + Number(existe.monto).toFixed(2) : 'S/ 0.00';
+          console.log('✅ cajaMontoActual actualizado a:', elActual.textContent);
+        } else {
+          console.log('❌ no se encontró el elemento cajaMontoActual');
+        }
+      ">
+  </div>
+
+  <div style="background:var(--bg);border-radius:12px;padding:14px;margin-bottom:16px">
+    <div style="font-size:13px;color:var(--muted)">Monto asignado para esta fecha</div>
+    <div style="font-size:22px;font-weight:800" id="cajaMontoActual">
+      ${formatMoney(cajaExistente?.monto || 0)}
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label>Nuevo monto (S/)</label>
     <input class="form-control" id="cajaMonto" type="number"
-      value="${u.cajachica || ''}" placeholder="500.00" step="0.01">
+      value="" 
+      placeholder="0.00" step="0.01">
   </div>
   <button class="btn btn-primary" onclick="guardarCajaChica()">Guardar</button>`;
 }
-
 async function guardarCajaChica() {
   const u     = state._cajaCobrador;
   const monto = parseFloat(document.getElementById('cajaMonto').value);
+  const fecha = document.getElementById('cajaFecha').value;
   if (!u || isNaN(monto) || monto < 0) { alert('Ingresa un monto válido'); return; }
+
+  const cajas = DB._cache['cajas'] || [];
+  const existente = cajas.find(c => c.cobradorId === u.id && c.fecha === fecha);
+
   try {
-    await DB.update('users', u.id, { cajachica: monto });
-    const idx = (DB._cache['users'] || []).findIndex(x => x.id === u.id);
-    if (idx !== -1) DB._cache['users'][idx].cajachica = monto;
+    if (existente) {
+      // Actualizar en lugar de crear nuevo
+      console.log('🏦 actualizando caja existente:', existente.id);
+      await DB.update('cajas', existente.id, { monto });
+      existente.monto = monto;
+    } else {
+      // Crear nuevo solo si no existe
+      const id = genId();
+      const nuevaCaja = { id, cobradorId: u.id, monto, fecha, asignadoPor: state.currentUser.id };
+      console.log('🏦 creando nueva caja:', nuevaCaja);
+      await DB.set('cajas', id, nuevaCaja);
+      if (!DB._cache['cajas']) DB._cache['cajas'] = [];
+      DB._cache['cajas'].push(nuevaCaja);
+    }
     state.modal = null;
     state._cajaCobrador = null;
     showToast('Caja chica actualizada');
@@ -270,7 +328,7 @@ async function guardarCajaChica() {
     alert('Error: ' + e.message);
   }
 }
-
+console.log(DB._cache['cajas'])
 function abrirAsignarCaja(cobradorId) {
   const u = (DB._cache['users'] || []).find(x => x.id === cobradorId);
   state._cajaCobrador = u;
