@@ -39,6 +39,7 @@ function renderModal() {
   else if (m === 'editar-admin')   content = renderModalEditarAdmin();
   else if (m === 'nuevo-gasto')    content = renderModalNuevoGasto();
   else if (m === 'asignar-caja')   content = renderModalAsignarCaja();
+  else if (m === 'editar-credito')  content = renderModalEditarCredito();
   return `
   <div class="modal-overlay" onclick="closeModal(event)">
     <div class="modal" onclick="event.stopPropagation()">

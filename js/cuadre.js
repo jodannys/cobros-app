@@ -78,7 +78,7 @@ function calcularMetaReal(cobradorId, fecha) {
 
 
 
-  function renderCuadre() {
+function renderCuadre() {
   const isAdmin = state.currentUser.role === 'admin';
   const hoy = today();
   const creditos = DB._cache['creditos'] || [];
@@ -86,7 +86,7 @@ function calcularMetaReal(cobradorId, fecha) {
   const usuarios = DB._cache['users'] || [];
 
   if (isAdmin) {
-    const cobradores  = usuarios.filter(u => u.role === 'cobrador');
+    const cobradores = usuarios.filter(u => u.role === 'cobrador');
     const cobradorIds = cobradores.map(u => u.id);
 
     const totalObjetivoGlobal = creditos
@@ -103,21 +103,30 @@ function calcularMetaReal(cobradorId, fecha) {
       : 0;
 
     // ── Balance general ──────────────────────────────────────
-    const totalYape          = pagosHoy.filter(p => p.tipo === 'yape').reduce((s,p) => s + p.monto, 0);
-    const totalEfectivo      = pagosHoy.filter(p => p.tipo === 'efectivo').reduce((s,p) => s + p.monto, 0);
-    const totalTransferencia = pagosHoy.filter(p => p.tipo === 'transferencia').reduce((s,p) => s + p.monto, 0);
+    const totalYape = pagosHoy.filter(p => p.tipo === 'yape').reduce((s, p) => s + p.monto, 0);
+    const totalEfectivo = pagosHoy.filter(p => p.tipo === 'efectivo').reduce((s, p) => s + p.monto, 0);
+    const totalTransferencia = pagosHoy.filter(p => p.tipo === 'transferencia').reduce((s, p) => s + p.monto, 0);
 
-    const totalPrestado  = creditos.filter(cr => cr.activo).reduce((s,cr) => s + Number(cr.monto), 0);
-    const totalPorCobrar = creditos.filter(cr => cr.activo).reduce((s,cr) => {
-      const pagado = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id).reduce((ss,p) => ss + p.monto, 0);
-      return s + (cr.total - pagado);
+    const prestadoHoy = cobradores.reduce((s, u) => {
+  return s + getCajaChicaDelDia(u.id, hoy).totalPrestadoHoy;
+}, 0);
+
+
+const totalPrestado = creditos.filter(cr => cr.activo).reduce((s, cr) => s + Number(cr.monto), 0);
+
+const totalPorCobrar = creditos.filter(cr => cr.activo).reduce((s, cr) => {
+  const pagado = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id).reduce((ss, p) => ss + p.monto, 0);
+  return s + (cr.total - pagado);
+}, 0);
+
+const totalRecuperado = totalPrestado > 0
+  ? Math.round(((totalPrestado - totalPorCobrar) / totalPrestado) * 100)
+  : 0;
+    const cajasHoy = cobradores.reduce((s, u) => {
+      const caja = getCajaChicaDelDia(u.id, hoy);
+      return s + caja.saldo;
     }, 0);
-    const totalRecuperado = totalPrestado > 0
-      ? Math.round(((totalPrestado - totalPorCobrar) / totalPrestado) * 100)
-      : 0;
-
-    const cajasHoy  = cobradores.reduce((s,u) => s + getCajaChicaDelDia(u.id, hoy).cajaInicial, 0);
-    const gastosHoy = cobradores.reduce((s,u) => s + getCajaChicaDelDia(u.id, hoy).totalGastos, 0);
+    const gastosHoy = cobradores.reduce((s, u) => s + getCajaChicaDelDia(u.id, hoy).totalGastos, 0);
 
     return `
     <div class="topbar">
@@ -131,7 +140,7 @@ function calcularMetaReal(cobradorId, fecha) {
         <div style="font-size:11px;opacity:0.8;font-weight:700;text-transform:uppercase;margin-bottom:10px">Estado de Cobranza — Hoy</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;text-align:center">
           <div>
-            <div style="font-size:11px;opacity:0.7">OBJETIVO TOTAL</div>
+            <div style="font-size:11px;opacity:0.7">OBJETIVO DE HOY</div>
             <div style="font-size:22px;font-weight:800">${formatMoney(totalObjetivoGlobal)}</div>
           </div>
           <div>
@@ -145,10 +154,10 @@ function calcularMetaReal(cobradorId, fecha) {
         <div class="flex-between" style="margin-top:8px">
           <span style="font-size:13px;opacity:0.8">
             ${totalObjetivoGlobal === 0
-              ? 'Sin créditos activos hoy'
-              : totalRecaudadoGlobal >= totalObjetivoGlobal
-                ? `✅ Meta superada (+${formatMoney(totalRecaudadoGlobal - totalObjetivoGlobal)})`
-                : `Faltan: ${formatMoney(totalObjetivoGlobal - totalRecaudadoGlobal)}`}
+        ? 'Sin créditos activos hoy'
+        : totalRecaudadoGlobal >= totalObjetivoGlobal
+          ? `✅ Meta superada (+${formatMoney(totalRecaudadoGlobal - totalObjetivoGlobal)})`
+          : `Faltan: ${formatMoney(totalObjetivoGlobal - totalRecaudadoGlobal)}`}
           </span>
           <span style="font-size:13px;font-weight:700">${Math.min(100, porcentajeGlobal)}%</span>
         </div>
@@ -161,15 +170,15 @@ function calcularMetaReal(cobradorId, fecha) {
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
           <div style="background:rgba(255,255,255,0.06);border-radius:10px;padding:10px;text-align:center">
-            <div style="font-size:10px;opacity:0.6;margin-bottom:4px">TOTAL PRESTADO</div>
-            <div style="font-size:16px;font-weight:800">${formatMoney(totalPrestado)}</div>
+          <div style="font-size:10px;opacity:0.6;margin-bottom:4px">PRESTADO HOY</div>
+<div style="font-size:16px;font-weight:800;color:#f87171">${formatMoney(prestadoHoy)}</div>
           </div>
           <div style="background:rgba(255,255,255,0.06);border-radius:10px;padding:10px;text-align:center">
             <div style="font-size:10px;opacity:0.6;margin-bottom:4px">POR COBRAR</div>
             <div style="font-size:16px;font-weight:800;color:#fbbf24">${formatMoney(totalPorCobrar)}</div>
           </div>
           <div style="background:rgba(255,255,255,0.06);border-radius:10px;padding:10px;text-align:center">
-            <div style="font-size:10px;opacity:0.6;margin-bottom:4px">CAJAS HOY</div>
+            <div style="font-size:10px;opacity:0.6;margin-bottom:4px">SALDO EN CAJA</div>
             <div style="font-size:16px;font-weight:800;color:#4ade80">${formatMoney(cajasHoy)}</div>
           </div>
           <div style="background:rgba(255,255,255,0.06);border-radius:10px;padding:10px;text-align:center">
@@ -204,7 +213,7 @@ function calcularMetaReal(cobradorId, fecha) {
       ${(() => {
         const alertas = getAlertasCreditos();
         const vencidosHoy = alertas.filter(a => a.tipo === 'vencido');
-        const morosos     = alertas.filter(a => a.tipo === 'moroso');
+        const morosos = alertas.filter(a => a.tipo === 'moroso');
 
         if (alertas.length === 0) return `
           <div style="background:#f0fff4;border:2px solid #c6f6d5;border-radius:14px;
@@ -269,10 +278,10 @@ function calcularMetaReal(cobradorId, fecha) {
       <!-- RENDIMIENTO POR COBRADOR -->
       <div class="card-title">Rendimiento por Cobrador</div>
       ${cobradores.map(u => {
-        const c    = getCuadreDelDia(u.id, hoy);
+        const c = getCuadreDelDia(u.id, hoy);
         const meta = calcularMetaReal(u.id, hoy);
         const caja = getCajaChicaDelDia(u.id, hoy);
-        const expandido    = state._expandCobrador === u.id;
+        const expandido = state._expandCobrador === u.id;
         const metaCumplida = meta.pendiente === 0 && meta.metaTotal > 0;
 
         return `
@@ -291,7 +300,7 @@ function calcularMetaReal(cobradorId, fecha) {
             </div>
             <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
               <div style="font-weight:800;font-size:17px;color:var(--success)">${formatMoney(c.total)}</div>
-              <div style="font-size:16px;color:var(--muted)">${expandido ?'▸':'▾'}</div>
+              <div style="font-size:16px;color:var(--muted)">${expandido ? '▸' : '▾'}</div>
             </div>
           </div>
 
@@ -369,10 +378,10 @@ function calcularMetaReal(cobradorId, fecha) {
   }
 
   // ─── VISTA COBRADOR ────────────────────────────────────────────────────────
-  const cuadreHoy    = getCuadreDelDia(state.currentUser.id, hoy);
-  const meta         = calcularMetaReal(state.currentUser.id, hoy);
+  const cuadreHoy = getCuadreDelDia(state.currentUser.id, hoy);
+  const meta = calcularMetaReal(state.currentUser.id, hoy);
   const metaAlcanzada = meta.pendiente === 0 && meta.metaTotal > 0;
-  const notaActual   = cuadreHoy.nota || '';
+  const notaActual = cuadreHoy.nota || '';
 
   return `
   <div class="topbar">
@@ -396,21 +405,21 @@ function calcularMetaReal(cobradorId, fecha) {
       </div>
       <div style="margin-top:10px;font-size:14px;font-weight:600;color:${metaAlcanzada ? '#166534' : '#92400e'}">
         ${metaAlcanzada
-          ? cuadreHoy.total > meta.metaTotal
-            ? `✅ ¡Meta cumplida! Superaste por ${formatMoney(cuadreHoy.total - meta.metaTotal)}`
-            : `✅ ¡Meta cumplida!`
-          : `Faltan ${formatMoney(meta.pendiente)} para la meta`}
+      ? cuadreHoy.total > meta.metaTotal
+        ? `✅ ¡Meta cumplida! Superaste por ${formatMoney(cuadreHoy.total - meta.metaTotal)}`
+        : `✅ ¡Meta cumplida!`
+      : `Faltan ${formatMoney(meta.pendiente)} para la meta`}
       </div>
     </div>
 
     <div class="card" style="margin-bottom:12px">
       <div class="card-title">Clientes de hoy (${meta.detalle.length})</div>
       ${meta.detalle.length === 0
-        ? '<p style="padding:16px;text-align:center;color:#94a3b8;font-size:14px">No hay créditos activos asignados</p>'
-        : meta.detalle.map(d => {
-            const pagosCliente = cuadreHoy.pagos.filter(p => p.clienteId === d.cliente?.id);
-            const metodoPago   = pagosCliente.map(p => p.tipo.toUpperCase()).join(', ') || '—';
-            return `
+      ? '<p style="padding:16px;text-align:center;color:#94a3b8;font-size:14px">No hay créditos activos asignados</p>'
+      : meta.detalle.map(d => {
+        const pagosCliente = cuadreHoy.pagos.filter(p => p.clienteId === d.cliente?.id);
+        const metodoPago = pagosCliente.map(p => p.tipo.toUpperCase()).join(', ') || '—';
+        return `
             <div style="display:flex;align-items:center;justify-content:space-between;
               padding:10px 0;border-bottom:1px solid #f1f5f9">
               <div style="flex:1">
@@ -422,13 +431,13 @@ function calcularMetaReal(cobradorId, fecha) {
               </div>
               <div style="text-align:right">
                 ${d.completo
-                  ? `<span style="background:#f0fff4;color:#276749;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:700;min-width:80px;text-align:center;display:inline-block">✅ ${formatMoney(d.montoPagadoHoy)}</span>`
-                  : d.montoPagadoHoy > 0
-                    ? `<span style="background:#fffbeb;color:#b7791f;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:700;min-width:80px;text-align:center;display:inline-block">⚠️ ${formatMoney(d.montoPagadoHoy)}</span>`
-                    : `<span style="background:#fff5f5;color:var(--danger);padding:4px 10px;border-radius:20px;font-size:12px;font-weight:700;min-width:80px;text-align:center;display:inline-block">❌ Sin pagar</span>`}
+            ? `<span style="background:#f0fff4;color:#276749;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:700;min-width:80px;text-align:center;display:inline-block">✅ ${formatMoney(d.montoPagadoHoy)}</span>`
+            : d.montoPagadoHoy > 0
+              ? `<span style="background:#fffbeb;color:#b7791f;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:700;min-width:80px;text-align:center;display:inline-block">⚠️ ${formatMoney(d.montoPagadoHoy)}</span>`
+              : `<span style="background:#fff5f5;color:var(--danger);padding:4px 10px;border-radius:20px;font-size:12px;font-weight:700;min-width:80px;text-align:center;display:inline-block">❌ Sin pagar</span>`}
               </div>
             </div>`;
-          }).join('')}
+      }).join('')}
     </div>
 
     <div class="card" style="padding:14px">

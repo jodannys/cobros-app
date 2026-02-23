@@ -95,14 +95,17 @@ function renderCreditoCard(cr) {
     <div style="display:flex;flex-direction:column;gap:8px;margin-top:14px">
       <button class="btn btn-success" style="width:100%;padding:12px;font-size:15px;font-weight:700"
         onclick="openRegistrarPago('${cr.id}')">💰 Registrar pago</button>
-      ${isAdmin ? `
-      <div style="display:flex;gap:8px">
-        <button class="btn btn-outline btn-sm" style="flex:1" onclick="cerrarCredito('${cr.id}')">✓ Cerrar crédito</button>
-        <button class="btn btn-sm" style="flex:1;background:${cr.mora_activa ? '#fff5f5' : '#f0fff4'};color:${cr.mora_activa ? 'var(--danger)' : 'var(--success)'};border:2px solid ${cr.mora_activa ? '#fed7d7' : '#c6f6d5'}"
-          onclick="toggleMora('${cr.id}',${cr.mora_activa ? 'false' : 'true'})">
-          ${cr.mora_activa ? '🔕 Desactivar mora' : '🔔 Activar mora'}
-        </button>
-      </div>` : vencido ? `
+     ${isAdmin ? `
+<div style="display:flex;gap:8px">
+  <button class="btn btn-outline btn-sm" style="flex:1" onclick="cerrarCredito('${cr.id}')">✓ Cerrar crédito</button>
+  <button class="btn btn-sm" style="flex:1;background:${cr.mora_activa ? '#fff5f5' : '#f0fff4'};color:${cr.mora_activa ? 'var(--danger)' : 'var(--success)'};border:2px solid ${cr.mora_activa ? '#fed7d7' : '#c6f6d5'}"
+    onclick="toggleMora('${cr.id}',${cr.mora_activa ? 'false' : 'true'})">
+    ${cr.mora_activa ? '🔕 Desactivar mora' : '🔔 Activar mora'}
+  </button>
+</div>
+<button class="btn btn-sm btn-outline" style="width:100%;margin-top:8px" onclick="abrirEditarCredito('${cr.id}')">✏️ Corregir monto</button>
+` : vencido ? `
+        
         <span style="font-size:12px;color:var(--danger);font-weight:600;align-self:center">
           ⚠️ Coordina con el administrador
         </span>` : ''}
@@ -113,7 +116,6 @@ function renderCreditoCard(cr) {
 
     ${renderEsquemaCuotas(cr)}
 
-    <!-- HISTORIAL DE PAGOS -->
     ${pagos.length > 0 ? `
     <div style="margin-top:16px">
       <div style="font-size:15px;font-weight:700;color:var(--muted);margin-bottom:12px;text-transform:uppercase;letter-spacing:0.5px">
@@ -270,8 +272,8 @@ function renderModalEditarPago() {
   <div class="form-group">
     <label>Tipo de pago</label>
     <select class="form-control" id="epTipo">
-      <option value="efectivo"      ${p.tipo === 'efectivo'      ? 'selected' : ''}>💵 Efectivo</option>
-      <option value="yape"          ${p.tipo === 'yape'          ? 'selected' : ''}>📱 Yape</option>
+      <option value="efectivo"      ${p.tipo === 'efectivo' ? 'selected' : ''}>💵 Efectivo</option>
+      <option value="yape"          ${p.tipo === 'yape' ? 'selected' : ''}>📱 Yape</option>
       <option value="transferencia" ${p.tipo === 'transferencia' ? 'selected' : ''}>🏦 Transferencia</option>
     </select>
   </div>
@@ -280,9 +282,9 @@ function renderModalEditarPago() {
 }
 
 async function guardarPagoEditado() {
-  const p     = state._editandoPago;
+  const p = state._editandoPago;
   const monto = parseFloat(document.getElementById('epMonto').value);
-  const tipo  = document.getElementById('epTipo').value;
+  const tipo = document.getElementById('epTipo').value;
   if (!monto || monto <= 0) { alert('Ingresa un monto válido'); return; }
   const updates = { monto, tipo };
   try {
@@ -293,7 +295,7 @@ async function guardarPagoEditado() {
     state.modal = null;
     showToast('✅ Pago actualizado');
     render();
-  } catch(e) {
+  } catch (e) {
     alert('Error al guardar: ' + e.message);
   }
 }
@@ -307,7 +309,7 @@ async function eliminarPago(pagoId) {
     state.modal = null;
     showToast('Pago eliminado');
     render();
-  } catch(e) {
+  } catch (e) {
     alert('Error al eliminar: ' + e.message);
   }
 }
