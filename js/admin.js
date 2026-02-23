@@ -8,12 +8,6 @@ function renderAdmin() {
   const cobradores = users.filter(u => u.role === 'cobrador');
   const admins = users.filter(u => u.role === 'admin');
 
-  const totalPrestado = creditos.filter(c => c.activo).reduce((s, c) => s + c.monto, 0);
-  const totalPorCobrar = creditos.filter(c => c.activo).reduce((s, c) => {
-    const pagado = pagos.filter(p => p.creditoId === c.id).reduce((ss, p) => ss + p.monto, 0);
-    return s + (c.total - pagado);
-  }, 0);
-
   const alertas = getAlertasCreditos();
 
   return `
@@ -23,12 +17,7 @@ function renderAdmin() {
       <div class="topbar-user"><strong>${state.currentUser.nombre}</strong><span>Admin</span></div>
     </div>
     <div class="page">
-      <div class="admin-grid">
-        <div class="stat-card"><div class="stat-number">${clientes.length}</div><div class="stat-label">Clientes totales</div></div>
-        <div class="stat-card"><div class="stat-number">${creditos.filter(c => c.activo).length}</div><div class="stat-label">Créditos activos</div></div>
-        <div class="stat-card"><div class="stat-number" style="font-size:18px">${formatMoney(totalPrestado)}</div><div class="stat-label">Total prestado</div></div>
-        <div class="stat-card"><div class="stat-number" style="font-size:18px">${formatMoney(totalPorCobrar)}</div><div class="stat-label">Por cobrar</div></div>
-      </div>
+     
 
       ${alertas.length > 0 ? `
         <div style="background:#fff5f5;border:2px solid #fed7d7;border-radius:14px;padding:16px;margin-bottom:16px">
@@ -149,7 +138,7 @@ function renderAdminCobrador() {
     <div class="page">
 
       <!-- INFO COBRADOR -->
-      <div class="card">
+      <div class="card" style="background:#1e293b;">
         <div class="info-grid">
           <div class="info-item"><div class="info-label">Usuario</div><div class="info-value">${cobrador.user}</div></div>
           <div class="info-item"><div class="info-label">Clientes</div><div class="info-value">${clientes.length}</div></div>
