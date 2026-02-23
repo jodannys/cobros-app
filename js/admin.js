@@ -217,9 +217,21 @@ function renderAdminCobrador() {
   </div>`;
 }
 async function eliminarCobrador(id) {
+  const users = DB._cache['users'] || [];
+  const u = users.find(x => x.id === id);
+
+  // Protección: nunca borrar admins
+  if (!u || u.role === 'admin') {
+    alert('No se puede eliminar un administrador desde esta opción.');
+    return;
+  }
+
   if (!confirm('¿Eliminar este cobrador? Sus clientes quedarán sin cobrador asignado. Esta acción no se puede deshacer.')) return;
+
   await DB.delete('users', id);
+  DB._cache['users'] = users.filter(x => x.id !== id);
   state.selectedCobrador = null;
+  state.modal = null;
   showToast('Cobrador eliminado');
   render();
 }

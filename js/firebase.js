@@ -41,9 +41,13 @@ async function fbQuery(colName, field, value) {
 async function fbInit() {
   const users = await fbGetAll('users');
   if (users.length === 0) {
-    await fbSet('users', 'u1', { id: 'u1', nombre: 'Admin Principal', user: 'admin', pass: '1234', role: 'admin' });
-    await fbSet('users', 'u2', { id: 'u2', nombre: 'Carlos Ríos', user: 'carlos', pass: '1234', role: 'cobrador' });
-    await fbSet('users', 'u3', { id: 'u3', nombre: 'María López', user: 'maria', pass: '1234', role: 'cobrador' });
+    await fbSet('users', 'u1', {
+      id: 'u1',
+      nombre: 'Admin Principal',
+      user: 'admin',
+      pass: '1234',
+      role: 'admin'
+    });
   }
 }
 
