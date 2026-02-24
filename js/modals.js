@@ -270,10 +270,11 @@ function renderModalEditarUsuario() {
   </div>
   <button class="btn btn-primary" onclick="actualizarUsuario()">Actualizar</button>
   <div style="margin-top:16px;padding-top:16px;border-top:1px solid #fee2e2">
-    <button class="btn btn-danger" style="width:100%"
-      onclick="state.modal=null;render();eliminarCobrador('${u.id}')">
-      🗑️ Eliminar cobrador
-    </button>
+    ${u.role !== 'admin' ? `
+<button class="btn btn-danger" style="width:100%"
+  onclick="eliminarCobrador('${u.id}')">
+  🗑️ Eliminar cobrador
+</button>` : ''}
   </div>`;
 }
 // ============================================================
