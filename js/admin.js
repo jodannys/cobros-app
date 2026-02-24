@@ -169,7 +169,7 @@ function renderAdminCobrador() {
       style="flex:1;height:38px;border:1px solid #e2e8f0;border-radius:8px;background:white;
       display:flex;align-items:center;justify-content:center;gap:8px;
       font-weight:700;font-size:14px;cursor:pointer;user-select:none">
-      📅 ${fechaVer.split('-').reverse().join('/')}
+       ${fechaVer.split('-').reverse().join('/')}
     </div>
 
     <input type="date" id="inputFechaCobrador"
