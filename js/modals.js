@@ -302,7 +302,35 @@ function renderModalEditarAdmin() {
         style="position:absolute;right:10px;top:50%;transform:translateY(-50%);border:none;background:none;font-size:18px;cursor:pointer">👁️</button>
     </div>
   </div>
-  <button class="btn btn-primary" onclick="guardarAdmin(${isNew ? 'null' : `'${u.id}'`})">${isNew ? 'Crear Admin' : 'Actualizar'}</button>`;
+  <button class="btn btn-primary" onclick="guardarAdmin(${isNew ? 'null' : `'${u.id}'`})">${isNew ? 'Crear Admin' : 'Actualizar'}</button>
+
+  ${!isNew ? `
+  <div style="margin-top:16px;padding-top:16px;border-top:1px solid #fee2e2">
+    <button class="btn btn-danger" style="width:100%"
+      onclick="eliminarAdmin('${u.id}')">
+      🗑️ Eliminar administrador
+    </button>
+  </div>` : ''}`;
+}
+async function eliminarAdmin(id) {
+  const users = DB._cache['users'] || [];
+  const admins = users.filter(u => u.role === 'admin');
+
+  if (admins.length <= 1) {
+    alert('No puedes eliminar el único administrador del sistema.');
+    return;
+  }
+  if (id === state.currentUser.id) {
+    alert('No puedes eliminarte a ti mismo.');
+    return;
+  }
+  if (!confirm('¿Eliminar este administrador? Esta acción no se puede deshacer.')) return;
+
+  await DB.delete('users', id);
+  state._editingAdmin = null;
+  state.modal = null;
+  showToast('Administrador eliminado');
+  render();
 }
 
 // ============================================================
