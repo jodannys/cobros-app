@@ -108,20 +108,20 @@ function renderCuadre() {
     const totalTransferencia = pagosHoy.filter(p => p.tipo === 'transferencia').reduce((s, p) => s + p.monto, 0);
 
     const prestadoHoy = cobradores.reduce((s, u) => {
-  return s + getCajaChicaDelDia(u.id, hoy).totalPrestadoHoy;
-}, 0);
+      return s + getCajaChicaDelDia(u.id, hoy).totalPrestadoHoy;
+    }, 0);
 
 
-const totalPrestado = creditos.filter(cr => cr.activo).reduce((s, cr) => s + Number(cr.monto), 0);
+    const totalPrestado = creditos.filter(cr => cr.activo).reduce((s, cr) => s + Number(cr.monto), 0);
 
-const totalPorCobrar = creditos.filter(cr => cr.activo).reduce((s, cr) => {
-  const pagado = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id).reduce((ss, p) => ss + p.monto, 0);
-  return s + (cr.total - pagado);
-}, 0);
+    const totalPorCobrar = creditos.filter(cr => cr.activo).reduce((s, cr) => {
+      const pagado = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id).reduce((ss, p) => ss + p.monto, 0);
+      return s + (cr.total - pagado);
+    }, 0);
 
-const totalRecuperado = totalPrestado > 0
-  ? Math.round(((totalPrestado - totalPorCobrar) / totalPrestado) * 100)
-  : 0;
+    const totalRecuperado = totalPrestado > 0
+      ? Math.round(((totalPrestado - totalPorCobrar) / totalPrestado) * 100)
+      : 0;
     const cajasHoy = cobradores.reduce((s, u) => {
       const caja = getCajaChicaDelDia(u.id, hoy);
       return s + caja.saldo;
@@ -287,22 +287,24 @@ const totalRecuperado = totalPrestado > 0
         return `
         <div class="card" style="padding:0;margin-bottom:12px;overflow:hidden">
           <div style="padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer"
-            onclick="state._expandCobrador = '${u.id}' === state._expandCobrador ? null : '${u.id}';render()">
-            <div class="client-avatar" style="width:44px;height:44px;font-size:18px;flex-shrink:0">${u.nombre.charAt(0)}</div>
-            <div style="flex:1;min-width:0">
-              <div style="font-weight:800;font-size:15px">${u.nombre}</div>
-              <div style="font-size:12px;color:var(--muted);margin-top:2px">
-                ${meta.detalle.length} clientes ·
-                <span style="color:${metaCumplida ? 'var(--success)' : 'var(--danger)'};font-weight:600">
-                  ${metaCumplida ? '✅ Meta cumplida' : '⏳ Pendiente ' + formatMoney(meta.pendiente)}
-                </span>
-              </div>
-            </div>
-            <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
-              <div style="font-weight:800;font-size:17px;color:var(--success)">${formatMoney(c.total)}</div>
-              <div style="font-size:16px;color:var(--muted)">${expandido ? '▸' : '▾'}</div>
-            </div>
-          </div>
+  onclick="state._expandCobrador = '${u.id}' === state._expandCobrador ? null : '${u.id}';render()">
+  <div class="client-avatar" style="width:44px;height:44px;font-size:18px;flex-shrink:0">${u.nombre.charAt(0)}</div>
+  <div style="flex:1;min-width:0">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+      <div style="font-weight:800;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.nombre}</div>
+      <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">
+        <div style="font-weight:800;font-size:17px;color:var(--success)">${formatMoney(c.total)}</div>
+        <div style="font-size:16px;color:var(--muted)">${expandido ? '▸' : '▾'}</div>
+      </div>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-top:3px">
+      ${meta.detalle.length} clientes ·
+      <span style="color:${metaCumplida ? 'var(--success)' : 'var(--danger)'};font-weight:600">
+        ${metaCumplida ? '✅ Meta cumplida' : '⏳ Pendiente ' + formatMoney(meta.pendiente)}
+      </span>
+    </div>
+  </div>
+</div>
 
           ${expandido ? `
           <div style="border-top:1px solid #f1f5f9">
