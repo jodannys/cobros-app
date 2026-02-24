@@ -154,28 +154,29 @@ function renderAdminCobrador() {
         </div>
       </div>
 
-      <div style="display:flex;align-items:center;gap:8px">
-  <button onclick="cambiarFechaCobrador(-1)"
-    style="width:36px;height:36px;border-radius:8px;border:1px solid #e2e8f0;
-    background:white;font-size:18px;cursor:pointer;flex-shrink:0">‹</button>
+      
+  <!-- FECHA -->
+<div class="card" style="padding:12px 16px">
+  <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:8px">
+    📅 Cuadre del día
+  </div>
+  <div style="display:flex;align-items:center;gap:8px">
+    <button onclick="cambiarFechaCobrador(-1)"
+      style="width:36px;height:36px;border-radius:8px;border:1px solid #e2e8f0;
+      background:white;font-size:18px;cursor:pointer;flex-shrink:0">‹</button>
 
-  <label style="flex:1;position:relative;display:block">
-    <input type="date" 
-      style="position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer"
+    <input type="date" class="form-control"
       value="${fechaVer}"
-      onchange="state._fechaCobrador=this.value;render()">
-    <div style="height:38px;border:1px solid #e2e8f0;border-radius:8px;background:white;
-      display:flex;align-items:center;justify-content:center;font-weight:700;
-      font-size:14px;pointer-events:none">
-      📅 ${fechaVer}
-    </div>
-  </label>
+      onchange="state._fechaCobrador=this.value;render()"
+      style="flex:1;text-align:center;text-align-last:center;font-weight:700;
+      font-size:16px;cursor:pointer;padding-right:8px">
 
-  <button onclick="cambiarFechaCobrador(1)"
-    style="width:36px;height:36px;border-radius:8px;border:1px solid #e2e8f0;
-    background:white;font-size:18px;cursor:pointer;flex-shrink:0;
-    opacity:${fechaVer >= today() ? '0.3' : '1'}"
-    ${fechaVer >= today() ? 'disabled' : ''}>›</button>
+    <button onclick="cambiarFechaCobrador(1)"
+      style="width:36px;height:36px;border-radius:8px;border:1px solid #e2e8f0;
+      background:white;font-size:18px;cursor:pointer;flex-shrink:0;
+      opacity:${fechaVer >= today() ? '0.3' : '1'}"
+      ${fechaVer >= today() ? 'disabled' : ''}>›</button>
+  </div>
 </div>
 
       <!-- CUADRE DEL DÍA SELECCIONADO -->
