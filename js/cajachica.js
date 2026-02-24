@@ -194,18 +194,14 @@ async function guardarGasto() {
   };
 
   try {
-    await DB.set('gastos', id, nuevoGasto);
-    if (!DB._cache['gastos']) DB._cache['gastos'] = [];
-    if (!DB._cache['gastos'].find(g => g.id === id)) {
-      DB._cache['gastos'].push(nuevoGasto);
-    }
-    state.modal = null;
-    state._gastoCobradorId = null;
-    showToast('Gasto registrado');
-    render();
-  } catch (e) {
-    alert('Error al guardar gasto: ' + e.message);
-  }
+  await DB.set('gastos', id, nuevoGasto);
+  state.modal = null;
+  state._gastoCobradorId = null;
+  showToast('Gasto registrado');
+  render();
+} catch (e) {
+  alert('Error al guardar gasto: ' + e.message);
+}
 }
 
 // ── Modal nuevo gasto ─────────────────────────────────────────

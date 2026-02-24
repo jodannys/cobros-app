@@ -47,5 +47,7 @@ const DB = {
     await this.getAll('creditos');
     await this.getAll('pagos');
     await this.getAll('notas_cuadre');
+    await this.getAll('gastos');   
+  await this.getAll('cajas');   
   }
 };

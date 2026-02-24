@@ -38,18 +38,6 @@ async function fbQuery(colName, field, value) {
   return snap.docs.map(d => ({ ...d.data(), id: d.id }));
 }
 
-async function fbInit() {
-  const users = await fbGetAll('users');
-  if (users.length === 0) {
-    await fbSet('users', 'u1', {
-      id: 'u1',
-      nombre: 'Admin Principal',
-      user: 'admin',
-      pass: '1234',
-      role: 'admin'
-    });
-  }
-}
 
 // CORRECCIÓN P1: fbEscuchar ahora pasa los datos al callback
 // Esto permite que app.js actualice el caché cuando Firestore notifica cambios
