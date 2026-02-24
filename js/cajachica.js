@@ -20,7 +20,7 @@ function getCajaChicaDelDia(cobradorId, fecha) {
   const cajaAnterior = cajas
     .filter(c => c.cobradorId === cobradorId && c.fecha <= fecha)
     .sort((a, b) => b.fecha.localeCompare(a.fecha))[0];
-  const cajaInicial = Number(cajaDelDia?.monto ?? cajaAnterior?.monto ?? cobrador?.cajachica) || 0;
+  const cajaInicial = Number(cajaDelDia?.monto ?? cajaAnterior?.monto) || 0;
   const gastosDelDia = gastos.filter(g => g.cobradorId === cobradorId && g.fecha === fecha);
   const totalGastos = gastosDelDia.reduce((s, g) => s + Number(g.monto), 0);
   const cuadreDelDia = getCuadreDelDia(cobradorId, fecha);
