@@ -1,6 +1,6 @@
 // Firebase config
 const firebaseConfig = {
-  apiKey: "AIzaSyAZKQPkV1LXvQ2K0wMHUwerF2Im2fcCfn8",
+  apiKey: "AIzaSyBof64MM8I5FCgruPyZFo64-1bUh-RCpKk",
   authDomain: "cobros-app-75af2.firebaseapp.com",
   projectId: "cobros-app-75af2",
   storageBucket: "cobros-app-75af2.firebasestorage.app",
