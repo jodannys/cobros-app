@@ -63,10 +63,6 @@ async function guardarPago() {
 
   await DB.set('pagos', id, nuevoPago);
 
-  if (!DB._cache['pagos']) DB._cache['pagos'] = [];
-  if (!DB._cache['pagos'].find(p => p.id === id)) {
-    DB._cache['pagos'].push(nuevoPago);
-  }
 
   // ── Verificar si quedó todo saldado ───────────────────────────────────────
   // Saldo: suma de aplicadoSaldo de todos los pagos vs cr.total
