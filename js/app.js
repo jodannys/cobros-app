@@ -113,7 +113,6 @@ function renderHistorial() {
     <!-- VISTA: PAGOS -->
     ${filtroVista === 'pagos' ? `
       <div class="card" style="padding:14px;border-left:4px solid var(--success)">
-    <div class="card" style="padding:14px">
       <div class="flex-between" style="margin-bottom:12px">
         <div style="font-weight:700">Pagos del ${formatDate(filtroFecha)}</div>
         <div style="font-weight:800;color:var(--success)">${formatMoney(totalPagos)}</div>
@@ -140,7 +139,6 @@ function renderHistorial() {
     <!-- VISTA: GASTOS -->
     ${filtroVista === 'gastos' ? `
       <div class="card" style="padding:14px;border-left:4px solid var(--danger)">
-      <div class="card" style="padding:14px">
       <div class="flex-between" style="margin-bottom:12px">
       <div style="font-weight:700">Gastos del ${formatDate(filtroFecha)}</div>
       <div style="font-weight:800;font-size:18px;color:var(--danger)">${formatMoney(totalGastos)}</div>
