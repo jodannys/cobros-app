@@ -481,7 +481,5 @@ function renderModalHistorialCliente() {
 
 function compartirWhatsAppHistorial() {
   if (!state._historialCliente) return;
-  const texto = state._historialCliente.texto;
-  const url = `https://wa.me/?text=${encodeURIComponent(texto)}`;
-  window.open(url, '_blank');
+  enviarEstadoWhatsApp(state._historialCliente.c.id);
 }
