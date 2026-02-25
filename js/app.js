@@ -1,4 +1,9 @@
-function render() {
+// ============================================================
+// APP.JS — Render principal e inicialización
+// ============================================================
+
+// ── RENDER PRINCIPAL ─────────────────────────────────────────
+window.render = function render() {
   const root = document.getElementById('root');
   if (state.screen === 'login') { root.innerHTML = renderLogin(); bindLogin(); return; }
 
@@ -26,54 +31,52 @@ function render() {
         <span class="nav-icon">📊</span><span>Cuadre</span>
       </div>
       ${isAdmin ? `
-<div class="nav-item ${state.nav === 'admin' ? 'active' : ''}" onclick="navigate('admin')">
-  <span class="nav-icon">🛡️</span><span>Admin</span>
-</div>
-<div class="nav-item ${state.nav === 'historial' ? 'active' : ''}" onclick="navigate('historial')">
-  <span class="nav-icon">🔍</span><span>Historial</span>
-</div>` : ''}
+      <div class="nav-item ${state.nav === 'admin' ? 'active' : ''}" onclick="navigate('admin')">
+        <span class="nav-icon">🛡️</span><span>Admin</span>
+      </div>
+      <div class="nav-item ${state.nav === 'historial' ? 'active' : ''}" onclick="navigate('historial')">
+        <span class="nav-icon">🔍</span><span>Historial</span>
+      </div>` : ''}
       <div class="nav-item" onclick="if(confirm('¿Desea salir?')) logout()">
         <span class="nav-icon">🚪</span><span>Salir</span>
       </div>
     </nav>` : ''}
   </div>`;
-}
+};
 
-function renderHistorial() {
-  const usuarios = DB._cache['users'] || [];
-  const clientes = DB._cache['clientes'] || [];
-  const creditos = DB._cache['creditos'] || [];
-  const pagos = DB._cache['pagos'] || [];
-  const gastos = DB._cache['gastos'] || [];
+// ── HISTORIAL ─────────────────────────────────────────────────
+window.renderHistorial = function renderHistorial() {
+  const usuarios  = DB._cache['users']    || [];
+  const clientes  = DB._cache['clientes'] || [];
+  const creditos  = DB._cache['creditos'] || [];
+  const pagos     = DB._cache['pagos']    || [];
+  const gastos    = DB._cache['gastos']   || [];
   const cobradores = usuarios.filter(u => u.role === 'cobrador');
 
-  const filtroFecha = state._hFecha || today();
+  const filtroFecha      = state._hFecha    || today();
   const filtroCobradorId = state._hCobrador || 'todos';
-  const filtroVista = state._hVista || 'pagos';
-  const filtroBusqueda = state._hBusqueda || '';
+  const filtroVista      = state._hVista    || 'pagos';
+  const filtroBusqueda   = state._hBusqueda || '';
 
-  // ── Pagos del día filtrado ──
   const pagosFiltrados = pagos.filter(p => {
-    const matchFecha = p.fecha === filtroFecha;
+    const matchFecha    = p.fecha === filtroFecha;
     const matchCobrador = filtroCobradorId === 'todos' || p.cobradorId === filtroCobradorId;
     return matchFecha && matchCobrador;
   });
 
-  // ── Gastos del día filtrado ──
   const gastosFiltrados = gastos.filter(g => {
-    const matchFecha = g.fecha === filtroFecha;
+    const matchFecha    = g.fecha === filtroFecha;
     const matchCobrador = filtroCobradorId === 'todos' || g.cobradorId === filtroCobradorId;
     return matchFecha && matchCobrador;
   });
 
-  // ── Créditos filtrados ──
   const creditosFiltrados = creditos.filter(cr => {
     if (filtroCobradorId === 'todos') return true;
     const cliente = clientes.find(c => c.id === cr.clienteId);
     return cliente && cliente.cobradorId === filtroCobradorId;
   });
 
-  const totalPagos = pagosFiltrados.reduce((s, p) => s + p.monto, 0);
+  const totalPagos  = pagosFiltrados.reduce((s, p) => s + p.monto, 0);
   const totalGastos = gastosFiltrados.reduce((s, g) => s + (g.monto || 0), 0);
 
   return `
@@ -188,9 +191,9 @@ function renderHistorial() {
         : creditosFiltrados.map(cr => {
           const cl = clientes.find(c => c.id === cr.clienteId);
           const pagosCredito = pagos.filter(p => p.creditoId === cr.id);
-          const totalPagado = pagosCredito.reduce((s, p) => s + p.monto, 0);
-          const saldo = cr.total - totalPagado;
-          const porcentaje = cr.total > 0 ? Math.min(100, Math.round((totalPagado / cr.total) * 100)) : 0;
+          const totalPagado  = pagosCredito.reduce((s, p) => s + p.monto, 0);
+          const saldo        = cr.total - totalPagado;
+          const porcentaje   = cr.total > 0 ? Math.min(100, Math.round((totalPagado / cr.total) * 100)) : 0;
           return `
           <div style="padding:12px 0;border-bottom:1px solid #f1f5f9;cursor:pointer"
             onclick="verHistorialCliente('${cr.clienteId}')">
@@ -218,12 +221,10 @@ function renderHistorial() {
     </div>` : ''}
 
   </div>`;
-}
+};
 
-// ============================================================
-// BÚSQUEDA EN VIVO — no reconstruye el DOM completo
-// ============================================================
-function renderBusquedaClientes() {
+// ── BÚSQUEDA EN VIVO ──────────────────────────────────────────
+window.renderBusquedaClientes = function renderBusquedaClientes() {
   const filtroBusqueda = state._hBusqueda || '';
   const clientes = DB._cache['clientes'] || [];
   const creditos = DB._cache['creditos'] || [];
@@ -232,10 +233,7 @@ function renderBusquedaClientes() {
   const contenedor = document.getElementById('busquedaResultados');
   if (!contenedor) return;
 
-  if (filtroBusqueda.length < 1) {
-    contenedor.innerHTML = '';
-    return;
-  }
+  if (filtroBusqueda.length < 1) { contenedor.innerHTML = ''; return; }
 
   const clientesBuscados = clientes.filter(c =>
     c.nombre.toLowerCase().includes(filtroBusqueda.toLowerCase())
@@ -270,29 +268,29 @@ function renderBusquedaClientes() {
       </div>
     </div>`;
   }).join('');
-}
+};
 
-function verHistorialCliente(clienteId) {
-  state._hBusqueda = ''; 
+// ── VER HISTORIAL DE CLIENTE ──────────────────────────────────
+window.verHistorialCliente = function verHistorialCliente(clienteId) {
+  state._hBusqueda = '';
   const c = (DB._cache['clientes'] || []).find(x => x.id === clienteId);
   if (!c) return;
-  const creditos = (DB._cache['creditos'] || []).filter(cr => cr.clienteId === clienteId);
-  const pagos = (DB._cache['pagos'] || []).filter(p => p.clienteId === clienteId);
+  const creditos    = (DB._cache['creditos'] || []).filter(cr => cr.clienteId === clienteId);
+  const pagos       = (DB._cache['pagos']    || []).filter(p  => p.clienteId  === clienteId);
   const totalPagado = pagos.reduce((s, p) => s + p.monto, 0);
-  const cobrador = (DB._cache['users'] || []).find(u => u.id === c.cobradorId);
+  const cobrador    = (DB._cache['users']    || []).find(u  => u.id === c.cobradorId);
 
-  // Construir texto para WhatsApp
   let texto = `📋 *HISTORIAL DE CLIENTE*\n`;
   texto += `👤 *${c.nombre}*\n`;
   texto += `DNI: ${c.dni}\n`;
-  if (c.negocio) texto += `🏪 ${c.negocio}\n`;
-  if (cobrador) texto += `Cobrador: ${cobrador.nombre}\n`;
+  if (c.negocio)  texto += `🏪 ${c.negocio}\n`;
+  if (cobrador)   texto += `Cobrador: ${cobrador.nombre}\n`;
   texto += `\n`;
 
   creditos.forEach(cr => {
-    const pagosCr = pagos.filter(p => p.creditoId === cr.id);
+    const pagosCr  = pagos.filter(p => p.creditoId === cr.id);
     const pagadoCr = pagosCr.reduce((s, p) => s + p.monto, 0);
-    const saldoCr = Math.max(0, cr.total - pagadoCr);
+    const saldoCr  = Math.max(0, cr.total - pagadoCr);
     texto += `💳 *Crédito ${formatDate(cr.fechaInicio)}*\n`;
     texto += `Prestado: S/${cr.monto} | Total: S/${cr.total}\n`;
     texto += `Pagado: S/${pagadoCr.toFixed(2)} | Saldo: S/${saldoCr.toFixed(2)}\n`;
@@ -306,22 +304,22 @@ function verHistorialCliente(clienteId) {
 
   texto += `💰 *TOTAL PAGADO: S/${totalPagado.toFixed(2)}*`;
 
-  // Mostrar modal con historial
   state._historialCliente = { c, creditos, pagos, texto, cobrador };
   state.modal = 'historial-cliente';
   render();
-}
+};
 
-function navigate(nav) {
+// ── NAVEGACIÓN ────────────────────────────────────────────────
+window.navigate = function navigate(nav) {
   state.nav = nav;
-  state.selectedClient = null;
+  state.selectedClient  = null;
   state.selectedCobrador = null;
   history.pushState({ nav }, '', '#' + nav);
   render();
-}
+};
 
-// CORRECCIÓN P9: Manejo del botón "atrás" del dispositivo
-window.addEventListener('popstate', (e) => {
+// ── BOTÓN ATRÁS DEL DISPOSITIVO ──────────────────────────────
+window.addEventListener('popstate', () => {
   if (state.modal) {
     state.modal = null;
     state.selectedCredito = null;
@@ -346,7 +344,7 @@ window.addEventListener('popstate', (e) => {
   }
 });
 
-// CORRECCIÓN P9: Evitar cierre accidental al recargar/cerrar
+// ── EVITAR CIERRE ACCIDENTAL ──────────────────────────────────
 window.addEventListener('beforeunload', (e) => {
   if (state.screen === 'main' && state.currentUser) {
     e.preventDefault();
@@ -354,7 +352,7 @@ window.addEventListener('beforeunload', (e) => {
   }
 });
 
-// INIT ASYNC
+// ── INIT ASYNC ────────────────────────────────────────────────
 (async () => {
   try {
     await DB.init();

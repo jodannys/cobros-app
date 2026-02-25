@@ -1,4 +1,4 @@
-const DB = {
+window.DB = {
   _cache: {},
 
   async getAll(colName) {

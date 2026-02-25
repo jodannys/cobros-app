@@ -1,13 +1,13 @@
 // ============================================================
 // RENDER LISTA DE CLIENTES
 // ============================================================
-function renderClientes() {
+window.renderClientes = function () {
   const clientes = DB._cache['clientes'] || [];
   const creditos = DB._cache['creditos'] || [];
-  const users    = DB._cache['users']    || [];
-  const pagos    = DB._cache['pagos']    || [];
-  const isAdmin  = state.currentUser.role === 'admin';
-  const filtro   = state.filtroClientes || 'todos';
+  const users = DB._cache['users'] || [];
+  const pagos = DB._cache['pagos'] || [];
+  const isAdmin = state.currentUser.role === 'admin';
+  const filtro = state.filtroClientes || 'todos';
 
   let lista = isAdmin
     ? clientes
@@ -43,10 +43,10 @@ function renderClientes() {
   }
 
   const filtros = [
-    { key: 'todos',       label: 'Todos' },
-    { key: 'activos',     label: '✅ Activos' },
+    { key: 'todos', label: 'Todos' },
+    { key: 'activos', label: '✅ Activos' },
     { key: 'sin_credito', label: '🆕 Sin crédito' },
-    { key: 'atrasados',   label: '🔴 Atrasados' },
+    { key: 'atrasados', label: '🔴 Atrasados' },
     ...(isAdmin ? [{ key: 'cerrados', label: '🔒 Cerrados' }] : [])
   ];
 
@@ -63,7 +63,7 @@ function renderClientes() {
       <div class="search-bar">
         <span class="search-icon">🔍</span>
         <input class="form-control" id="search-clientes" placeholder="Buscar por nombre, DNI o negocio..."
-          value="${state.search}" oninput="updateSearch(this.value)">
+          value="${state.search || ''}" oninput="updateSearch(this.value)">
       </div>
 
       <div class="filtros-scroll">
@@ -78,20 +78,20 @@ function renderClientes() {
 
       <div id="lista-clientes">
         ${lista.length === 0
-          ? `<div class="empty-state"><div class="icon">👤</div><p>No se encontraron clientes</p></div>`
-          : lista.map(c => _renderClienteItem(c, creditos, users, pagos, isAdmin)).join('')}
+      ? `<div class="empty-state"><div class="icon">👤</div><p>No se encontraron clientes</p></div>`
+      : lista.map(c => _renderClienteItem(c, creditos, users, pagos, isAdmin)).join('')}
       </div>
     </div>
     <button class="fab" onclick="openModal('nuevo-cliente')">+</button>
   </div>`;
 }
 
-// Helper para renderizar una fila de cliente (evita duplicar código)
-function _renderClienteItem(c, creditos, users, pagos, isAdmin) {
-  const crs           = creditos.filter(cr => cr.clienteId === c.id);
+// Helper interno (no necesita window si solo se usa aquí, pero lo ponemos por seguridad)
+window._renderClienteItem = function (c, creditos, users, pagos, isAdmin) {
+  const crs = creditos.filter(cr => cr.clienteId === c.id);
   const creditoActivo = crs.find(cr => cr.activo);
-  const cob           = users.find(u => u.id === c.cobradorId);
-  const atrasado      = creditoActivo ? clienteEstaAtrasado(creditoActivo, pagos) : false;
+  const cob = users.find(u => u.id === c.cobradorId);
+  const atrasado = creditoActivo ? clienteEstaAtrasado(creditoActivo, pagos) : false;
   const numCuotaAtrasada = atrasado ? cuotaAtrasada(creditoActivo, pagos) : null;
 
   let badge, badgeStyle;
@@ -109,51 +109,51 @@ function _renderClienteItem(c, creditos, users, pagos, isAdmin) {
     badgeStyle = 'background:#fffbeb;color:#b7791f;border:1px solid #fde68a';
   }
 
-return `
-<div class="client-item" onclick="selectClient('${c.id}')">
-  <div class="client-avatar">${c.nombre.charAt(0)}</div>
-  <div class="client-info" style="flex:1;min-width:0">
-    <div class="client-name">${c.nombre}</div>
-    <div class="client-dni" style="font-size:12px;color:var(--muted)">
-      DNI: ${c.dni}${c.negocio ? ` · 🏪 ${c.negocio}` : ''}${isAdmin && cob ? ` · ${cob.nombre}` : ''}
+  return `
+  <div class="client-item" onclick="selectClient('${c.id}')">
+    <div class="client-avatar">${c.nombre.charAt(0)}</div>
+    <div class="client-info" style="flex:1;min-width:0">
+      <div class="client-name">${c.nombre}</div>
+      <div class="client-dni" style="font-size:12px;color:var(--muted)">
+        DNI: ${c.dni}${c.negocio ? ` · 🏪 ${c.negocio}` : ''}${isAdmin && cob ? ` · ${cob.nombre}` : ''}
+      </div>
     </div>
-  </div>
 
-  <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
-    ${creditoActivo ? `
-    <button onclick="event.stopPropagation();pagoRapido('${creditoActivo.id}')"
-      style="width:38px;height:38px;border-radius:10px;border:none;
-      background:#f0fff4;color:#276749;font-size:18px;cursor:pointer">💰</button>`
-    : !crs.some(cr => cr.activo) ? `
-    <button onclick="event.stopPropagation();nuevoCreditoRapido('${c.id}')"
-      style="width:38px;height:38px;border-radius:10px;border:none;
-      background:#eff6ff;color:var(--primary);font-size:20px;cursor:pointer;font-weight:700">+</button>` : ''}
+    <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+      ${creditoActivo ? `
+      <button onclick="event.stopPropagation();pagoRapido('${creditoActivo.id}')"
+        style="width:38px;height:38px;border-radius:10px;border:none;
+        background:#f0fff4;color:#276749;font-size:18px;cursor:pointer">💰</button>`
+      : !crs.some(cr => cr.activo) ? `
+      <button onclick="event.stopPropagation();nuevoCreditoRapido('${c.id}')"
+        style="width:38px;height:38px;border-radius:10px;border:none;
+        background:#eff6ff;color:var(--primary);font-size:20px;cursor:pointer;font-weight:700">+</button>` : ''}
 
-    <span style="font-size:11px;font-weight:700;padding:4px 8px;border-radius:20px;
-      white-space:nowrap;min-width:70px;text-align:center;${badgeStyle}">${badge}</span>
-  </div>
-</div>`;
-  }
+      <span style="font-size:11px;font-weight:700;padding:4px 8px;border-radius:20px;
+        white-space:nowrap;min-width:70px;text-align:center;${badgeStyle}">${badge}</span>
+    </div>
+  </div>`;
+}
 
 // ============================================================
 // HELPERS DE ESTADO DE CUOTAS
 // ============================================================
-function clienteEstaAtrasado(cr, pagos) {
+window.clienteEstaAtrasado = function (cr, pagos) {
   if (!cr || !cr.activo) return false;
   const totalPagado = pagos.filter(p => p.creditoId === cr.id).reduce((s, p) => s + Number(p.monto), 0);
   const saldo = cr.total - totalPagado;
   if (saldo <= 0) return false;
   const inicio = new Date(cr.fechaInicio + 'T00:00:00');
-  const hoy    = new Date(today() + 'T00:00:00');
+  const hoy = new Date(today() + 'T00:00:00');
   const diasTranscurridos = Math.floor((hoy - inicio) / (1000 * 60 * 60 * 24));
   if (diasTranscurridos <= 0) return false;
-  const cuotasDebidas   = Math.min(diasTranscurridos, cr.diasTotal);
+  const cuotasDebidas = Math.min(diasTranscurridos, cr.diasTotal);
   const cuotasCubiertas = Math.floor(totalPagado / cr.cuotaDiaria);
   return cuotasCubiertas < cuotasDebidas;
 }
 
-function cuotaAtrasada(cr, pagos) {
-  const totalPagado     = pagos.filter(p => p.creditoId === cr.id).reduce((s, p) => s + Number(p.monto), 0);
+window.cuotaAtrasada = function (cr, pagos) {
+  const totalPagado = pagos.filter(p => p.creditoId === cr.id).reduce((s, p) => s + Number(p.monto), 0);
   const cuotasCubiertas = Math.floor(totalPagado / cr.cuotaDiaria);
   return cuotasCubiertas + 1;
 }
@@ -161,26 +161,26 @@ function cuotaAtrasada(cr, pagos) {
 // ============================================================
 // ESQUEMA VISUAL DE CUOTAS
 // ============================================================
-function renderEsquemaCuotas(cr) {
-  const pagos           = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id);
-  const totalPagado     = pagos.reduce((s, p) => s + Number(p.monto), 0);
+window.renderEsquemaCuotas = function (cr) {
+  const pagos = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id);
+  const totalPagado = pagos.reduce((s, p) => s + Number(p.monto), 0);
   const cuotasCubiertas = Math.floor(totalPagado / cr.cuotaDiaria);
 
   const inicio = new Date(cr.fechaInicio + 'T00:00:00');
-  const hoy    = new Date(today() + 'T00:00:00');
+  const hoy = new Date(today() + 'T00:00:00');
   const diasTranscurridos = Math.max(0, Math.floor((hoy - inicio) / (1000 * 60 * 60 * 24)));
 
   const cuotas = [];
   for (let i = 1; i <= cr.diasTotal; i++) {
     let estado;
-    if (i <= cuotasCubiertas)    estado = 'pagada';
+    if (i <= cuotasCubiertas) estado = 'pagada';
     else if (i <= diasTranscurridos) estado = 'atrasada';
-    else                          estado = 'pendiente';
+    else estado = 'pendiente';
     cuotas.push({ num: i, estado });
   }
 
-  const pagadas    = cuotas.filter(c => c.estado === 'pagada').length;
-  const atrasadas  = cuotas.filter(c => c.estado === 'atrasada').length;
+  const pagadas = cuotas.filter(c => c.estado === 'pagada').length;
+  const atrasadas = cuotas.filter(c => c.estado === 'atrasada').length;
   const pendientes = cuotas.filter(c => c.estado === 'pendiente').length;
 
   return `
@@ -193,7 +193,7 @@ function renderEsquemaCuotas(cr) {
       ${atrasadas > 0 ? `<span style="font-size:11px;background:#fee2e2;color:#991b1b;padding:3px 8px;border-radius:20px;font-weight:700">⚠️ ${atrasadas} atrasadas</span>` : ''}
       <span style="font-size:11px;background:#f1f5f9;color:#64748b;padding:3px 8px;border-radius:20px;font-weight:700">🔘 ${pendientes} pendientes</span>
     </div>
-<div class="cuotas-grid" style="gap:6px">
+    <div class="cuotas-grid" style="gap:6px">
       ${cuotas.map(c => `
         <div title="Cuota ${c.num}" class="cuota-burbuja cuota-${c.estado}">
           ${c.num}
@@ -205,7 +205,7 @@ function renderEsquemaCuotas(cr) {
 // ============================================================
 // FILTROS Y BÚSQUEDA
 // ============================================================
-function setFiltroClientes(f) {
+window.setFiltroClientes = function (f) {
   state.filtroClientes = f;
   const searchVal = document.getElementById('search-clientes')?.value || state.search;
   render();
@@ -217,22 +217,22 @@ function setFiltroClientes(f) {
   }
 }
 
-function updateSearch(v) {
+window.updateSearch = function (v) {
   state.search = v;
   _renderListaClientes();
 }
 
-function _renderListaClientes() {
+window._renderListaClientes = function () {
   const contenedor = document.getElementById('lista-clientes');
-  const contador   = document.getElementById('contador-clientes');
+  const contador = document.getElementById('contador-clientes');
   if (!contenedor) { render(); return; }
 
   const clientes = DB._cache['clientes'] || [];
   const creditos = DB._cache['creditos'] || [];
-  const users    = DB._cache['users']    || [];
-  const pagos    = DB._cache['pagos']    || [];
-  const isAdmin  = state.currentUser.role === 'admin';
-  const filtro   = state.filtroClientes || 'todos';
+  const users = DB._cache['users'] || [];
+  const pagos = DB._cache['pagos'] || [];
+  const isAdmin = state.currentUser.role === 'admin';
+  const filtro = state.filtroClientes || 'todos';
 
   let lista = isAdmin
     ? clientes
@@ -277,16 +277,13 @@ function _renderListaClientes() {
 // ============================================================
 // DETALLE DE CLIENTE
 // ============================================================
-// ============================================================
-// DETALLE DE CLIENTE — con botón WhatsApp
-// ============================================================
-function renderClientDetail() {
+window.renderClientDetail = function () {
   const c = state.selectedClient;
   const todosLosCreditos = (DB._cache['creditos'] || []).filter(cr => cr.clienteId === c.id);
-  const creditoActivo    = todosLosCreditos.find(cr => cr.activo);
-  const users    = DB._cache['users'] || [];
+  const creditoActivo = todosLosCreditos.find(cr => cr.activo);
+  const users = DB._cache['users'] || [];
   const cobrador = users.find(u => u.id === c.cobradorId);
-  const isAdmin  = state.currentUser.role === 'admin';
+  const isAdmin = state.currentUser.role === 'admin';
 
   return `
   <div>
@@ -327,28 +324,28 @@ function renderClientDetail() {
         ${c.foto ? `<img src="${c.foto}" class="uploaded-img">` : ''}
       </div>
 
-      <!-- BOTÓN WHATSAPP -->
-
-${todosLosCreditos.length > 0 ? `
-<button onclick="enviarEstadoWhatsApp('${c.id}')"
-  style="width:100%;padding:13px;background:#25d366;color:white;border:none;
-  border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;
-  margin-bottom:14px;display:flex;align-items:center;justify-content:center;gap:8px">
-  📲 Enviar estado de crédito por WhatsApp
-</button>` : ''}
+      ${todosLosCreditos.length > 0 ? `
+      <button onclick="enviarEstadoWhatsApp('${c.id}')"
+        style="width:100%;padding:13px;background:#25d366;color:white;border:none;
+        border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;
+        margin-bottom:14px;display:flex;align-items:center;justify-content:center;gap:8px">
+       
+<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="white" style="flex-shrink:0"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+Enviar estado de crédito por WhatsApp
+      </button>` : ''}
 
       <div class="flex-between mb-2">
         <div class="card-title" style="margin:0">💳 Créditos</div>
         ${!creditoActivo
-          ? `<button class="btn btn-primary btn-sm" onclick="openModal('nuevo-credito')">+ Nuevo crédito</button>`
-          : `<span style="font-size:12px;color:var(--muted);font-style:italic">Crédito activo en curso</span>`}
+      ? `<button class="btn btn-primary btn-sm" onclick="openModal('nuevo-credito')">+ Nuevo crédito</button>`
+      : `<span style="font-size:12px;color:var(--muted);font-style:italic">Crédito activo en curso</span>`}
       </div>
 
       ${todosLosCreditos.length === 0
-        ? `<div class="empty-state"><div class="icon">💳</div><p>Sin créditos registrados</p></div>`
-        : todosLosCreditos
-            .sort((a, b) => (b.activo ? 1 : 0) - (a.activo ? 1 : 0))
-            .map(cr => renderCreditoCard(cr)).join('')}
+      ? `<div class="empty-state"><div class="icon">💳</div><p>Sin créditos registrados</p></div>`
+      : todosLosCreditos
+        .sort((a, b) => (b.activo ? 1 : 0) - (a.activo ? 1 : 0))
+        .map(cr => renderCreditoCard(cr)).join('')}
     </div>
 
     <nav class="bottom-nav">
@@ -359,23 +356,21 @@ ${todosLosCreditos.length > 0 ? `
 }
 
 // ============================================================
-// ENVIAR ESTADO POR WHATSAPP DESDE PERFIL DE CLIENTE
+// ENVIAR ESTADO POR WHATSAPP
 // ============================================================
-function enviarEstadoWhatsApp(clienteId) {
+window.enviarEstadoWhatsApp = function (clienteId) {
   const c = (DB._cache['clientes'] || []).find(x => x.id === clienteId);
   if (!c) return;
 
   const creditos = (DB._cache['creditos'] || []).filter(cr => cr.clienteId === clienteId);
-  const pagos    = (DB._cache['pagos']    || []).filter(p  => p.clienteId  === clienteId);
+  const pagos = (DB._cache['pagos'] || []).filter(p => p.clienteId === clienteId);
 
-  // Pedir/confirmar número de teléfono
   const numeroRegistrado = c.telefono ? c.telefono.replace(/\D/g, '') : '';
   const numeroInput = prompt(
     `📲 Número de WhatsApp al que se enviará el estado:\n(Puedes editarlo si es necesario)`,
     numeroRegistrado
   );
 
-  // Si el usuario cancela el prompt
   if (numeroInput === null) return;
 
   const numero = numeroInput.replace(/\D/g, '').trim();
@@ -384,7 +379,6 @@ function enviarEstadoWhatsApp(clienteId) {
     return;
   }
 
-  // Construir mensaje
   let texto = `📋 *ESTADO DE CRÉDITO*\n`;
   texto += `👤 *${c.nombre}*\n`;
   texto += `DNI: ${c.dni}\n`;
@@ -397,9 +391,9 @@ function enviarEstadoWhatsApp(clienteId) {
     creditos
       .sort((a, b) => (b.activo ? 1 : 0) - (a.activo ? 1 : 0))
       .forEach(cr => {
-        const pagosCr  = pagos.filter(p => p.creditoId === cr.id);
+        const pagosCr = pagos.filter(p => p.creditoId === cr.id);
         const pagadoCr = pagosCr.reduce((s, p) => s + p.monto, 0);
-        const saldoCr  = Math.max(0, cr.total - pagadoCr);
+        const saldoCr = Math.max(0, cr.total - pagadoCr);
 
         texto += `💳 *Crédito ${formatDate(cr.fechaInicio)}*\n`;
         texto += `Estado: ${cr.activo ? '🟢 Activo' : '✅ Cerrado'}\n`;
@@ -423,15 +417,14 @@ function enviarEstadoWhatsApp(clienteId) {
   texto += `💰 *TOTAL PAGADO: S/${totalPagado.toFixed(2)}*\n`;
   texto += `\n_Enviado desde CobrosApp_`;
 
-  // Número con código de país Perú (+51) si no lo tiene
   const numeroFinal = numero.startsWith('51') ? numero : `51${numero}`;
-  // DESPUÉS
-const url = /Android|iPhone|iPad/i.test(navigator.userAgent)
-  ? `whatsapp://send?phone=${numeroFinal}&text=${encodeURIComponent(texto)}`
-  : `https://wa.me/${numeroFinal}?text=${encodeURIComponent(texto)}`;
-window.open(url, '_blank');
+  const url = /Android|iPhone|iPad/i.test(navigator.userAgent)
+    ? `whatsapp://send?phone=${numeroFinal}&text=${encodeURIComponent(texto)}`
+    : `https://wa.me/${numeroFinal}?text=${encodeURIComponent(texto)}`;
+  window.open(url, '_blank');
 }
-function selectClient(id) {
+
+window.selectClient = function (id) {
   state.selectedClient = (DB._cache['clientes'] || []).find(x => x.id === id);
   render();
   const c = state.selectedClient;
@@ -440,19 +433,17 @@ function selectClient(id) {
   }
 }
 
-function backFromClient() {
+window.backFromClient = function () {
   state.selectedClient = null;
   render();
 }
 
 // ============================================================
-// GUARDAR CLIENTE ✅ CON COMPRESIÓN DE IMAGEN
+// GUARDAR CLIENTE
 // ============================================================
-async function guardarCliente() {
+window.guardarCliente = async function () {
   try {
-    console.log('💡 Iniciando guardarCliente');
-
-    const dni    = document.getElementById('nDNI').value.trim();
+    const dni = document.getElementById('nDNI').value.trim();
     const nombre = document.getElementById('nNombre').value.trim();
 
     if (!dni || !nombre) {
@@ -466,20 +457,17 @@ async function guardarCliente() {
       return;
     }
 
-    const isAdmin    = state.currentUser.role === 'admin';
+    const isAdmin = state.currentUser.role === 'admin';
     const cobradorId = isAdmin ? document.getElementById('nCobrador').value : state.currentUser.id;
 
-    // ✅ CORRECCIÓN: comprimir imagen antes de guardar para evitar error en móvil
     const fotoEl = document.getElementById('previewNFoto');
     let foto = '';
     if (fotoEl && fotoEl.style.display !== 'none' && fotoEl.src && fotoEl.src !== window.location.href) {
-      console.log('📌 Comprimiendo imagen...');
       foto = await comprimirImagen(fotoEl.src, 600, 0.6);
-      console.log('✅ Imagen comprimida. Tamaño aprox:', Math.round(foto.length / 1024), 'KB');
     }
 
-    const negocio   = document.getElementById('nNegocio').value.trim();
-    const telefono  = document.getElementById('nTelefono').value.trim();
+    const negocio = document.getElementById('nNegocio').value.trim();
+    const telefono = document.getElementById('nTelefono').value.trim();
     const direccion = document.getElementById('nDireccion').value.trim();
     const id = genId();
 
@@ -495,45 +483,41 @@ async function guardarCliente() {
       creado: today()
     });
 
-    console.log('✅ Cliente guardado correctamente');
     _coordsSeleccionadas = null;
     state.modal = null;
     showToast('Cliente guardado exitosamente');
 
   } catch (err) {
     console.error('❌ Error en guardarCliente:', err);
-    alert('Ocurrió un error al guardar el cliente. Revisa la consola.');
+    alert('Ocurrió un error al guardar el cliente.');
   }
 }
 
 // ============================================================
-// ACTUALIZAR CLIENTE ✅ CON COMPRESIÓN DE IMAGEN
+// ACTUALIZAR CLIENTE
 // ============================================================
-async function actualizarCliente() {
-  const c          = state.selectedClient;
-  const isAdmin    = state.currentUser.role === 'admin';
+window.actualizarCliente = async function () {
+  const c = state.selectedClient;
+  const isAdmin = state.currentUser.role === 'admin';
   const cobradorEl = document.getElementById('eCobrador');
 
-  // ✅ CORRECCIÓN: comprimir imagen solo si cambió
   const fotoEl = document.getElementById('previewEFoto');
-  let foto = c.foto; // mantener foto anterior por defecto
+  let foto = c.foto;
   if (fotoEl && fotoEl.style.display !== 'none' && fotoEl.src && fotoEl.src !== window.location.href) {
     if (fotoEl.src !== c.foto) {
-      console.log('📌 Comprimiendo imagen actualizada...');
       foto = await comprimirImagen(fotoEl.src, 600, 0.6);
-      console.log('✅ Imagen comprimida. Tamaño aprox:', Math.round(foto.length / 1024), 'KB');
     }
   }
 
   const updated = {
     ...c,
-    dni:        document.getElementById('eDNI').value.trim(),
-    nombre:     document.getElementById('eNombre').value.trim(),
-    negocio:    document.getElementById('eNegocio').value.trim(),
-    telefono:   document.getElementById('eTelefono').value.trim(),
-    direccion:  document.getElementById('eDireccion').value.trim(),
-    lat:        _coordsSeleccionadas?.lat ?? c.lat ?? null,
-    lng:        _coordsSeleccionadas?.lng ?? c.lng ?? null,
+    dni: document.getElementById('eDNI').value.trim(),
+    nombre: document.getElementById('eNombre').value.trim(),
+    negocio: document.getElementById('eNegocio').value.trim(),
+    telefono: document.getElementById('eTelefono').value.trim(),
+    direccion: document.getElementById('eDireccion').value.trim(),
+    lat: _coordsSeleccionadas?.lat ?? c.lat ?? null,
+    lng: _coordsSeleccionadas?.lng ?? c.lng ?? null,
     cobradorId: isAdmin && cobradorEl ? cobradorEl.value : c.cobradorId,
     foto
   };
@@ -547,27 +531,33 @@ async function actualizarCliente() {
 // ============================================================
 // ELIMINAR CLIENTE
 // ============================================================
-async function eliminarCliente() {
+// ============================================================
+// PARCHES — Reemplaza estas funciones en sus archivos
+// ============================================================
+
+// ── EN clientes.js: reemplaza window.eliminarCliente ─────────
+window.eliminarCliente = async function () {
   if (!confirm('¿Eliminar este cliente? Se borrarán también sus créditos y pagos. Esta acción no se puede deshacer.')) return;
   const c = state.selectedClient;
-
-  await DB.delete('clientes', c.id);
-  DB._cache['clientes'] = (DB._cache['clientes'] || []).filter(x => x.id !== c.id);
-
-  const creditos = DB._cache['creditos'] || [];
-  for (const cr of creditos.filter(x => x.clienteId === c.id)) {
-    await DB.delete('creditos', cr.id);
-  }
-  DB._cache['creditos'] = (DB._cache['creditos'] || []).filter(x => x.clienteId !== c.id);
-
-  const pagos = DB._cache['pagos'] || [];
-  for (const p of pagos.filter(x => x.clienteId === c.id)) {
-    await DB.delete('pagos', p.id);
-  }
-  DB._cache['pagos'] = (DB._cache['pagos'] || []).filter(x => x.clienteId !== c.id);
-
+  await eliminarClienteCascade(c.id);   // 👈 usa cascade
   state.selectedClient = null;
   state.modal = null;
   showToast('Cliente eliminado');
   render();
-}
+};
+
+// ── EN admin.js: reemplaza window.eliminarCobrador ───────────
+window.eliminarCobrador = async function (id) {
+  const users = DB._cache['users'] || [];
+  const u = users.find(x => x.id === id);
+  if (!u || u.role === 'admin') {
+    alert('No se puede eliminar un administrador desde esta opción.');
+    return;
+  }
+  if (!confirm('¿Eliminar este cobrador? Sus clientes quedarán sin cobrador asignado. Esta acción no se puede deshacer.')) return;
+  await eliminarCobradorCascade(id);    // 👈 usa cascade
+  state.selectedCobrador = null;
+  state.modal = null;
+  showToast('Cobrador eliminado');
+  render();
+};

@@ -1,16 +1,14 @@
-// ══════════════════════════════════════════════════════════════
-// UBICACIÓN — GPS del celular + abrir en Google Maps
-// Sin API key, sin tarjeta, 100% gratuito
-// Guarda lat/lng en Firestore, abre Google Maps con esas coords
-// ══════════════════════════════════════════════════════════════
 
-let _coordsSeleccionadas = null; // { lat, lng }
+// ============================================================
+// MAPA_PATCH.JS — GPS y mapa estático (sin API key)
+// ============================================================
 
-// ── HTML del selector de ubicación (en modal crear/editar) ────
+// Variable global para coordenadas seleccionadas en el modal
+window._coordsSeleccionadas = null;
 
-function renderMapaSelector(latExistente, lngExistente) {
+window.renderMapaSelector = function renderMapaSelector(latExistente, lngExistente) {
   const tieneUbicacion = latExistente && lngExistente;
-  _coordsSeleccionadas = tieneUbicacion ? { lat: latExistente, lng: lngExistente } : null;
+  window._coordsSeleccionadas = tieneUbicacion ? { lat: latExistente, lng: lngExistente } : null;
 
   return `
   <div class="form-group">
@@ -18,7 +16,6 @@ function renderMapaSelector(latExistente, lngExistente) {
     <div style="background:var(--bg);border-radius:12px;padding:14px;text-align:center">
 
       ${tieneUbicacion ? `
-      <!-- Ya tiene ubicación guardada -->
       <div style="margin-bottom:12px">
         <div style="font-size:13px;color:var(--success);font-weight:700;margin-bottom:8px">
           ✅ Ubicación guardada
@@ -45,78 +42,66 @@ function renderMapaSelector(latExistente, lngExistente) {
       </div>
     </div>
   </div>`;
-}
+};
 
-function obtenerUbicacionGPS() {
+window.obtenerUbicacionGPS = function obtenerUbicacionGPS() {
   const btn    = document.getElementById('btn-obtener-gps');
   const status = document.getElementById('gps-status');
 
   if (!navigator.geolocation) {
-    status.textContent = '❌ Tu dispositivo no soporta GPS';
-    status.style.color = 'var(--danger)';
+    if (status) { status.textContent = '❌ Tu dispositivo no soporta GPS'; status.style.color = 'var(--danger)'; }
     return;
   }
 
-  btn.textContent = '⏳ Obteniendo GPS...';
-  btn.disabled    = true;
-  status.textContent = 'Buscando señal GPS...';
-  status.style.color = 'var(--muted)';
+  if (btn)    { btn.textContent = '⏳ Obteniendo GPS...'; btn.disabled = true; }
+  if (status) { status.textContent = 'Buscando señal GPS...'; status.style.color = 'var(--muted)'; }
 
   navigator.geolocation.getCurrentPosition(
     pos => {
       const lat = pos.coords.latitude;
       const lng = pos.coords.longitude;
       const acc = Math.round(pos.coords.accuracy);
-      _coordsSeleccionadas = { lat, lng };
+      window._coordsSeleccionadas = { lat, lng };
 
-      btn.textContent = '✅ Ubicación obtenida';
-      btn.style.background = 'var(--success)';
-      btn.disabled = false;
-
-      status.innerHTML = `
-        <span style="color:var(--success);font-weight:700">
-          📍 ${lat.toFixed(6)}, ${lng.toFixed(6)}
-        </span>
-        <br><span style="color:var(--muted)">Precisión: ~${acc}m</span>
-        <br><a href="https://www.google.com/maps?q=${lat},${lng}" target="_blank"
-          style="color:var(--primary);font-weight:600;text-decoration:none">
-          🗺️ Verificar en Google Maps
-        </a>`;
+      if (btn) { btn.textContent = '✅ Ubicación obtenida'; btn.style.background = 'var(--success)'; btn.disabled = false; }
+      if (status) {
+        status.innerHTML = `
+          <span style="color:var(--success);font-weight:700">
+            📍 ${lat.toFixed(6)}, ${lng.toFixed(6)}
+          </span>
+          <br><span style="color:var(--muted)">Precisión: ~${acc}m</span>
+          <br><a href="https://www.google.com/maps?q=${lat},${lng}" target="_blank"
+            style="color:var(--primary);font-weight:600;text-decoration:none">
+            🗺️ Verificar en Google Maps
+          </a>`;
+      }
     },
     err => {
-      btn.textContent = '📍 Obtener mi ubicación GPS';
-      btn.disabled = false;
+      if (btn) { btn.textContent = '📍 Obtener mi ubicación GPS'; btn.disabled = false; }
       const msgs = {
         1: 'Permiso de ubicación denegado. Actívalo en la configuración del navegador.',
         2: 'No se pudo obtener la ubicación. Intenta de nuevo.',
         3: 'Tiempo agotado. Intenta de nuevo.'
       };
-      status.textContent = '❌ ' + (msgs[err.code] || 'Error desconocido');
-      status.style.color = 'var(--danger)';
+      if (status) { status.textContent = '❌ ' + (msgs[err.code] || 'Error desconocido'); status.style.color = 'var(--danger)'; }
     },
     { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
   );
-}
+};
 
-// ── Mapa en ficha del cliente (solo lectura, abre Google Maps) ─
-
-function renderMapaCliente(lat, lng, nombre) {
+window.renderMapaCliente = function renderMapaCliente(lat, lng) {
   if (!lat || !lng) return '';
-  const urlMaps = `https://www.google.com/maps?q=${lat},${lng}`;
-
   return `
   <div style="margin-bottom:12px">
-    <a href="${urlMaps}" target="_blank"
+    <a href="https://www.google.com/maps?q=${lat},${lng}" target="_blank"
       style="display:inline-flex;align-items:center;gap:8px;background:#eff6ff;
       color:var(--primary);padding:10px 16px;border-radius:10px;font-size:14px;
       font-weight:600;text-decoration:none">
       🗺️ Abrir ubicación en Google Maps
     </a>
   </div>`;
-}
+};
 
-// Esta función ya no necesita hacer nada para el mapa estático
-function iniciarMapaCliente(lat, lng, nombre) {
-  // El mapa estático se carga automáticamente con la img
-  // No se necesita inicializar nada
-}
+window.iniciarMapaCliente = function iniciarMapaCliente(lat, lng, nombre) {
+  // Mapa estático: no necesita inicialización
+};

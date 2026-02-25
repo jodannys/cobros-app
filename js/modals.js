@@ -1,14 +1,16 @@
 // ============================================================
-// FUNCIÓN DE COMPRESIÓN DE IMAGEN ✅ NUEVA
+// MODALS.JS — Todos los modales y helpers relacionados
 // ============================================================
-function comprimirImagen(base64, maxWidth = 600, calidad = 0.6) {
+
+// ── COMPRESIÓN DE IMAGEN ──────────────────────────────────────
+window.comprimirImagen = function comprimirImagen(base64, maxWidth = 600, calidad = 0.6) {
   return new Promise((resolve) => {
     const img = new Image();
     img.src = base64;
     img.onload = () => {
       const canvas = document.createElement('canvas');
       const escala = Math.min(1, maxWidth / img.width);
-      canvas.width = img.width * escala;
+      canvas.width  = img.width  * escala;
       canvas.height = img.height * escala;
       canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
       resolve(canvas.toDataURL('image/jpeg', calidad));
@@ -18,29 +20,56 @@ function comprimirImagen(base64, maxWidth = 600, calidad = 0.6) {
       resolve(base64);
     };
   });
-}
+};
 
-// ============================================================
-// RENDER MODAL PRINCIPAL
-// ============================================================
-function renderModal() {
+// ── HELPERS DE MODAL ──────────────────────────────────────────
+window.openModal = function openModal(m) {
+  state.modal = m;
+  render();
+};
+
+window.closeModal = function closeModal(e) {
+  state.modal = null;
+  state.selectedCredito = null;
+  state._editingAdmin = null;
+  render();
+};
+
+window.togglePass = function togglePass(id) {
+  const input = document.getElementById(id);
+  if (input) input.type = input.type === 'password' ? 'text' : 'password';
+};
+
+window.previewFoto = function previewFoto(input, previewId) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = document.getElementById(previewId);
+    if (img) { img.src = e.target.result; img.style.display = 'block'; }
+  };
+  reader.readAsDataURL(file);
+};
+
+// ── RENDER MODAL PRINCIPAL ────────────────────────────────────
+window.renderModal = function renderModal() {
   const m = state.modal;
   let content = '';
-  if (m === 'nuevo-cliente') content = renderModalNuevoCliente();
-  else if (m === 'editar-cliente') content = renderModalEditarCliente();
-  else if (m === 'editar-monto-gasto') content = renderModalEditarMontoGasto();
-  else if (m === 'editar-pago') content = renderModalEditarPago();
-  else if (m === 'nuevo-credito') content = renderModalNuevoCredito();
-  else if (m === 'registrar-pago') content = renderModalRegistrarPago();
-  else if (m === 'nuevo-usuario') content = renderModalNuevoUsuario();
-  else if (m === 'gestionar-credito') content = renderModalGestionarCredito();
-  else if (m === 'banner-alertas') content = renderModalBannerAlertas();
-  else if (m === 'editar-usuario') content = renderModalEditarUsuario();
-  else if (m === 'editar-admin') content = renderModalEditarAdmin();
-  else if (m === 'nuevo-gasto') content = renderModalNuevoGasto();
-  else if (m === 'asignar-caja') content = renderModalAsignarCaja();
-  else if (m === 'editar-credito') content = renderModalEditarCredito();
-  else if (m === 'historial-cliente') content = renderModalHistorialCliente();
+  if      (m === 'nuevo-cliente')      content = renderModalNuevoCliente();
+  else if (m === 'editar-cliente')     content = renderModalEditarCliente();
+  else if (m === 'editar-monto-gasto') content = renderModalEditarMontoGasto  ? renderModalEditarMontoGasto()  : '';
+  else if (m === 'editar-pago')        content = renderModalEditarPago        ? renderModalEditarPago()        : '';
+  else if (m === 'nuevo-credito')      content = renderModalNuevoCredito();
+  else if (m === 'registrar-pago')     content = renderModalRegistrarPago();
+  else if (m === 'nuevo-usuario')      content = renderModalNuevoUsuario();
+  else if (m === 'gestionar-credito')  content = renderModalGestionarCredito();
+  else if (m === 'banner-alertas')     content = renderModalBannerAlertas();
+  else if (m === 'editar-usuario')     content = renderModalEditarUsuario();
+  else if (m === 'editar-admin')       content = renderModalEditarAdmin();
+  else if (m === 'nuevo-gasto')        content = renderModalNuevoGasto();
+  else if (m === 'asignar-caja')       content = renderModalAsignarCaja();
+  else if (m === 'editar-credito')     content = renderModalEditarCredito     ? renderModalEditarCredito()     : '';
+  else if (m === 'historial-cliente')  content = renderModalHistorialCliente();
 
   return `
   <div class="modal-overlay" onclick="closeModal(event)">
@@ -50,12 +79,10 @@ function renderModal() {
       ${content}
     </div>
   </div>`;
-}
+};
 
-// ============================================================
-// MODAL NUEVO CLIENTE
-// ============================================================
-function renderModalNuevoCliente() {
+// ── MODAL NUEVO CLIENTE ───────────────────────────────────────
+window.renderModalNuevoCliente = function renderModalNuevoCliente() {
   const cobradores = (DB._cache['users'] || []).filter(u => u.role === 'cobrador');
   const isAdmin = state.currentUser.role === 'admin';
   return `
@@ -63,7 +90,7 @@ function renderModalNuevoCliente() {
   <div class="modal-title">👤 Nuevo Cliente</div>
   <div class="form-group"><label>DNI *</label><input class="form-control" id="nDNI" placeholder="" maxlength="8"></div>
   <div class="form-group"><label>Nombre completo *</label><input class="form-control" id="nNombre" placeholder="ej. Juan Pérez"></div>
-  <div class="form-group"><label>Nombre del negocio</label><input class="form-control" id="nNegocio" placeholder=" ej. Bodega El Sol, Ferretería..."></div>
+  <div class="form-group"><label>Nombre del negocio</label><input class="form-control" id="nNegocio" placeholder="ej. Bodega El Sol, Ferretería..."></div>
   <div class="form-group"><label>Teléfono</label><input class="form-control" id="nTelefono" placeholder="" type="tel"></div>
   <div class="form-group"><label>Dirección</label><input class="form-control" id="nDireccion" placeholder="ej. Av. Lima 123"></div>
   ${renderMapaSelector(null, null)}
@@ -75,13 +102,10 @@ function renderModalNuevoCliente() {
     <img id="previewNFoto" style="display:none" class="uploaded-img">
   </div>
   <button class="btn btn-primary" onclick="guardarCliente()">Guardar Cliente</button>`;
-  setTimeout(() => iniciarMapaSelector(null, null), 200);
-}
+};
 
-// ============================================================
-// MODAL EDITAR CLIENTE
-// ============================================================
-function renderModalEditarCliente() {
+// ── MODAL EDITAR CLIENTE ──────────────────────────────────────
+window.renderModalEditarCliente = function renderModalEditarCliente() {
   const c = state.selectedClient;
   const cobradores = (DB._cache['users'] || []).filter(u => u.role === 'cobrador');
   const isAdmin = state.currentUser.role === 'admin';
@@ -108,12 +132,10 @@ function renderModalEditarCliente() {
   </div>
   <button class="btn btn-primary" onclick="actualizarCliente()">Actualizar</button>
   ${isAdmin ? `<button class="btn btn-danger" style="margin-top:8px" onclick="eliminarCliente()">🗑️ Eliminar cliente</button>` : ''}`;
-}
+};
 
-// ============================================================
-// MODAL NUEVO CRÉDITO
-// ============================================================
-function renderModalNuevoCredito() {
+// ── MODAL NUEVO CRÉDITO ───────────────────────────────────────
+window.renderModalNuevoCredito = function renderModalNuevoCredito() {
   return `
   <div class="modal-handle"></div>
   <div class="modal-title">💳 Nuevo Crédito</div>
@@ -132,12 +154,10 @@ function renderModalNuevoCredito() {
     <input class="form-control" id="crFecha" type="date" value="${today()}">
   </div>
   <button class="btn btn-primary" onclick="guardarCredito()">Crear Crédito</button>`;
-}
+};
 
-// ============================================================
-// MODAL NUEVO USUARIO
-// ============================================================
-function renderModalNuevoUsuario() {
+// ── MODAL NUEVO USUARIO ───────────────────────────────────────
+window.renderModalNuevoUsuario = function renderModalNuevoUsuario() {
   return `
   <div class="modal-handle"></div>
   <div class="modal-title">👤 Nuevo Usuario</div>
@@ -157,19 +177,17 @@ function renderModalNuevoUsuario() {
     </select>
   </div>
   <button class="btn btn-primary" onclick="guardarUsuario()">Crear Usuario</button>`;
-}
+};
 
-// ============================================================
-// MODAL GESTIONAR CRÉDITO
-// ============================================================
-function renderModalGestionarCredito() {
+// ── MODAL GESTIONAR CRÉDITO ───────────────────────────────────
+window.renderModalGestionarCredito = function renderModalGestionarCredito() {
   const cr = state.selectedCredito;
-  const c = state.selectedClient;
+  const c  = state.selectedClient;
   if (!cr || !c) return '';
-  const pagos = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id);
+  const pagos       = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id);
   const totalPagado = pagos.reduce((s, p) => s + p.monto, 0);
-  const saldo = cr.total - totalPagado;
-  const dias = diasSinPagar(cr.id);
+  const saldo   = cr.total - totalPagado;
+  const dias    = diasSinPagar(cr.id);
   const vencido = estaVencido(cr.fechaInicio, cr.diasTotal);
   return `
   <div class="modal-handle"></div>
@@ -212,12 +230,10 @@ function renderModalGestionarCredito() {
       placeholder="Observaciones...">${cr.nota || ''}</textarea>
     <button class="btn btn-primary btn-sm" style="width:100%;margin-top:8px" onclick="guardarNotaCredito()">Guardar nota</button>
   </div>`;
-}
+};
 
-// ============================================================
-// MODAL BANNER ALERTAS
-// ============================================================
-function renderModalBannerAlertas() {
+// ── MODAL BANNER ALERTAS ──────────────────────────────────────
+window.renderModalBannerAlertas = function renderModalBannerAlertas() {
   const alertas = getAlertasCreditos();
   return `
   <div class="modal-handle"></div>
@@ -243,12 +259,10 @@ function renderModalBannerAlertas() {
     </div>`).join('')}
   <button class="btn btn-primary" style="margin-top:8px" onclick="closeModal(event);navigate('admin')">Ver en Admin</button>
   <button class="btn btn-outline" style="margin-top:8px" onclick="closeModal(event)">Cerrar</button>`;
-}
+};
 
-// ============================================================
-// MODAL EDITAR USUARIO
-// ============================================================
-function renderModalEditarUsuario() {
+// ── MODAL EDITAR USUARIO ──────────────────────────────────────
+window.renderModalEditarUsuario = function renderModalEditarUsuario() {
   const users = DB._cache['users'] || [];
   const u = users.find(x => x.id === state.selectedCobrador);
   if (!u) return '';
@@ -273,17 +287,15 @@ function renderModalEditarUsuario() {
   <button class="btn btn-primary" onclick="actualizarUsuario()">Actualizar</button>
   <div style="margin-top:16px;padding-top:16px;border-top:1px solid #fee2e2">
     ${u.role !== 'admin' ? `
-<button class="btn btn-danger" style="width:100%"
-  onclick="eliminarCobrador('${u.id}')">
-  🗑️ Eliminar cobrador
-</button>` : ''}
+    <button class="btn btn-danger" style="width:100%" onclick="eliminarCobrador('${u.id}')">
+      🗑️ Eliminar cobrador
+    </button>` : ''}
   </div>`;
-}
-// ============================================================
-// MODAL EDITAR / CREAR ADMIN
-// ============================================================
-function renderModalEditarAdmin() {
-  const u = state._editingAdmin;
+};
+
+// ── MODAL EDITAR / CREAR ADMIN ────────────────────────────────
+window.renderModalEditarAdmin = function renderModalEditarAdmin() {
+  const u     = state._editingAdmin;
   const isNew = !u;
   return `
   <div class="modal-handle"></div>
@@ -306,46 +318,32 @@ function renderModalEditarAdmin() {
     </div>
   </div>
   <button class="btn btn-primary" onclick="guardarAdmin(${isNew ? 'null' : `'${u.id}'`})">${isNew ? 'Crear Admin' : 'Actualizar'}</button>
-
   ${!isNew ? `
   <div style="margin-top:16px;padding-top:16px;border-top:1px solid #fee2e2">
-    <button class="btn btn-danger" style="width:100%"
-      onclick="eliminarAdmin('${u.id}')">
+    <button class="btn btn-danger" style="width:100%" onclick="eliminarAdmin('${u.id}')">
       🗑️ Eliminar administrador
     </button>
   </div>` : ''}`;
-}
-async function eliminarAdmin(id) {
-  const users = DB._cache['users'] || [];
+};
+
+window.eliminarAdmin = async function eliminarAdmin(id) {
+  const users  = DB._cache['users'] || [];
   const admins = users.filter(u => u.role === 'admin');
-
-  if (admins.length <= 1) {
-    alert('No puedes eliminar el único administrador del sistema.');
-    return;
-  }
-  if (id === state.currentUser.id) {
-    alert('No puedes eliminarte a ti mismo.');
-    return;
-  }
+  if (admins.length <= 1) { alert('No puedes eliminar el único administrador del sistema.'); return; }
+  if (id === state.currentUser.id) { alert('No puedes eliminarte a ti mismo.'); return; }
   if (!confirm('¿Eliminar este administrador? Esta acción no se puede deshacer.')) return;
-
   await DB.delete('users', id);
   state._editingAdmin = null;
   state.modal = null;
   showToast('Administrador eliminado');
   render();
-}
+};
 
-// ============================================================
-// GUARDAR ADMIN
-// ============================================================
-async function guardarAdmin(idExistente) {
+window.guardarAdmin = async function guardarAdmin(idExistente) {
   const nombre = document.getElementById('adNombre').value.trim();
-  const user = document.getElementById('adUser').value.trim();
-  const pass = document.getElementById('adPass').value.trim();
-
+  const user   = document.getElementById('adUser').value.trim();
+  const pass   = document.getElementById('adPass').value.trim();
   if (!nombre || !user) { alert('Nombre y usuario son obligatorios'); return; }
-
   const users = DB._cache['users'] || [];
 
   if (!idExistente) {
@@ -357,9 +355,7 @@ async function guardarAdmin(idExistente) {
   } else {
     const existing = users.find(u => u.id === idExistente);
     if (!existing) return;
-    if (users.find(u => u.user === user && u.id !== idExistente)) {
-      alert('Ese nombre de usuario ya está en uso'); return;
-    }
+    if (users.find(u => u.user === user && u.id !== idExistente)) { alert('Ese nombre de usuario ya está en uso'); return; }
     const updates = { nombre, user };
     if (pass) updates.pass = pass;
     await DB.update('users', idExistente, updates);
@@ -372,61 +368,24 @@ async function guardarAdmin(idExistente) {
   state._editingAdmin = null;
   state.modal = null;
   render();
-}
+};
 
-// ============================================================
-// HELPERS DE MODAL
-// ============================================================
-function openModal(m) { state.modal = m; render(); }
-
-function closeModal(e) {
-  state.modal = null;
-  state.selectedCredito = null;
-  state._editingAdmin = null;
-  render();
-}
-
-function togglePass(id) {
-  const input = document.getElementById(id);
-  input.type = input.type === 'password' ? 'text' : 'password';
-}
-
-// ============================================================
-// PREVIEW DE FOTO
-// ============================================================
-function previewFoto(input, previewId) {
-  const file = input.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = function (e) {
-    const img = document.getElementById(previewId);
-    img.src = e.target.result;
-    img.style.display = 'block';
-    console.log('📌 Foto cargada en preview (se comprimirá al guardar)');
-  };
-  reader.onerror = function (err) {
-    console.error('❌ Error leyendo la imagen:', err);
-  };
-  reader.readAsDataURL(file);
-}
-
-function renderModalHistorialCliente() {
-  const { c, creditos, pagos, texto, cobrador } = state._historialCliente;
+// ── MODAL HISTORIAL DE CLIENTE ────────────────────────────────
+window.renderModalHistorialCliente = function renderModalHistorialCliente() {
+  const { c, creditos, pagos, cobrador } = state._historialCliente;
   const totalPagado = pagos.reduce((s, p) => s + p.monto, 0);
 
   return `
   <div class="modal-handle"></div>
   <div class="modal-title">📋 ${c.nombre}</div>
-
   <div style="background:#f8fafc;border-radius:10px;padding:12px;margin-bottom:14px;font-size:13px;color:var(--muted)">
     DNI: ${c.dni}${c.negocio ? ` · 🏪 ${c.negocio}` : ''}
     ${cobrador ? ` · ${cobrador.nombre}` : ''}
   </div>
-
   ${creditos.map(cr => {
-    const pagosCr = pagos.filter(p => p.creditoId === cr.id);
+    const pagosCr  = pagos.filter(p => p.creditoId === cr.id);
     const pagadoCr = pagosCr.reduce((s, p) => s + p.monto, 0);
-    const saldoCr = Math.max(0, cr.total - pagadoCr);
+    const saldoCr  = Math.max(0, cr.total - pagadoCr);
     return `
     <div style="border:1px solid #e2e8f0;border-radius:12px;padding:14px;margin-bottom:12px">
       <div class="flex-between" style="margin-bottom:8px">
@@ -462,24 +421,25 @@ function renderModalHistorialCliente() {
         </div>`).join('')}
     </div>`;
   }).join('')}
-
   <div style="background:#f0fff4;border-radius:10px;padding:12px;text-align:center;margin-bottom:14px">
     <div style="font-size:12px;color:#276749">TOTAL PAGADO</div>
     <div style="font-size:22px;font-weight:800;color:#276749">${formatMoney(totalPagado)}</div>
   </div>
-<button onclick="compartirWhatsAppHistorial()"
+  <button onclick="compartirWhatsAppHistorial()"
     style="width:100%;padding:13px;background:#25d366;color:white;border:none;
-    border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:8px">
-    📲 Compartir por WhatsApp
-  </button>
+    border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:8px;
+    display:flex;align-items:center;justify-content:center;gap:8px">
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="white" style="flex-shrink:0"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+  Enviar estado de crédito por WhatsApp
+</button>
   <button onclick="state.modal=null;state._historialCliente=null;render()"
     style="width:100%;padding:12px;background:#f1f5f9;color:var(--text);border:none;
     border-radius:12px;font-size:14px;font-weight:600;cursor:pointer">
     Cerrar
   </button>`;
-}
+};
 
-function compartirWhatsAppHistorial() {
+window.compartirWhatsAppHistorial = function compartirWhatsAppHistorial() {
   if (!state._historialCliente) return;
   enviarEstadoWhatsApp(state._historialCliente.c.id);
-}
+};

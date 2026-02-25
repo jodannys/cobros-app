@@ -1,4 +1,4 @@
-let state = {
+window.state = {
   screen: 'login',
   currentUser: null,
   nav: 'clientes',
