@@ -467,8 +467,7 @@ function renderModalHistorialCliente() {
     <div style="font-size:12px;color:#276749">TOTAL PAGADO</div>
     <div style="font-size:22px;font-weight:800;color:#276749">${formatMoney(totalPagado)}</div>
   </div>
-
-  <button onclick="compartirWhatsApp('${encodeURIComponent(texto)}')"
+<button onclick="compartirWhatsAppHistorial()"
     style="width:100%;padding:13px;background:#25d366;color:white;border:none;
     border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:8px">
     📲 Compartir por WhatsApp
@@ -480,7 +479,9 @@ function renderModalHistorialCliente() {
   </button>`;
 }
 
-function compartirWhatsApp(textoEncoded) {
-  const url = `https://wa.me/?text=${textoEncoded}`;
+function compartirWhatsAppHistorial() {
+  if (!state._historialCliente) return;
+  const texto = state._historialCliente.texto;
+  const url = `https://wa.me/?text=${encodeURIComponent(texto)}`;
   window.open(url, '_blank');
 }
