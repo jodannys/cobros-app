@@ -8,7 +8,7 @@ function comprimirImagen(base64, maxWidth = 600, calidad = 0.6) {
     img.onload = () => {
       const canvas = document.createElement('canvas');
       const escala = Math.min(1, maxWidth / img.width);
-      canvas.width  = img.width  * escala;
+      canvas.width = img.width * escala;
       canvas.height = img.height * escala;
       canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
       resolve(canvas.toDataURL('image/jpeg', calidad));
@@ -26,20 +26,22 @@ function comprimirImagen(base64, maxWidth = 600, calidad = 0.6) {
 function renderModal() {
   const m = state.modal;
   let content = '';
-  if (m === 'nuevo-cliente')       content = renderModalNuevoCliente();
+  if (m === 'nuevo-cliente') content = renderModalNuevoCliente();
   else if (m === 'editar-cliente') content = renderModalEditarCliente();
   else if (m === 'editar-monto-gasto') content = renderModalEditarMontoGasto();
   else if (m === 'editar-pago') content = renderModalEditarPago();
-  else if (m === 'nuevo-credito')  content = renderModalNuevoCredito();
+  else if (m === 'nuevo-credito') content = renderModalNuevoCredito();
   else if (m === 'registrar-pago') content = renderModalRegistrarPago();
-  else if (m === 'nuevo-usuario')  content = renderModalNuevoUsuario();
+  else if (m === 'nuevo-usuario') content = renderModalNuevoUsuario();
   else if (m === 'gestionar-credito') content = renderModalGestionarCredito();
   else if (m === 'banner-alertas') content = renderModalBannerAlertas();
   else if (m === 'editar-usuario') content = renderModalEditarUsuario();
-  else if (m === 'editar-admin')   content = renderModalEditarAdmin();
-  else if (m === 'nuevo-gasto')    content = renderModalNuevoGasto();
-  else if (m === 'asignar-caja')   content = renderModalAsignarCaja();
-  else if (m === 'editar-credito')  content = renderModalEditarCredito();
+  else if (m === 'editar-admin') content = renderModalEditarAdmin();
+  else if (m === 'nuevo-gasto') content = renderModalNuevoGasto();
+  else if (m === 'asignar-caja') content = renderModalAsignarCaja();
+  else if (m === 'editar-credito') content = renderModalEditarCredito();
+  else if (m === 'historial-cliente') content = renderModalHistorialCliente();
+
   return `
   <div class="modal-overlay" onclick="closeModal(event)">
     <div class="modal" onclick="event.stopPropagation()">
@@ -162,12 +164,12 @@ function renderModalNuevoUsuario() {
 // ============================================================
 function renderModalGestionarCredito() {
   const cr = state.selectedCredito;
-  const c  = state.selectedClient;
+  const c = state.selectedClient;
   if (!cr || !c) return '';
-  const pagos       = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id);
+  const pagos = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id);
   const totalPagado = pagos.reduce((s, p) => s + p.monto, 0);
-  const saldo   = cr.total - totalPagado;
-  const dias    = diasSinPagar(cr.id);
+  const saldo = cr.total - totalPagado;
+  const dias = diasSinPagar(cr.id);
   const vencido = estaVencido(cr.fechaInicio, cr.diasTotal);
   return `
   <div class="modal-handle"></div>
@@ -339,8 +341,8 @@ async function eliminarAdmin(id) {
 // ============================================================
 async function guardarAdmin(idExistente) {
   const nombre = document.getElementById('adNombre').value.trim();
-  const user   = document.getElementById('adUser').value.trim();
-  const pass   = document.getElementById('adPass').value.trim();
+  const user = document.getElementById('adUser').value.trim();
+  const pass = document.getElementById('adPass').value.trim();
 
   if (!nombre || !user) { alert('Nombre y usuario son obligatorios'); return; }
 
@@ -396,14 +398,89 @@ function previewFoto(input, previewId) {
   const file = input.files[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = function(e) {
+  reader.onload = function (e) {
     const img = document.getElementById(previewId);
     img.src = e.target.result;
     img.style.display = 'block';
     console.log('📌 Foto cargada en preview (se comprimirá al guardar)');
   };
-  reader.onerror = function(err) {
+  reader.onerror = function (err) {
     console.error('❌ Error leyendo la imagen:', err);
   };
   reader.readAsDataURL(file);
+}
+
+function renderModalHistorialCliente() {
+  const { c, creditos, pagos, texto, cobrador } = state._historialCliente;
+  const totalPagado = pagos.reduce((s, p) => s + p.monto, 0);
+
+  return `
+  <div class="modal-handle"></div>
+  <div class="modal-title">📋 ${c.nombre}</div>
+
+  <div style="background:#f8fafc;border-radius:10px;padding:12px;margin-bottom:14px;font-size:13px;color:var(--muted)">
+    DNI: ${c.dni}${c.negocio ? ` · 🏪 ${c.negocio}` : ''}
+    ${cobrador ? ` · ${cobrador.nombre}` : ''}
+  </div>
+
+  ${creditos.map(cr => {
+    const pagosCr = pagos.filter(p => p.creditoId === cr.id);
+    const pagadoCr = pagosCr.reduce((s, p) => s + p.monto, 0);
+    const saldoCr = Math.max(0, cr.total - pagadoCr);
+    return `
+    <div style="border:1px solid #e2e8f0;border-radius:12px;padding:14px;margin-bottom:12px">
+      <div class="flex-between" style="margin-bottom:8px">
+        <div style="font-weight:700">💳 Crédito ${formatDate(cr.fechaInicio)}</div>
+        <span style="background:${cr.activo ? '#eff6ff' : '#f0fff4'};color:${cr.activo ? 'var(--primary)' : '#276749'};
+          padding:3px 8px;border-radius:20px;font-size:11px;font-weight:700">
+          ${cr.activo ? 'Activo' : '✓ Cerrado'}
+        </span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+        <div style="background:#f8fafc;border-radius:8px;padding:8px;font-size:12px">
+          <div style="color:var(--muted)">Prestado</div>
+          <div style="font-weight:800">${formatMoney(cr.monto)}</div>
+        </div>
+        <div style="background:#f8fafc;border-radius:8px;padding:8px;font-size:12px">
+          <div style="color:var(--muted)">Total</div>
+          <div style="font-weight:800">${formatMoney(cr.total)}</div>
+        </div>
+        <div style="background:#f0fff4;border-radius:8px;padding:8px;font-size:12px">
+          <div style="color:#276749">Pagado</div>
+          <div style="font-weight:800;color:#276749">${formatMoney(pagadoCr)}</div>
+        </div>
+        <div style="background:${saldoCr > 0 ? '#fff5f5' : '#f0fff4'};border-radius:8px;padding:8px;font-size:12px">
+          <div style="color:${saldoCr > 0 ? 'var(--danger)' : '#276749'}">Saldo</div>
+          <div style="font-weight:800;color:${saldoCr > 0 ? 'var(--danger)' : '#276749'}">${saldoCr > 0 ? formatMoney(saldoCr) : '✓ Saldado'}</div>
+        </div>
+      </div>
+      <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px">PAGOS:</div>
+      ${pagosCr.slice().reverse().map(p => `
+        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f1f5f9;font-size:13px">
+          <span style="color:var(--muted)">${formatDate(p.fecha)} · ${p.tipo}</span>
+          <span style="font-weight:700;color:var(--success)">${formatMoney(p.monto)}</span>
+        </div>`).join('')}
+    </div>`;
+  }).join('')}
+
+  <div style="background:#f0fff4;border-radius:10px;padding:12px;text-align:center;margin-bottom:14px">
+    <div style="font-size:12px;color:#276749">TOTAL PAGADO</div>
+    <div style="font-size:22px;font-weight:800;color:#276749">${formatMoney(totalPagado)}</div>
+  </div>
+
+  <button onclick="compartirWhatsApp('${encodeURIComponent(texto)}')"
+    style="width:100%;padding:13px;background:#25d366;color:white;border:none;
+    border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:8px">
+    📲 Compartir por WhatsApp
+  </button>
+  <button onclick="state.modal=null;state._historialCliente=null;render()"
+    style="width:100%;padding:12px;background:#f1f5f9;color:var(--text);border:none;
+    border-radius:12px;font-size:14px;font-weight:600;cursor:pointer">
+    Cerrar
+  </button>`;
+}
+
+function compartirWhatsApp(textoEncoded) {
+  const url = `https://wa.me/?text=${textoEncoded}`;
+  window.open(url, '_blank');
 }

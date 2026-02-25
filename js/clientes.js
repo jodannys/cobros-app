@@ -277,6 +277,9 @@ function _renderListaClientes() {
 // ============================================================
 // DETALLE DE CLIENTE
 // ============================================================
+// ============================================================
+// DETALLE DE CLIENTE — con botón WhatsApp
+// ============================================================
 function renderClientDetail() {
   const c = state.selectedClient;
   const todosLosCreditos = (DB._cache['creditos'] || []).filter(cr => cr.clienteId === c.id);
@@ -324,6 +327,16 @@ function renderClientDetail() {
         ${c.foto ? `<img src="${c.foto}" class="uploaded-img">` : ''}
       </div>
 
+      <!-- BOTÓN WHATSAPP -->
+
+${todosLosCreditos.length > 0 ? `
+<button onclick="enviarEstadoWhatsApp('${c.id}')"
+  style="width:100%;padding:13px;background:#25d366;color:white;border:none;
+  border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;
+  margin-bottom:14px;display:flex;align-items:center;justify-content:center;gap:8px">
+  📲 Enviar estado de crédito por WhatsApp
+</button>` : ''}
+
       <div class="flex-between mb-2">
         <div class="card-title" style="margin:0">💳 Créditos</div>
         ${!creditoActivo
@@ -339,12 +352,82 @@ function renderClientDetail() {
     </div>
 
     <nav class="bottom-nav">
-<div class="nav-item" onclick="backFromClient()"
-  style="width:100%;text-align:center;font-size:14px;font-weight:600">← Volver</div>
+      <div class="nav-item" onclick="backFromClient()"
+        style="width:100%;text-align:center;font-size:14px;font-weight:600">← Volver</div>
     </nav>
   </div>`;
 }
 
+// ============================================================
+// ENVIAR ESTADO POR WHATSAPP DESDE PERFIL DE CLIENTE
+// ============================================================
+function enviarEstadoWhatsApp(clienteId) {
+  const c = (DB._cache['clientes'] || []).find(x => x.id === clienteId);
+  if (!c) return;
+
+  const creditos = (DB._cache['creditos'] || []).filter(cr => cr.clienteId === clienteId);
+  const pagos    = (DB._cache['pagos']    || []).filter(p  => p.clienteId  === clienteId);
+
+  // Pedir/confirmar número de teléfono
+  const numeroRegistrado = c.telefono ? c.telefono.replace(/\D/g, '') : '';
+  const numeroInput = prompt(
+    `📲 Número de WhatsApp al que se enviará el estado:\n(Puedes editarlo si es necesario)`,
+    numeroRegistrado
+  );
+
+  // Si el usuario cancela el prompt
+  if (numeroInput === null) return;
+
+  const numero = numeroInput.replace(/\D/g, '').trim();
+  if (!numero) {
+    alert('Ingresa un número de teléfono válido para continuar.');
+    return;
+  }
+
+  // Construir mensaje
+  let texto = `📋 *ESTADO DE CRÉDITO*\n`;
+  texto += `👤 *${c.nombre}*\n`;
+  texto += `DNI: ${c.dni}\n`;
+  if (c.negocio) texto += `🏪 ${c.negocio}\n`;
+  texto += `\n`;
+
+  if (creditos.length === 0) {
+    texto += `Sin créditos registrados.\n`;
+  } else {
+    creditos
+      .sort((a, b) => (b.activo ? 1 : 0) - (a.activo ? 1 : 0))
+      .forEach(cr => {
+        const pagosCr  = pagos.filter(p => p.creditoId === cr.id);
+        const pagadoCr = pagosCr.reduce((s, p) => s + p.monto, 0);
+        const saldoCr  = Math.max(0, cr.total - pagadoCr);
+
+        texto += `💳 *Crédito ${formatDate(cr.fechaInicio)}*\n`;
+        texto += `Estado: ${cr.activo ? '🟢 Activo' : '✅ Cerrado'}\n`;
+        texto += `Prestado: S/${cr.monto} | Total: S/${cr.total}\n`;
+        texto += `Pagado: S/${pagadoCr.toFixed(2)}\n`;
+        texto += saldoCr > 0
+          ? `Saldo pendiente: *S/${saldoCr.toFixed(2)}*\n`
+          : `✅ Crédito saldado\n`;
+
+        if (pagosCr.length > 0) {
+          texto += `\n📝 Últimos pagos:\n`;
+          pagosCr.slice(-3).reverse().forEach(p => {
+            texto += `  ${formatDate(p.fecha)} · ${p.tipo} · S/${p.monto}\n`;
+          });
+        }
+        texto += `\n`;
+      });
+  }
+
+  const totalPagado = pagos.reduce((s, p) => s + p.monto, 0);
+  texto += `💰 *TOTAL PAGADO: S/${totalPagado.toFixed(2)}*\n`;
+  texto += `\n_Enviado desde CobrosApp_`;
+
+  // Número con código de país Perú (+51) si no lo tiene
+  const numeroFinal = numero.startsWith('51') ? numero : `51${numero}`;
+  const url = `https://wa.me/${numeroFinal}?text=${encodeURIComponent(texto)}`;
+  window.open(url, '_blank');
+}
 function selectClient(id) {
   state.selectedClient = (DB._cache['clientes'] || []).find(x => x.id === id);
   render();
