@@ -425,8 +425,11 @@ function enviarEstadoWhatsApp(clienteId) {
 
   // Número con código de país Perú (+51) si no lo tiene
   const numeroFinal = numero.startsWith('51') ? numero : `51${numero}`;
-  const url = `https://wa.me/${numeroFinal}?text=${encodeURIComponent(texto)}`;
-  window.open(url, '_blank');
+  // DESPUÉS
+const url = /Android|iPhone|iPad/i.test(navigator.userAgent)
+  ? `whatsapp://send?phone=${numeroFinal}&text=${encodeURIComponent(texto)}`
+  : `https://wa.me/${numeroFinal}?text=${encodeURIComponent(texto)}`;
+window.open(url, '_blank');
 }
 function selectClient(id) {
   state.selectedClient = (DB._cache['clientes'] || []).find(x => x.id === id);
