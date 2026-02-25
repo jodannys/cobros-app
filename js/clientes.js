@@ -109,18 +109,31 @@ function _renderClienteItem(c, creditos, users, pagos, isAdmin) {
     badgeStyle = 'background:#fffbeb;color:#b7791f;border:1px solid #fde68a';
   }
 
-  return `
-  <div class="client-item" onclick="selectClient('${c.id}')">
-    <div class="client-avatar">${c.nombre.charAt(0)}</div>
-    <div class="client-info" style="flex:1">
-      <div class="client-name">${c.nombre}</div>
-      <div class="client-dni" style="font-size:12px;color:var(--muted)">
-        DNI: ${c.dni}${c.negocio ? ` · 🏪 ${c.negocio}` : ''}${isAdmin && cob ? ` · ${cob.nombre}` : ''}
-      </div>
+return `
+<div class="client-item" onclick="selectClient('${c.id}')">
+  <div class="client-avatar">${c.nombre.charAt(0)}</div>
+  <div class="client-info" style="flex:1;min-width:0">
+    <div class="client-name">${c.nombre}</div>
+    <div class="client-dni" style="font-size:12px;color:var(--muted)">
+      DNI: ${c.dni}${c.negocio ? ` · 🏪 ${c.negocio}` : ''}${isAdmin && cob ? ` · ${cob.nombre}` : ''}
     </div>
-    <span style="font-size:11px;font-weight:700;padding:4px 8px;border-radius:20px;white-space:nowrap;${badgeStyle}">${badge}</span>
-  </div>`;
-}
+  </div>
+
+  <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+    ${creditoActivo ? `
+    <button onclick="event.stopPropagation();pagoRapido('${creditoActivo.id}')"
+      style="width:38px;height:38px;border-radius:10px;border:none;
+      background:#f0fff4;color:#276749;font-size:18px;cursor:pointer">💰</button>`
+    : !crs.some(cr => cr.activo) ? `
+    <button onclick="event.stopPropagation();nuevoCreditoRapido('${c.id}')"
+      style="width:38px;height:38px;border-radius:10px;border:none;
+      background:#eff6ff;color:var(--primary);font-size:20px;cursor:pointer;font-weight:700">+</button>` : ''}
+
+    <span style="font-size:11px;font-weight:700;padding:4px 8px;border-radius:20px;
+      white-space:nowrap;min-width:70px;text-align:center;${badgeStyle}">${badge}</span>
+  </div>
+</div>`;
+  }
 
 // ============================================================
 // HELPERS DE ESTADO DE CUOTAS

@@ -27,16 +27,17 @@ async function guardarPago() {
   // Ejemplo: saldo S/120 + mora S/25 = S/145 total
   // Si paga S/145 → saldo recibe 120, mora recibe 25
   // Si paga S/72.50 → saldo recibe 60, mora recibe 12.50
-  let aplicadoSaldo, aplicadoMora;
-  if (mora > 0 && totalDeuda > 0) {
-    const propSaldo = saldoRestante / totalDeuda;
-    const propMora  = mora / totalDeuda;
-    aplicadoSaldo   = Math.min(parseFloat((monto * propSaldo).toFixed(2)), saldoRestante);
-    aplicadoMora    = Math.min(parseFloat((monto * propMora).toFixed(2)), mora);
-  } else {
-    aplicadoSaldo   = Math.min(monto, saldoRestante);
-    aplicadoMora    = 0;
-  }
+ let aplicadoSaldo, aplicadoMora;
+if (mora > 0 && totalDeuda > 0) {
+  const propSaldo = saldoRestante / totalDeuda;
+  const propMora  = mora / totalDeuda;
+  aplicadoMora    = Math.min(parseFloat((monto * propMora).toFixed(2)), mora);
+  // Saldo = todo lo que no fue a mora, para evitar pérdida por redondeo
+  aplicadoSaldo   = Math.min(parseFloat((monto - aplicadoMora).toFixed(2)), saldoRestante);
+} else {
+  aplicadoSaldo   = Math.min(monto, saldoRestante);
+  aplicadoMora    = 0;
+}
 
   const id = genId();
 
@@ -74,21 +75,23 @@ async function guardarPago() {
   const moraTotal          = calcularMora(cr);
   const moraFinal          = Math.max(0, moraTotal - totalAplicadoMora);
 
-  if (saldoFinal <= 0 && moraFinal <= 0) {
+if (saldoFinal <= 0 && moraFinal <= 0) {
     await DB.update('creditos', cr.id, { activo: false });
     const idx = (DB._cache['creditos'] || []).findIndex(x => x.id === cr.id);
     if (idx !== -1) DB._cache['creditos'][idx].activo = false;
-    showToast('✅ Crédito completado y cerrado automáticamente');
+    mostrarPagoExitoso('🎉 ¡Crédito completado!', 'El crédito fue cerrado automáticamente', true);
   } else if (saldoFinal <= 0 && moraFinal > 0) {
-    showToast(`Saldo cubierto. Mora pendiente: ${formatMoney(moraFinal)}`);
+    mostrarPagoExitoso('✅ Saldo cubierto', `Mora pendiente: ${formatMoney(moraFinal)}`, false);
   } else {
-    showToast('Pago registrado correctamente');
+    mostrarPagoExitoso('💰 Cuota registrada', `Saldo restante: ${formatMoney(saldoFinal)}`, false);
   }
 
   state.modal           = null;
   state.selectedCredito = null;
   render();
 }
+
+  
 
 function renderModalRegistrarPago() {
   const cr = state.selectedCredito;
@@ -157,4 +160,11 @@ function renderModalRegistrarPago() {
     <input class="form-control" id="pNota" placeholder="Observaciones...">
   </div>
   <button class="btn btn-success" onclick="guardarPago()">✓ Confirmar Pago</button>`;
+}
+function pagoRapido(crId) {
+  const cr = (DB._cache['creditos'] || []).find(x => x.id === crId);
+  if (!cr) return;
+  state.selectedCredito = cr;
+  state.modal = 'registrar-pago';
+  render();
 }

@@ -112,7 +112,12 @@ function renderCreditoCard(cr) {
     </div>` : `
     <div style="background:#f0fff4;border-radius:8px;padding:10px 14px;font-size:13px;color:#276749;font-weight:600;text-align:center;margin-top:14px">
       ✅ Crédito cerrado
-    </div>`}
+    </div>
+    ${isAdmin ? `
+    <button class="btn btn-sm btn-outline" style="width:100%;margin-top:8px"
+      onclick="reabrirCredito('${cr.id}')">
+      🔓 Reabrir crédito
+    </button>` : ''}`}
 
     ${renderEsquemaCuotas(cr)}
 
@@ -312,4 +317,19 @@ async function eliminarPago(pagoId) {
   } catch (e) {
     alert('Error al eliminar: ' + e.message);
   }
+}
+async function reabrirCredito(crId) {
+  if (!confirm('¿Reabrir este crédito? Volverá a estar activo y aparecerá en los cobros.')) return;
+  await DB.update('creditos', crId, { activo: true });
+  const idx = (DB._cache['creditos'] || []).findIndex(c => c.id === crId);
+  if (idx !== -1) DB._cache['creditos'][idx].activo = true;
+  showToast('✅ Crédito reabierto');
+  render();
+}
+function nuevoCreditoRapido(clienteId) {
+  const cliente = (DB._cache['clientes'] || []).find(c => c.id === clienteId);
+  if (!cliente) return;
+  state.selectedClient = cliente;
+  state.modal = 'nuevo-credito';
+  render();
 }

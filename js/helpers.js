@@ -85,3 +85,50 @@ function calcularMora(cr) {
   const diasMora = Math.floor((new Date() - fin) / (1000 * 60 * 60 * 24));
   return diasMora > 0 ? diasMora * 5 : 0;
 }
+
+function mostrarPagoExitoso(titulo, subtitulo, esCierre) {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = `
+    position:fixed;inset:0;background:rgba(0,0,0,0.6);
+    z-index:99999;display:flex;align-items:center;
+    justify-content:center;animation:fadeIn 0.2s ease`;
+
+  overlay.innerHTML = `
+    <div style="background:white;border-radius:24px;padding:32px 28px;
+      text-align:center;max-width:300px;width:90%;
+      animation:popIn 0.35s cubic-bezier(0.34,1.56,0.64,1);
+      box-shadow:0 20px 60px rgba(0,0,0,0.3)">
+      <div style="font-size:64px;margin-bottom:16px;animation:bounce 0.6s ease 0.2s both">
+        ${esCierre ? '🎉' : '✅'}
+      </div>
+      <div style="font-size:20px;font-weight:800;color:#1e293b;margin-bottom:8px">${titulo}</div>
+      <div style="font-size:14px;color:#64748b;margin-bottom:24px;line-height:1.5">${subtitulo}</div>
+      <button onclick="this.closest('[data-overlay]').remove()"
+        style="background:#1a56db;color:white;border:none;border-radius:12px;
+        padding:13px 32px;font-size:15px;font-weight:700;cursor:pointer;width:100%">
+        Aceptar
+      </button>
+      <div style="height:4px;background:#e2e8f0;border-radius:4px;margin-top:16px;overflow:hidden">
+        <div style="height:100%;background:#1a56db;border-radius:4px;
+          animation:progreso 3s linear forwards"></div>
+      </div>
+    </div>`;
+
+  overlay.setAttribute('data-overlay', 'pago');
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+
+  if (!document.getElementById('animaciones-pago')) {
+    const style = document.createElement('style');
+    style.id = 'animaciones-pago';
+    style.textContent = `
+      @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+      @keyframes popIn { from{transform:scale(0.5);opacity:0} to{transform:scale(1);opacity:1} }
+      @keyframes bounce { 0%,100%{transform:scale(1)} 50%{transform:scale(1.4)} }
+      @keyframes progreso { from{width:100%} to{width:0%} }
+    `;
+    document.head.appendChild(style);
+  }
+
+  document.body.appendChild(overlay);
+  setTimeout(() => overlay?.remove(), 3000);
+}

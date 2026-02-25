@@ -47,7 +47,26 @@ const DB = {
     await this.getAll('creditos');
     await this.getAll('pagos');
     await this.getAll('notas_cuadre');
-    await this.getAll('gastos');   
-  await this.getAll('cajas');   
+    await this.getAll('gastos');
+    await this.getAll('cajas');
+    await this._corregirCreditosSaldados();
+  },
+
+  async _corregirCreditosSaldados() {
+  const creditos = this._cache['creditos'] || [];
+  const pagos = this._cache['pagos'] || [];
+
+  for (const cr of creditos.filter(c => c.activo)) {
+    const pagosCr = pagos.filter(p => p.creditoId === cr.id);
+    
+    // Usar monto total pagado igual que la pantalla
+    const totalPagado = pagosCr.reduce((s, p) => s + Number(p.monto), 0);
+
+    if (totalPagado >= cr.total) {
+      console.log('🔧 Cerrando crédito saldado:', cr.id);
+      await fbUpdate('creditos', cr.id, { activo: false });
+      cr.activo = false;
+    }
   }
-};
+}
+}
