@@ -371,7 +371,7 @@ window.addEventListener('beforeunload', (e) => {
     render();
   } catch (e) {
     console.error('Error iniciando app:', e);
-    document.getElementById('root').innerHTML = `
+    document.getElementById('root').textContent = `
       <div style="display:flex;align-items:center;justify-content:center;height:100vh;
         flex-direction:column;gap:12px;padding:20px;text-align:center">
         <div style="font-size:40px">⚠️</div>

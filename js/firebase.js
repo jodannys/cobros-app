@@ -1,11 +1,11 @@
 // Firebase config
 const firebaseConfig = {
-  apiKey: "AIzaSyBof64MM8I5FCgruPyZFo64-1bUh-RCpKk",
-  authDomain: "cobros-app-75af2.firebaseapp.com",
-  projectId: "cobros-app-75af2",
-  storageBucket: "cobros-app-75af2.firebasestorage.app",
-  messagingSenderId: "403940319506",
-  appId: "1:403940319506:web:21f1d79498a54fc29993cb"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
 firebase.initializeApp(firebaseConfig);
