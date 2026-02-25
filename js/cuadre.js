@@ -47,7 +47,7 @@ function calcularMetaReal(cobradorId, fecha) {
   const creditosActivos = creditos.filter(cr =>
     misClientesIds.includes(cr.clienteId) &&
     cr.activo === true &&
-    cr.fechaInicio <= fecha
+    cr.fechaInicio < fecha
   );
 
   let metaTotal = 0;
