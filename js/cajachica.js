@@ -12,10 +12,7 @@ window.getCajaChicaDelDia = function (cobradorId, fecha) {
 
   // IMPLEMENTACIÓN DE LA OPCIÓN A:
   // Si el arrastre es negativo (error acumulado), lo reseteamos a 0
-  if (arrastreAnterior < 0) {
-    console.warn(`Aviso: Se detectó arrastre negativo (${arrastreAnterior}) para el cobrador ${cobradorId}. Reseteando a 0.`);
-    arrastreAnterior = 0;
-  }
+ 
 
   // 2. ENVÍOS (Sumamos tanto de movimientos_cartera como de la tabla cajas para no perder nada)
   const enviadoHoyMov = movimientos
