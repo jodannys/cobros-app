@@ -32,46 +32,57 @@ window.getSaldoMochilaHasta = function (cobradorId, fechaExclusiva) {
 };
 
 function _calcularMochila(cobradorId, fechaLimite) {
-  const movs     = DB._cache['movimientos_cartera'] || [];
-  const pagos    = DB._cache['pagos']    || [];
-  const creditos = DB._cache['creditos'] || [];
-  const gastos   = DB._cache['gastos']   || [];
+  const movs      = DB._cache['movimientos_cartera'] || [];
+  const pagos     = DB._cache['pagos']    || [];
+  const creditos  = DB._cache['creditos'] || [];
+  const gastos    = DB._cache['gastos']   || [];
   const clientesIds = _clientesDelCobrador(cobradorId);
 
-  // Si hay fechaLimite, solo contamos lo que ocurrió ANTES de ese día
+  // Filtro de fecha
   const antes = fechaLimite ? (f) => f < fechaLimite : () => true;
 
-  // (+) Dinero enviado por admin
+  // (+) DINERO ENVIADO POR ADMIN: Capital inicial o inyecciones
   const enviado = movs
     .filter(m => m.tipo === 'envio_cobrador' && m.cobradorId === cobradorId && antes(m.fecha))
-    .reduce((s, m) => s + Number(m.monto), 0);
+    .reduce((s, m) => s + Number(m.monto || 0), 0);
 
-  // (+) Todos los cobros históricos de cuotas
+  // (+) COBROS: Cuotas cobradas a clientes
   const cobros = pagos
     .filter(p => p.cobradorId === cobradorId && antes(p.fecha))
-    .reduce((s, p) => s + Number(p.monto), 0);
+    .reduce((s, p) => s + Number(p.monto || 0), 0);
 
-  // (+) Todos los seguros históricos
+  // (+) SEGUROS: Montos de seguros de los créditos creados
   const seguros = creditos
     .filter(cr => clientesIds.includes(cr.clienteId) && cr.seguro && antes(cr.fechaInicio))
     .reduce((s, cr) => s + Number(cr.montoSeguro || 0), 0);
 
-  // (-) Todos los préstamos entregados a clientes
+  // (-) PRÉSTAMOS: Capital entregado a los clientes
   const prestamos = creditos
     .filter(cr => clientesIds.includes(cr.clienteId) && antes(cr.fechaInicio))
-    .reduce((s, cr) => s + Number(cr.monto), 0);
+    .reduce((s, cr) => s + Number(cr.monto || 0), 0);
 
-  // (-) Todos los gastos del cobrador
+  // (-) GASTOS: Gastos registrados por el cobrador
   const totalGastos = gastos
     .filter(g => g.cobradorId === cobradorId && antes(g.fecha))
-    .reduce((s, g) => s + Number(g.monto), 0);
+    .reduce((s, g) => s + Number(g.monto || 0), 0);
 
-  // (-) Todo lo devuelto al admin y confirmado
+  // (-) DEVUELTO AL ADMIN (BAJA SOLO CON OK):
+  // Solo resta si el movimiento está CONFIRMADO.
   const devuelto = movs
-    .filter(m => m.tipo === 'confirmar_yape' && m.cobradorId === cobradorId && antes(m.fecha))
-    .reduce((s, m) => s + Number(m.monto), 0);
+    .filter(m => {
+      const esMio = m.cobradorId === cobradorId;
+      const esAntes = antes(m.fecha);
+      // Solo baja si tú presionaste OK (confirmado es true)
+      const estaConfirmado = m.confirmado === true || m.tipo === 'confirmar_yape';
+      
+      return esMio && esAntes && estaConfirmado;
+    })
+    .reduce((s, m) => s + Number(m.monto || 0), 0);
 
-  return enviado + cobros + seguros - prestamos - totalGastos - devuelto;
+  // Operación final
+  const resultado = enviado + cobros + seguros - prestamos - totalGastos - devuelto;
+  
+  return resultado;
 }
 
 // ── CARTERA: Saldo del admin ──────────────────────────────────
