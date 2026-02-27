@@ -3,29 +3,29 @@
 // ══════════════════════════════════════════════════════════════
 
 window.getCuadreDelDia = function (cobradorId, fecha) {
-  const pagos    = DB._cache['pagos']    || [];
+  const pagos = DB._cache['pagos'] || [];
   const creditos = DB._cache['creditos'] || [];
   const clientes = DB._cache['clientes'] || [];
 
   // Filtramos pagos únicos por ID para evitar errores de duplicidad en la suma visual
   const pagosDia = pagos.filter(p => p.cobradorId === cobradorId && p.fecha === fecha);
 
-  let yape          = pagosDia.filter(p => p.tipo === 'yape').reduce((s, p) => s + Number(p.monto), 0);
-  let efectivo      = pagosDia.filter(p => p.tipo === 'efectivo').reduce((s, p) => s + Number(p.monto), 0);
+  let yape = pagosDia.filter(p => p.tipo === 'yape').reduce((s, p) => s + Number(p.monto), 0);
+  let efectivo = pagosDia.filter(p => p.tipo === 'efectivo').reduce((s, p) => s + Number(p.monto), 0);
   let transferencia = pagosDia.filter(p => p.tipo === 'transferencia').reduce((s, p) => s + Number(p.monto), 0);
 
   const misClientesIds = clientes.filter(c => c.cobradorId === cobradorId).map(c => c.id);
-  const prestamosHoy   = creditos.filter(cr => cr.fechaInicio === fecha && misClientesIds.includes(cr.clienteId));
+  const prestamosHoy = creditos.filter(cr => cr.fechaInicio === fecha && misClientesIds.includes(cr.clienteId));
 
   prestamosHoy.forEach(cr => {
     const montoSeguro = Number(cr.montoSeguro || 0);
-    const metodo      = (cr.metodoPago || 'Efectivo').toLowerCase();
-    if      (metodo.includes('yape'))          yape          += montoSeguro;
+    const metodo = (cr.metodoPago || 'Efectivo').toLowerCase();
+    if (metodo.includes('yape')) yape += montoSeguro;
     else if (metodo.includes('transferencia')) transferencia += montoSeguro;
-    else                                       efectivo      += montoSeguro;
+    else efectivo += montoSeguro;
   });
 
-  const notas   = DB._cache['notas_cuadre'] || [];
+  const notas = DB._cache['notas_cuadre'] || [];
   const notaObj = notas.find(n => n.cobradorId === cobradorId && n.fecha === fecha);
 
   return {
@@ -39,27 +39,27 @@ window.getCuadreDelDia = function (cobradorId, fecha) {
 window.calcularMetaReal = function (cobradorId, fecha) {
   const creditos = DB._cache['creditos'] || [];
   const clientes = DB._cache['clientes'] || [];
-  const pagos    = DB._cache['pagos']    || [];
+  const pagos = DB._cache['pagos'] || [];
 
-  const misClientesIds  = clientes.filter(c => c.cobradorId === cobradorId).map(c => c.id);
-  
+  const misClientesIds = clientes.filter(c => c.cobradorId === cobradorId).map(c => c.id);
+
   // 🔥 CAMBIO CLAVE: Cambiamos cr.fechaInicio <= fecha por cr.fechaInicio < fecha
   // Esto excluye los préstamos nuevos de la meta de hoy.
   const creditosActivos = creditos.filter(cr =>
-    misClientesIds.includes(cr.clienteId) && 
-    cr.activo === true && 
-    cr.fechaInicio < fecha 
+    misClientesIds.includes(cr.clienteId) &&
+    cr.activo === true &&
+    cr.fechaInicio < fecha
   );
 
   let metaTotal = 0, pagadoHoy = 0, pendiente = 0;
   const detalle = [];
 
   creditosActivos.forEach(cr => {
-    const cliente         = clientes.find(c => c.id === cr.clienteId);
-    const cuota           = Number(cr.cuotaDiaria) || 0;
-    const pagosHoy        = pagos.filter(p => p.creditoId === cr.id && p.fecha === fecha);
-    const montoPagadoHoy  = pagosHoy.reduce((s, p) => s + Number(p.monto), 0);
-    const completo        = montoPagadoHoy >= cuota;
+    const cliente = clientes.find(c => c.id === cr.clienteId);
+    const cuota = Number(cr.cuotaDiaria) || 0;
+    const pagosHoy = pagos.filter(p => p.creditoId === cr.id && p.fecha === fecha);
+    const montoPagadoHoy = pagosHoy.reduce((s, p) => s + Number(p.monto), 0);
+    const completo = montoPagadoHoy >= cuota;
 
     metaTotal += cuota;
     pagadoHoy += montoPagadoHoy;
@@ -75,8 +75,8 @@ window.guardarNota = async function () {
   const nota = notaElement.value.trim();
   if (nota === '') return;
 
-  const notas    = DB._cache['notas_cuadre'] || [];
-  const hoy      = today();
+  const notas = DB._cache['notas_cuadre'] || [];
+  const hoy = today();
   const existing = notas.find(n => n.cobradorId === state.currentUser.id && n.fecha === hoy);
 
   try {
@@ -84,7 +84,7 @@ window.guardarNota = async function () {
       await DB.update('notas_cuadre', existing.id, { nota });
       existing.nota = nota;
     } else {
-      const id    = genId();
+      const id = genId();
       const nueva = { id, cobradorId: state.currentUser.id, fecha: hoy, nota };
       await DB.set('notas_cuadre', id, nueva);
       if (!DB._cache['notas_cuadre']) DB._cache['notas_cuadre'] = [];
@@ -101,7 +101,7 @@ window.guardarNota = async function () {
 // ── Helper: caja chica profesional (cobrador) ─────────────────
 function _renderCajaChicaPro(caja, cuadre) {
   const saldoPositivo = caja.saldo >= 0;
-  const saldoColor    = saldoPositivo ? '#4ade80' : '#f87171';
+  const saldoColor = saldoPositivo ? '#4ade80' : '#f87171';
 
   return `
   <div style="border-radius:10px; overflow:hidden; margin-bottom:12px; box-shadow:var(--shadow)">
@@ -135,8 +135,8 @@ function _renderCajaChicaPro(caja, cuadre) {
         ${caja.cajaInicial > 0 ? `
           <div style="height:100%; border-radius:4px;
                       background:${saldoPositivo
-                        ? 'linear-gradient(90deg, #2563eb, #4ade80)'
-                        : 'linear-gradient(90deg, #ef4444, #f87171)'};
+        ? 'linear-gradient(90deg, #2563eb, #4ade80)'
+        : 'linear-gradient(90deg, #ef4444, #f87171)'};
                       width:${Math.min(100, Math.max(0, Math.abs(caja.saldo / caja.cajaInicial * 100)))}%;
                       transition:width 0.5s cubic-bezier(0.4,0,0.2,1)"></div>` : ''}
       </div>
@@ -217,10 +217,10 @@ window.abrirEditarGasto = function (id) {
 
 // ── Render Principal ──────────────────────────────────────────
 window.renderCuadre = function () {
-  const isAdmin  = state.currentUser.role === 'admin';
-  const hoy      = today();
+  const isAdmin = state.currentUser.role === 'admin';
+  const hoy = today();
   const creditos = DB._cache['creditos'] || [];
-  const usuarios = DB._cache['users']    || [];
+  const usuarios = DB._cache['users'] || [];
 
   // ══════════════════════════════════════════════════════════
   // VISTA ADMIN
@@ -241,12 +241,12 @@ window.renderCuadre = function () {
   // ══════════════════════════════════════════════════════════
   // VISTA COBRADOR
   // ══════════════════════════════════════════════════════════
-  const userId        = state.currentUser.id;
-  const hoyC          = today();
-  const cuadreHoy     = getCuadreDelDia(userId, hoyC);
-  const meta          = calcularMetaReal(userId, hoyC);
-  const caja          = getCajaChicaDelDia(userId, hoyC);
-  
+  const userId = state.currentUser.id;
+  const hoyC = today();
+  const cuadreHoy = getCuadreDelDia(userId, hoyC);
+  const meta = calcularMetaReal(userId, hoyC);
+  const caja = getCajaChicaDelDia(userId, hoyC);
+
   // Lógica: La meta solo se cumple cobrando cuotas, no por seguros.
   const metaAlcanzada = meta.pagadoHoy >= meta.metaTotal;
 
@@ -254,10 +254,10 @@ window.renderCuadre = function () {
     .filter(cr => cr.fechaInicio === hoyC && cr.cobradorId === userId)
     .reduce((s, cr) => s + Number(cr.montoSeguro || 0), 0);
 
-  const gastos        = caja.gastos || [];
-  const mostrarTodos  = !!state._verTodosGastos;
+  const gastos = caja.gastos || [];
+  const mostrarTodos = !!state._verTodosGastos;
   const gastosVisible = mostrarTodos ? gastos : gastos.slice(0, 3);
-  const hayMas        = gastos.length > 3;
+  const hayMas = gastos.length > 3;
 
   const htmlGastos = `
   <div class="card" style="padding:14px;margin-bottom:14px;background:white;border-radius:16px;border:1px solid #e2e8f0">
@@ -335,10 +335,10 @@ window.renderCuadre = function () {
         <div style="font-size:11.5px; font-weight:700;
                     color:${metaAlcanzada ? '#16a34a' : 'var(--warning)'}">
           ${metaAlcanzada && meta.metaTotal > 0
-            ? '✅ Meta cumplida'
-            : meta.metaTotal === 0
-              ? '✨ Sin cobros pendientes'
-              : 'Faltan ' + formatMoney(meta.pendiente)}
+      ? '✅ Meta cumplida'
+      : meta.metaTotal === 0
+        ? '✨ Sin cobros pendientes'
+        : 'Faltan ' + formatMoney(meta.pendiente)}
         </div>
       </div>
     </div>
@@ -358,10 +358,10 @@ window.renderCuadre = function () {
       </div>
 
       ${gastos.length === 0
-        ? `<div style="font-size:13px; color:var(--muted); text-align:center; padding:16px 0">
+      ? `<div style="font-size:13px; color:var(--muted); text-align:center; padding:16px 0">
              No hay gastos hoy
            </div>`
-        : gastosVisible.map(g => `
+      : gastosVisible.map(g => `
           <div style="display:flex; justify-content:space-between; align-items:center;
                       padding:10px 0; border-bottom:1px solid var(--border)">
             <div style="flex:1; min-width:0">
@@ -402,13 +402,13 @@ window.renderCuadre = function () {
 
       <div style="padding:0 16px 8px">
         ${meta.detalle.filter(d => !d.completo).length === 0
-          ? `<div style="text-align:center; padding:28px 0">
+      ? `<div style="text-align:center; padding:28px 0">
                <div style="font-size:28px; margin-bottom:8px">✅</div>
                <p style="color:#16a34a; font-weight:700; margin:0; font-size:13.5px">¡Ruta completada!</p>
              </div>`
-          : meta.detalle.filter(d => !d.completo)
-              .sort((a, b) => (a.cliente?.nombre || '').localeCompare(b.cliente?.nombre || ''))
-              .map(d => `
+      : meta.detalle.filter(d => !d.completo)
+        .sort((a, b) => (a.cliente?.nombre || '').localeCompare(b.cliente?.nombre || ''))
+        .map(d => `
               <div style="display:flex; justify-content:space-between; align-items:center;
                           padding:11px 0; border-bottom:1px solid var(--border)">
                 <div>
