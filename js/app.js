@@ -411,14 +411,6 @@ window.addEventListener('beforeunload', (e) => {
   try {
     await DB.init();
 
-    fbEscuchar('pagos',        (datos) => { DB._cache['pagos']        = datos; render(); });
-    fbEscuchar('creditos',     (datos) => { DB._cache['creditos']     = datos; render(); });
-    fbEscuchar('clientes',     (datos) => { DB._cache['clientes']     = datos; render(); });
-    fbEscuchar('users',        (datos) => { if (datos && datos.length > 0) { DB._cache['users'] = datos; render(); } });
-    fbEscuchar('notas_cuadre', (datos) => { DB._cache['notas_cuadre'] = datos; render(); });
-    fbEscuchar('gastos',       (datos) => { DB._cache['gastos']       = datos; render(); });
-    fbEscuchar('cajas',        (datos) => { DB._cache['cajas']        = datos; render(); });
-
     history.replaceState({ nav: 'clientes' }, '', '#clientes');
     render();
   } catch (e) {
