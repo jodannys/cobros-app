@@ -413,9 +413,6 @@ window.guardarUsuario = async function guardarUsuario() {
     const nuevoUser = { id, nombre, user, pass, role, telefono };
     await DB.set('users', id, nuevoUser);
 
-    if (!DB._cache['users']) DB._cache['users'] = [];
-    DB._cache['users'].push(nuevoUser);
-
     state.modal = null;
     showToast('Usuario creado exitosamente');
     render();
