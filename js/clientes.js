@@ -612,7 +612,7 @@ window.guardarCliente = async function () {
     const direccion = document.getElementById('nDireccion').value.trim();
     const id = genId();
 
-    await DB.set('clientes', id, {
+    const nuevoCliente = {
       id, dni, nombre,
       negocio,
       telefono,
@@ -622,18 +622,32 @@ window.guardarCliente = async function () {
       cobradorId,
       foto,
       creado: today()
-    });
+    };
+
+    // Guardar en la base de datos
+    await DB.set('clientes', id, nuevoCliente);
 
     _coordsSeleccionadas = null;
-    state.modal = null;
     showToast('Cliente guardado exitosamente');
+
+    // LÓGICA DE REDIRECCIÓN
+    if (state.abrirCreditoAlGuardar) {
+      // Si el botón "+ Con crédito" estaba activo:
+      state.selectedClient = nuevoCliente;
+      state.modal = 'nuevo-credito';
+      state.abrirCreditoAlGuardar = false; // Resetear para la próxima vez
+    } else {
+      // Si no, solo cerrar el modal
+      state.modal = null;
+    }
+
+    render();
 
   } catch (err) {
     console.error('❌ Error en guardarCliente:', err);
     alert('Ocurrió un error al guardar el cliente.');
   }
 }
-
 // ============================================================
 // ACTUALIZAR CLIENTE
 // ============================================================

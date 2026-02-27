@@ -75,9 +75,48 @@ window.DB = {
 
     setTimeout(() => {
       this._corregirCreditosSaldados();
+      this._limpiarHuerfanos();
     }, 3000);
 
     console.log("✅ Sistema vinculado a la nube y listo.");
+  },
+
+  async _limpiarHuerfanos() {
+    console.log("🧹 Limpiando datos huérfanos...");
+    const users    = this._cache['users']    || [];
+    const clientes = this._cache['clientes'] || [];
+    const gastos   = this._cache['gastos']   || [];
+    const pagos    = this._cache['pagos']    || [];
+    const creditos = this._cache['creditos'] || [];
+
+    // Gastos sin cobrador válido
+    gastos.forEach(g => {
+      if (!users.find(u => u.id === g.cobradorId)) {
+        console.log('🗑️ Gasto huérfano eliminado:', g.id, g.descripcion);
+        window.fbDelete('gastos', g.id).catch(e => console.error(e));
+        this._cache['gastos'] = this._cache['gastos'].filter(x => x.id !== g.id);
+      }
+    });
+
+    // Pagos sin cliente válido
+    pagos.forEach(p => {
+      if (!clientes.find(c => c.id === p.clienteId)) {
+        console.log('🗑️ Pago huérfano eliminado:', p.id);
+        window.fbDelete('pagos', p.id).catch(e => console.error(e));
+        this._cache['pagos'] = this._cache['pagos'].filter(x => x.id !== p.id);
+      }
+    });
+
+    // Créditos sin cliente válido
+    creditos.forEach(cr => {
+      if (!clientes.find(c => c.id === cr.clienteId)) {
+        console.log('🗑️ Crédito huérfano eliminado:', cr.id);
+        window.fbDelete('creditos', cr.id).catch(e => console.error(e));
+        this._cache['creditos'] = this._cache['creditos'].filter(x => x.id !== cr.id);
+      }
+    });
+
+    console.log("✅ Limpieza completada.");
   },
 
   async _corregirCreditosSaldados() {
