@@ -68,12 +68,9 @@ function _calcularMochila(cobradorId, fechaLimite) {
 
   // (-) Todo lo devuelto al admin y confirmado
   const devuelto = movs
-    .filter(m => m.tipo === 'confirmar_yape' && m.cobradorId === cobradorId && antes(m.fecha))
-    .reduce((s, m) => s + Number(m.monto), 0);
-
-  return enviado + cobros + seguros - prestamos - totalGastos - devuelto;
-}
-
+  .filter(m => (m.tipo === 'confirmar_yape' || m.tipo === 'deposito_cobrador') 
+               && m.cobradorId === cobradorId && antes(m.fecha))
+  .reduce((s, m) => s + Number(m.monto), 0);
 // ── CARTERA: Saldo del admin ──────────────────────────────────
 window.getSaldoCartera = function () {
   const movs = DB._cache['movimientos_cartera'] || [];
