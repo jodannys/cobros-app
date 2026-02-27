@@ -155,22 +155,36 @@ window.renderPanelCartera = function () {
   let cobradores_admin = [];
   let porcentaje = 0;
 
-  if (isAdmin) {
+ if (isAdmin) {
     cobradores_admin = usuarios.filter(u => u.role === 'cobrador');
     const cuadresCobradores = cobradores_admin.map(u => getCuadreDelDia(u.id, hoy));
+    
     totalYape = cuadresCobradores.reduce((s, c) => s + c.yape, 0);
     totalEfectivo = cuadresCobradores.reduce((s, c) => s + c.efectivo, 0);
     totalTransferencia = cuadresCobradores.reduce((s, c) => s + c.transferencia, 0);
     totalRecaudado = totalYape + totalEfectivo + totalTransferencia;
+    
     totalObjetivo = cobradores_admin.reduce((s, u) => s + calcularMetaReal(u.id, hoy).metaTotal, 0);
     porcentaje = totalObjetivo > 0 ? Math.round((totalRecaudado / totalObjetivo) * 100) : 0;
+    
     totalSeguros = creditos
       .filter(cr => cr.fechaInicio === hoy)
       .reduce((s, cr) => s + Number(cr.montoSeguro || 0), 0);
-    totalPrestado = cobradores_admin.reduce((s, u) => s + getCajaChicaDelDia(u.id, hoy).totalPrestadoHoy, 0);
-    totalGastos = cobradores_admin.reduce((s, u) => s + getCajaChicaDelDia(u.id, hoy).totalGastos, 0);
-  }
 
+    // --- CORRECCIÓN AQUÍ ---
+    // 1. Gastos de ruta de los cobradores
+    const gastosRuta = cobradores_admin.reduce((s, u) => s + getCajaChicaDelDia(u.id, hoy).totalGastos, 0);
+    
+    // 2. Gastos Admin y Retiros Personales hechos por ti (u otros admin)
+    const gastosMovsCartera = (DB._cache['movimientos_cartera'] || [])
+      .filter(m => m.fecha === hoy && (m.tipo === 'gasto_admin' || m.tipo === 'retiro'))
+      .reduce((s, m) => s + Number(m.monto || 0), 0);
+
+    totalGastos = gastosRuta + gastosMovsCartera; // Ahora suma TODO
+    // -----------------------
+
+    totalPrestado = cobradores_admin.reduce((s, u) => s + getCajaChicaDelDia(u.id, hoy).totalPrestadoHoy, 0);
+  }
  return `
 <!-- PANEL PRINCIPAL -->
 <div style="background:#0f172a; background-image:
