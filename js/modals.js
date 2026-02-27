@@ -27,7 +27,7 @@ window.closeModal = function closeModal(e) {
   state._crPctSeguro = undefined;
   state._movCarteraTipo = null;
   state._movCarteraCobrador = null;
-  isProcessingPayment = false;       
+  state._pagoProcesando = false;    
   deshabilitarBotonesPago(false);     
   render();
 };
