@@ -637,7 +637,7 @@ window.confirmarDeposito = async function (movId) {
       tipo: 'confirmar_yape'
     });
     
-    // ✅ Actualizar cache local inmediatamente
+    // ✅ Actualizar cache local inmediatamentea
     const idx = (DB._cache['movimientos_cartera'] || []).findIndex(m => m.id === movId);
     if (idx !== -1) {
       DB._cache['movimientos_cartera'][idx].confirmado = true;

@@ -3,18 +3,14 @@ window.getCajaChicaDelDia = function (cobradorId, fecha) {
   const creditos    = DB._cache['creditos'] || [];
   const clientes    = DB._cache['clientes'] || [];
   const movimientos = DB._cache['movimientos_cartera'] || [];
-  const cajas       = DB._cache['cajas'] || []; // Tabla donde el admin asigna dinero
+  const cajas       = DB._cache['cajas'] || [];
 
-  // 1. ARRASTRE ANTERIOR (Con filtro de seguridad)
+  // 1. ARRASTRE ANTERIOR
   let arrastreAnterior = typeof getSaldoMochilaHasta === 'function'
     ? getSaldoMochilaHasta(cobradorId, fecha)
     : 0;
 
-  // IMPLEMENTACIÓN DE LA OPCIÓN A:
-  // Si el arrastre es negativo (error acumulado), lo reseteamos a 0
- 
-
-  // 2. ENVÍOS (Sumamos tanto de movimientos_cartera como de la tabla cajas para no perder nada)
+  // 2. ENVÍOS (Dinero que el Admin le da al Cobrador)
   const enviadoHoyMov = movimientos
     .filter(m => m.tipo === 'envio_cobrador' && m.cobradorId === cobradorId && m.fecha === fecha)
     .reduce((s, m) => s + (Number(m.monto) || 0), 0);
@@ -33,7 +29,7 @@ window.getCajaChicaDelDia = function (cobradorId, fecha) {
   
   const cobrosDelDia = cuadreDelDia.total; 
 
-  // 4. EGRESOS
+  // 4. EGRESOS (Gastos y Préstamos)
   const gastosDelDia = gastos.filter(g => g.cobradorId === cobradorId && g.fecha === fecha);
   const totalGastos  = gastosDelDia.reduce((s, g) => s + Number(g.monto), 0);
   
@@ -43,8 +39,15 @@ window.getCajaChicaDelDia = function (cobradorId, fecha) {
   });
   const totalPrestadoHoy = prestamosHoy.reduce((s, cr) => s + Number(cr.monto), 0);
 
-  // 5. SALDO FINAL
-  const saldo = cajaInicial + cobrosDelDia - totalPrestadoHoy - totalGastos;
+  // 5. 🔥 EL CAMBIO CLAVE: Restar lo que el cobrador DEVOLVIÓ al Admin hoy
+  // Solo restamos si ya le diste al botón de "Confirmar" (confirmado: true)
+  const entregadoHoy = movimientos
+    .filter(m => m.cobradorId === cobradorId && m.fecha === fecha && 
+                (m.tipo === 'confirmar_yape' || m.confirmado === true))
+    .reduce((s, m) => s + (Number(m.monto) || 0), 0);
+
+  // 6. SALDO FINAL (Ahora restando entregadoHoy)
+  const saldo = cajaInicial + cobrosDelDia - totalPrestadoHoy - totalGastos - entregadoHoy;
 
   return {
     cajaInicial,
@@ -53,6 +56,7 @@ window.getCajaChicaDelDia = function (cobradorId, fecha) {
     cobrosDelDia, 
     totalGastos, 
     totalPrestadoHoy,
+    entregadoHoy, // Añadido para que puedas verlo en el objeto si quieres
     saldo, 
     gastos: gastosDelDia
   };
