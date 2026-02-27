@@ -3,16 +3,16 @@ window.state = {
   currentUser: null,
   nav: 'clientes',
   selectedClient: null,
-  selectedCredito: null,
+  selectedCredito: null, // Aquí se guardará el crédito cuando abras el modal
   modal: null,
   search: '',
   selectedCobrador: null,
   toast: null,
-  _editingAdmin: null,   // Para modal editar/crear admin (P7)
-  filtroClientes: 'todos', // Filtro activo en lista clientes
-  _gastoCobradorId: null,   // Para modal nuevo gasto desde admin
-  _cajaCobrador: null,       // Para modal asignar caja chica
-
+  _editingAdmin: null,
+  filtroClientes: 'todos',
+  _gastoCobradorId: null,
+  _cajaCobrador: null,
+  
   // Login
   loginError: '',
   loginUserField: localStorage.getItem('lastUser') || '',

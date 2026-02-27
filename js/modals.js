@@ -2,7 +2,6 @@
 // MODALS.JS — Todos los modales y helpers relacionados
 // ============================================================
 
-// ── COMPRESIÓN DE IMAGEN ──────────────────────────────────────
 window.comprimirImagen = function comprimirImagen(base64, maxWidth = 600, calidad = 0.6) {
   return new Promise((resolve) => {
     const img = new Image();
@@ -10,36 +9,30 @@ window.comprimirImagen = function comprimirImagen(base64, maxWidth = 600, calida
     img.onload = () => {
       const canvas = document.createElement('canvas');
       const escala = Math.min(1, maxWidth / img.width);
-      canvas.width  = img.width  * escala;
+      canvas.width = img.width * escala;
       canvas.height = img.height * escala;
       canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
       resolve(canvas.toDataURL('image/jpeg', calidad));
     };
-    img.onerror = () => {
-      console.warn('⚠️ No se pudo comprimir la imagen, usando original');
-      resolve(base64);
-    };
+    img.onerror = () => { resolve(base64); };
   });
 };
 
-// ── HELPERS DE MODAL ──────────────────────────────────────────
-window.openModal = function openModal(m) {
-  state.modal = m;
-  render();
-};
-
+window.openModal = function openModal(m) { state.modal = m; render(); };
 window.closeModal = function closeModal(e) {
   state.modal = null;
   state.selectedCredito = null;
   state._editingAdmin = null;
+  state._crSeguro = undefined;
+  state._crPctSeguro = undefined;
+  state._movCarteraTipo = null;
+  state._movCarteraCobrador = null;
   render();
 };
-
 window.togglePass = function togglePass(id) {
   const input = document.getElementById(id);
   if (input) input.type = input.type === 'password' ? 'text' : 'password';
 };
-
 window.previewFoto = function previewFoto(input, previewId) {
   const file = input.files[0];
   if (!file) return;
@@ -51,31 +44,34 @@ window.previewFoto = function previewFoto(input, previewId) {
   reader.readAsDataURL(file);
 };
 
-// ── RENDER MODAL PRINCIPAL ────────────────────────────────────
 window.renderModal = function renderModal() {
   const m = state.modal;
   let content = '';
-  if      (m === 'nuevo-cliente')      content = renderModalNuevoCliente();
-  else if (m === 'editar-cliente')     content = renderModalEditarCliente();
-  else if (m === 'editar-monto-gasto') content = renderModalEditarMontoGasto  ? renderModalEditarMontoGasto()  : '';
-  else if (m === 'editar-pago')        content = renderModalEditarPago        ? renderModalEditarPago()        : '';
-  else if (m === 'nuevo-credito')      content = renderModalNuevoCredito();
-  else if (m === 'registrar-pago')     content = renderModalRegistrarPago();
-  else if (m === 'nuevo-usuario')      content = renderModalNuevoUsuario();
-  else if (m === 'gestionar-credito')  content = renderModalGestionarCredito();
-  else if (m === 'banner-alertas')     content = renderModalBannerAlertas();
-  else if (m === 'editar-usuario')     content = renderModalEditarUsuario();
-  else if (m === 'editar-admin')       content = renderModalEditarAdmin();
-  else if (m === 'nuevo-gasto')        content = renderModalNuevoGasto();
-  else if (m === 'asignar-caja')       content = renderModalAsignarCaja();
-  else if (m === 'editar-credito')     content = renderModalEditarCredito     ? renderModalEditarCredito()     : '';
-  else if (m === 'historial-cliente')  content = renderModalHistorialCliente();
+  if      (m === 'nuevo-cliente')        content = renderModalNuevoCliente();
+  else if (m === 'editar-cliente')       content = renderModalEditarCliente();
+  else if (m === 'editar-monto-gasto')   content = renderModalEditarMontoGasto ? renderModalEditarMontoGasto() : '';
+  else if (m === 'editar-pago')          content = renderModalEditarPago ? renderModalEditarPago() : '';
+  else if (m === 'nuevo-credito')        content = renderModalNuevoCredito();
+  else if (m === 'registrar-pago')       content = renderModalRegistrarPago();
+  else if (m === 'nuevo-usuario')        content = renderModalNuevoUsuario();
+  else if (m === 'gestionar-credito')    content = renderModalGestionarCredito();
+  else if (m === 'banner-alertas')       content = renderModalBannerAlertas();
+  else if (m === 'editar-usuario')       content = renderModalEditarUsuario();
+  else if (m === 'editar-admin')         content = renderModalEditarAdmin();
+  else if (m === 'nuevo-gasto')          content = renderModalNuevoGasto();
+  else if (m === 'asignar-caja')         content = renderModalAsignarCaja();
+  else if (m === 'editar-credito')       content = renderModalEditarCredito ? renderModalEditarCredito() : '';
+  else if (m === 'historial-cliente')    content = renderModalHistorialCliente();
+  else if (m === 'editar-gasto')         content = renderModalEditarGasto();
+  else if (m === 'movimiento-cartera')   content = renderModalMovimientoCartera();  // ← NUEVO
+  else if (m === 'deposito-cobrador')    content = renderModalDepositoCobrador();   // ← NUEVO
 
   return `
   <div class="modal-overlay" onclick="closeModal(event)">
     <div class="modal" onclick="event.stopPropagation()">
       <button onclick="closeModal(event)"
-        style="position:absolute;top:12px;right:14px;border:none;background:none;font-size:22px;cursor:pointer;color:#94a3b8;line-height:1;padding:0">×</button>
+        style="position:absolute;top:12px;right:14px;border:none;background:none;
+        font-size:22px;cursor:pointer;color:#94a3b8;line-height:1;padding:0">×</button>
       ${content}
     </div>
   </div>`;
@@ -85,249 +81,649 @@ window.renderModal = function renderModal() {
 window.renderModalNuevoCliente = function renderModalNuevoCliente() {
   const cobradores = (DB._cache['users'] || []).filter(u => u.role === 'cobrador');
   const isAdmin = state.currentUser.role === 'admin';
+
   return `
   <div class="modal-handle"></div>
-  <div class="modal-title">👤 Nuevo Cliente</div>
-  <div class="form-group"><label>DNI *</label><input class="form-control" id="nDNI" placeholder="" maxlength="8"></div>
-  <div class="form-group"><label>Nombre completo *</label><input class="form-control" id="nNombre" placeholder="ej. Juan Pérez"></div>
-  <div class="form-group"><label>Nombre del negocio</label><input class="form-control" id="nNegocio" placeholder="ej. Bodega El Sol, Ferretería..."></div>
-  <div class="form-group"><label>Teléfono</label><input class="form-control" id="nTelefono" placeholder="" type="tel"></div>
-  <div class="form-group"><label>Dirección</label><input class="form-control" id="nDireccion" placeholder="ej. Av. Lima 123"></div>
-  ${renderMapaSelector(null, null)}
-  ${isAdmin ? `<div class="form-group"><label>Cobrador asignado</label><select class="form-control" id="nCobrador">${cobradores.map(u => `<option value="${u.id}">${u.nombre}</option>`).join('')}</select></div>` : ''}
+  <div class="modal-title">Nuevo Cliente</div>
+
   <div class="form-group">
-    <label>Foto de casa/negocio</label>
-    <label class="upload-btn" for="nFoto">📷 Tomar o subir foto</label>
+    <label>DNI *</label>
+    <input class="form-control" id="nDNI" placeholder="12345678" maxlength="8">
+  </div>
+
+  <div class="form-group">
+    <label>Nombre completo *</label>
+    <input class="form-control" id="nNombre" placeholder="Ej: Juan Pérez">
+  </div>
+
+  <div class="form-group">
+    <label>Nombre del negocio</label>
+    <input class="form-control" id="nNegocio" placeholder="Ej: Bodega El Sol">
+  </div>
+
+  <div class="form-group">
+    <label>Teléfono</label>
+    <input class="form-control" id="nTelefono" type="tel" placeholder="987654321">
+  </div>
+
+  <div class="form-group">
+    <label>Dirección</label>
+    <input class="form-control" id="nDireccion" placeholder="Ej: Av. Lima 123">
+  </div>
+
+  ${renderMapaSelector(null, null)}
+
+  ${isAdmin ? `
+  <div class="form-group">
+    <label>Cobrador asignado</label>
+    <select class="form-control" id="nCobrador">
+      ${cobradores.map(u => `<option value="${u.id}">${u.nombre}</option>`).join('')}
+    </select>
+  </div>` : ''}
+
+  <div class="form-group">
+    <label>Foto de casa / negocio</label>
+    <label class="upload-btn" for="nFoto"
+  style="display:flex; align-items:center; justify-content:center; gap:8px">
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+       stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+       style="flex-shrink:0">
+    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+    <circle cx="12" cy="13" r="4"/>
+  </svg>
+  <span>Tomar o subir foto</span>
+</label>
     <input type="file" id="nFoto" accept="image/*" onchange="previewFoto(this,'previewNFoto')">
     <img id="previewNFoto" style="display:none" class="uploaded-img">
   </div>
-  <button class="btn btn-primary" onclick="guardarCliente()">Guardar Cliente</button>`;
-};
 
+  <!-- BOTONES -->
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:4px">
+
+    <button id="btnCheckCredito"
+      onclick="
+        state.abrirCreditoAlGuardar = !state.abrirCreditoAlGuardar;
+        this.style.background = state.abrirCreditoAlGuardar ? 'var(--success)' : 'white';
+        this.style.color = state.abrirCreditoAlGuardar ? 'white' : 'var(--success)';
+        this.style.borderColor = 'var(--success)';
+        this.querySelector('span').textContent = state.abrirCreditoAlGuardar ? '✓ Con crédito' : '+ Con crédito';"
+      style="padding:13px; border-radius:10px; border:1.5px solid var(--success);
+             background:white; color:var(--success); font-size:13.5px; font-weight:600;
+             cursor:pointer; transition:all 0.2s; display:flex; align-items:center;
+             justify-content:center; gap:6px">
+      <span>+ Con crédito</span>
+    </button>
+
+    <button class="btn btn-primary" onclick="guardarCliente()">
+      Guardar Cliente
+    </button>
+
+  </div>`;
+};
 // ── MODAL EDITAR CLIENTE ──────────────────────────────────────
 window.renderModalEditarCliente = function renderModalEditarCliente() {
   const c = state.selectedClient;
   const cobradores = (DB._cache['users'] || []).filter(u => u.role === 'cobrador');
   const isAdmin = state.currentUser.role === 'admin';
+
   return `
   <div class="modal-handle"></div>
-  <div class="modal-title">✏️ Editar Cliente</div>
-  <div class="form-group"><label>DNI</label><input class="form-control" id="eDNI" value="${c.dni}"></div>
-  <div class="form-group"><label>Nombre completo</label><input class="form-control" id="eNombre" value="${c.nombre}"></div>
-  <div class="form-group"><label>Nombre del negocio</label><input class="form-control" id="eNegocio" value="${c.negocio || ''}"></div>
-  <div class="form-group"><label>Teléfono</label><input class="form-control" id="eTelefono" value="${c.telefono || ''}"></div>
-  <div class="form-group"><label>Dirección</label><input class="form-control" id="eDireccion" value="${c.direccion || ''}"></div>
+  <div class="modal-title">Editar Cliente</div>
+
+  <div class="form-group">
+    <label>DNI</label>
+    <input class="form-control" id="eDNI" value="${c.dni}">
+  </div>
+
+  <div class="form-group">
+    <label>Nombre completo</label>
+    <input class="form-control" id="eNombre" value="${c.nombre}">
+  </div>
+
+  <div class="form-group">
+    <label>Nombre del negocio</label>
+    <input class="form-control" id="eNegocio" value="${c.negocio || ''}">
+  </div>
+
+  <div class="form-group">
+    <label>Teléfono</label>
+    <input class="form-control" id="eTelefono" value="${c.telefono || ''}">
+  </div>
+
+  <div class="form-group">
+    <label>Dirección</label>
+    <input class="form-control" id="eDireccion" value="${c.direccion || ''}">
+  </div>
+
   ${renderMapaSelector(c.lat || null, c.lng || null)}
+
   ${isAdmin ? `
-  <div class="form-group"><label>Cobrador asignado</label>
+  <div class="form-group">
+    <label>Cobrador asignado</label>
     <select class="form-control" id="eCobrador">
-      ${cobradores.map(u => `<option value="${u.id}" ${u.id === c.cobradorId ? 'selected' : ''}>${u.nombre}</option>`).join('')}
+      ${cobradores.map(u => `
+        <option value="${u.id}" ${u.id === c.cobradorId ? 'selected' : ''}>${u.nombre}</option>
+      `).join('')}
     </select>
   </div>` : ''}
-  <div class="form-group">
-    <label>Foto</label>
-    <label class="upload-btn" for="eFoto">📷 Cambiar foto</label>
-    <input type="file" id="eFoto" accept="image/*" capture="environment" onchange="previewFoto(this,'previewEFoto')">
-    ${c.foto ? `<img src="${c.foto}" class="uploaded-img" id="previewEFoto">` : `<img id="previewEFoto" style="display:none" class="uploaded-img">`}
+
+  <div class="form-group" style="display:flex; flex-direction:column; align-items:center; gap:12px">
+  
+  <label style="align-self:flex-start; margin-bottom:4px">Foto</label>
+
+  <label class="upload-btn" for="eFoto"
+         style="display:flex; align-items:center; justify-content:center; gap:8px; width:100%">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+         style="flex-shrink:0">
+      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+      <circle cx="12" cy="13" r="4"/>
+    </svg>
+    <span>Cambiar foto</span>
+  </label>
+
+  <input type="file" id="eFoto" accept="image/*" capture="environment" 
+         style="display:none" onchange="previewFoto(this,'previewEFoto')">
+
+  <div style="width:100%; display:flex; justify-content:center">
+    ${c.foto
+      ? `<img src="${c.foto}" class="uploaded-img" id="previewEFoto" style="margin:0; max-width:180px; height:auto">`
+      : `<img id="previewEFoto" style="display:none; margin:0; max-width:180px; height:auto" class="uploaded-img">`}
   </div>
-  <button class="btn btn-primary" onclick="actualizarCliente()">Actualizar</button>
-  ${isAdmin ? `<button class="btn btn-danger" style="margin-top:8px" onclick="eliminarCliente()">🗑️ Eliminar cliente</button>` : ''}`;
+
+</div>
+
+  <button class="btn btn-primary" onclick="actualizarCliente()">Actualizar Cliente</button>
+
+  ${isAdmin ? `
+    <div style="margin-top:10px">
+      <button class="btn btn-danger" onclick="eliminarCliente()">Eliminar cliente</button>
+    </div>` : ''}`;
 };
 
-// ── MODAL NUEVO CRÉDITO ───────────────────────────────────────
+// ── MODAL NUEVO CRÉDITO (con seguro) ─────────────────────────
 window.renderModalNuevoCredito = function renderModalNuevoCredito() {
+  const seguroActivo = state._crSeguro !== false;
+  const pctSeguro    = state._crPctSeguro ?? 5;
+
   return `
   <div class="modal-handle"></div>
-  <div class="modal-title">💳 Nuevo Crédito</div>
-  <div class="form-group"><label>Monto a prestar (S/) *</label>
+  <div class="modal-title">Nuevo Crédito</div>
+
+  <div class="form-group">
+    <label>Monto a prestar (S/) *</label>
     <input class="form-control" id="crMonto" type="number" placeholder="1000" oninput="calcularCredito()">
   </div>
-  <div id="crPreview" style="display:none;background:var(--bg);border-radius:12px;padding:14px;margin-bottom:12px">
+
+  <!-- MICRO SEGURO -->
+  <div style="background:${seguroActivo ? '#eff6ff' : 'var(--bg)'}; border-radius:10px;
+              padding:12px 14px; margin-bottom:12px;
+              border:1.5px solid ${seguroActivo ? '#bfdbfe' : 'var(--border)'}">
+
+    <div style="display:flex; justify-content:space-between; align-items:center;
+                margin-bottom:${seguroActivo ? '12px' : '0'}">
+      <div>
+        <div style="font-weight:700; font-size:13.5px; color:var(--text)">🛡️ Micro Seguro</div>
+        <div style="font-size:11px; color:var(--muted); margin-top:2px">Se descuenta del monto entregado</div>
+      </div>
+      <label style="position:relative; display:inline-block; width:44px; height:24px;
+                    cursor:pointer; flex-shrink:0">
+        <input type="checkbox" ${seguroActivo ? 'checked' : ''}
+          onchange="state._crSeguro=this.checked; calcularCredito(); render()"
+          style="opacity:0; width:0; height:0">
+        <span style="position:absolute; inset:0; border-radius:24px;
+                     background:${seguroActivo ? 'var(--primary)' : '#cbd5e1'}; transition:0.2s">
+          <span style="position:absolute; width:18px; height:18px; background:white;
+                       border-radius:50%; top:3px;
+                       left:${seguroActivo ? '23px' : '3px'}; transition:0.2s"></span>
+        </span>
+      </label>
+    </div>
+
+    ${seguroActivo ? `
+    <div style="display:flex; align-items:center; gap:8px">
+      <label style="font-size:12px; color:var(--muted); white-space:nowrap">% Seguro:</label>
+      <input class="form-control" id="crPctSeguro" type="number" min="1" max="50" step="1"
+        value="${pctSeguro}"
+        style="width:72px; text-align:center; font-weight:700; padding:8px"
+        oninput="state._crPctSeguro=parseInt(this.value)||5; calcularCredito()">
+      <span style="font-size:11.5px; color:var(--muted)">% del monto prestado</span>
+    </div>` : ''}
+  </div>
+
+  <!-- PREVIEW CÁLCULO -->
+  <div id="crPreview" style="display:none; background:var(--bg); border-radius:10px;
+                              padding:14px; margin-bottom:12px">
     <div class="info-grid">
-      <div class="info-item"><div class="info-label">Interés (20%)</div><div class="info-value" id="crInteres">—</div></div>
-      <div class="info-item"><div class="info-label">Total a pagar</div><div class="info-value" id="crTotal">—</div></div>
-      <div class="info-item"><div class="info-label">Cuota diaria</div><div class="info-value" id="crCuota">—</div></div>
-      <div class="info-item"><div class="info-label">Plazo</div><div class="info-value">24 días</div></div>
+      <div class="info-item">
+        <div class="info-label">Interés (20%)</div>
+        <div class="info-value" id="crInteres">—</div>
+      </div>
+      <div class="info-item">
+        <div class="info-label">Total a pagar</div>
+        <div class="info-value" id="crTotal">—</div>
+      </div>
+      <div class="info-item">
+        <div class="info-label">Cuota diaria</div>
+        <div class="info-value" id="crCuota">—</div>
+      </div>
+      <div class="info-item">
+        <div class="info-label">Plazo</div>
+        <div class="info-value">24 días</div>
+      </div>
+    </div>
+
+    <div id="crSeguroPreview" style="display:none; margin-top:10px; padding-top:10px;
+                                     border-top:1px solid var(--border)">
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px">
+        <div style="background:#fff7ed; border-radius:8px; padding:10px">
+          <div style="font-size:10.5px; color:#c2410c; font-weight:700;
+                      text-transform:uppercase; letter-spacing:0.4px; margin-bottom:4px">
+            🛡️ Seguro cobrado
+          </div>
+          <div style="font-weight:800; color:#c2410c; font-size:16px" id="crSeguroMonto">—</div>
+        </div>
+        <div style="background:#eff6ff; border-radius:8px; padding:10px">
+          <div style="font-size:10.5px; color:var(--primary); font-weight:700;
+                      text-transform:uppercase; letter-spacing:0.4px; margin-bottom:4px">
+            💵 Entrega al cliente
+          </div>
+          <div style="font-weight:800; color:var(--primary); font-size:16px" id="crEntregaReal">—</div>
+        </div>
+      </div>
     </div>
   </div>
-  <div class="form-group"><label>Fecha de inicio</label>
+
+  <div class="form-group">
+    <label>Fecha de inicio</label>
     <input class="form-control" id="crFecha" type="date" value="${today()}">
   </div>
-  <button class="btn btn-primary" onclick="guardarCredito()">Crear Crédito</button>`;
-};
 
+  <div class="form-group">
+  <label>¿Cómo entregas el dinero? *</label>
+  <select class="form-control" id="crMetodoPago"
+    style="font-weight:600; border:1.5px solid var(--primary); cursor:pointer">
+    <option value="Efectivo">💵 Efectivo</option>
+    <option value="Yape">📱 Yape / Plin</option>
+    <option value="Transferencia">🏦 Transferencia</option>
+  </select>
+</div>
+
+  <button class="btn btn-primary" style="height:48px; font-size:15px; font-weight:700"
+    onclick="guardarCredito()">
+    Crear Crédito
+  </button>`;
+};
 // ── MODAL NUEVO USUARIO ───────────────────────────────────────
 window.renderModalNuevoUsuario = function renderModalNuevoUsuario() {
   return `
   <div class="modal-handle"></div>
-  <div class="modal-title">👤 Nuevo Usuario</div>
-  <div class="form-group"><label>Nombre completo *</label><input class="form-control" id="uNombre" placeholder=""></div>
-  <div class="form-group"><label>Usuario *</label><input class="form-control" id="uUser" placeholder="" autocomplete="off"></div>
+  <div class="modal-title">Nuevo Usuario</div>
+
+  <div class="form-group">
+    <label>Nombre completo *</label>
+    <input class="form-control" id="uNombre" placeholder="Ej: Juan Pérez">
+  </div>
+
+  <div class="form-group">
+    <label>Usuario *</label>
+    <input class="form-control" id="uUser" placeholder="usuario123" autocomplete="off">
+  </div>
+
+  <div class="form-group">
+    <label>Teléfono (WhatsApp)</label>
+    <input class="form-control" id="uTelefono" type="tel" maxlength="9" placeholder="987654321">
+  </div>
+
   <div class="form-group">
     <label>Contraseña *</label>
     <div style="position:relative">
-      <input class="form-control" id="uPass" type="password" placeholder="••••••••" autocomplete="new-password" style="padding-right:40px">
-      <button type="button" onclick="togglePass('uPass')" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);border:none;background:none;font-size:18px;cursor:pointer">👁️</button>
+      <input class="form-control" id="uPass" type="password"
+        placeholder="••••••••" autocomplete="new-password" style="padding-right:44px">
+      <button type="button" onclick="
+        const inp = document.getElementById('uPass');
+        const btn = this;
+        if(inp.type === 'password') {
+          inp.type = 'text';
+          btn.style.color = 'var(--primary)';
+        } else {
+          inp.type = 'password';
+          btn.style.color = 'var(--muted)';
+        }"
+        style="position:absolute; right:12px; top:50%; transform:translateY(-50%);
+               border:none; background:none; cursor:pointer;
+               color:var(--muted); display:flex; align-items:center">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+          <circle cx="12" cy="12" r="3"/>
+        </svg>
+      </button>
     </div>
   </div>
-  <div class="form-group"><label>Rol</label>
+
+  <div class="form-group">
+    <label>Rol</label>
     <select class="form-control" id="uRol">
       <option value="cobrador">Cobrador</option>
       <option value="admin">Administrador</option>
     </select>
   </div>
+
   <button class="btn btn-primary" onclick="guardarUsuario()">Crear Usuario</button>`;
 };
 
 // ── MODAL GESTIONAR CRÉDITO ───────────────────────────────────
 window.renderModalGestionarCredito = function renderModalGestionarCredito() {
-  const cr = state.selectedCredito;
-  const c  = state.selectedClient;
-  if (!cr || !c) return '';
-  const pagos       = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id);
-  const totalPagado = pagos.reduce((s, p) => s + p.monto, 0);
-  const saldo   = cr.total - totalPagado;
-  const dias    = diasSinPagar(cr.id);
-  const vencido = estaVencido(cr.fechaInicio, cr.diasTotal);
-  return `
-  <div class="modal-handle"></div>
-  <div class="modal-title">⚙️ Gestionar Crédito</div>
-  <div style="background:var(--bg);border-radius:12px;padding:14px;margin-bottom:16px">
-    <div style="font-weight:700;font-size:16px">${c.nombre}</div>
-    <div style="font-size:13px;color:var(--muted);margin-top:4px">DNI: ${c.dni}</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
-      <span style="background:${vencido ? '#fff5f5' : '#fffbeb'};color:${vencido ? 'var(--danger)' : '#b7791f'};padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700">
-        ${vencido ? '🔴 Crédito vencido' : `⚠️ ${dias} días sin pagar`}
-      </span>
-      <span style="background:#fff5f5;color:var(--danger);padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700">
-        Saldo: ${formatMoney(saldo)}
-      </span>
-    </div>
-    <div style="font-size:12px;color:var(--muted);margin-top:8px">
-      Inicio: ${formatDate(cr.fechaInicio)} · Fin: ${calcularFechaFin(cr.fechaInicio, cr.diasTotal)}
-    </div>
-  </div>
-  <div style="border:2px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px">
-    <div style="font-weight:700;margin-bottom:10px">📅 Extender plazo</div>
-    <div class="form-group" style="margin-bottom:8px">
-      <label>Días adicionales</label>
-      <input class="form-control" id="extDias" type="number" placeholder="Ej: 5" min="1">
-    </div>
-    <button class="btn btn-primary btn-sm" style="width:100%" onclick="extenderCredito()">Extender plazo</button>
-  </div>
-  <div style="border:2px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px">
-    <div style="font-weight:700;margin-bottom:10px">🤝 Fecha de compromiso</div>
-    <div class="form-group" style="margin-bottom:8px">
-      <label>El cliente pagará el</label>
-      <input class="form-control" id="fechaCompromiso" type="date" value="${cr.fechaCompromiso || ''}">
-    </div>
-    <button class="btn btn-primary btn-sm" style="width:100%" onclick="guardarCompromiso()">Guardar compromiso</button>
-    ${cr.fechaCompromiso ? `<div style="margin-top:8px;font-size:13px;color:var(--success);font-weight:600">✓ Actual: ${formatDate(cr.fechaCompromiso)}</div>` : ''}
-  </div>
-  <div style="border:2px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px">
-    <div style="font-weight:700;margin-bottom:10px">📝 Nota del crédito</div>
-    <textarea class="form-control" id="notaCredito" style="resize:none;height:80px"
-      placeholder="Observaciones...">${cr.nota || ''}</textarea>
-    <button class="btn btn-primary btn-sm" style="width:100%;margin-top:8px" onclick="guardarNotaCredito()">Guardar nota</button>
-  </div>`;
-};
+    const cr = state.selectedCredito;
+    const c = state.selectedClient;
+    if (!cr || !c) return '';
 
+    const pagos = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id);
+    const totalPagado = pagos.reduce((s, p) => s + (Number(p.monto) || 0), 0);
+    const saldoBase = Number(cr.total || 0) - totalPagado;
+
+    const infoMora = (typeof obtenerDatosMora === 'function') 
+        ? obtenerDatosMora(cr) 
+        : { total: 0, dias: 0, esVencido: false, diasInactivo: 0, diasVencido: 0 };
+
+    const mora = Number(infoMora?.total || 0);
+    const mostrarAlertaRoja = infoMora.esVencido || infoMora.diasInactivo >= 2;
+    
+    let textoBadge = "";
+    if (infoMora.esVencido) {
+        textoBadge = `🔴 Vencido (${infoMora.diasVencido} días)`;
+    } else if (infoMora.diasInactivo >= 2) {
+        textoBadge = `⚠️ Sin pagar (${infoMora.diasInactivo} días)`;
+    }
+
+    return `
+    <div class="modal-handle"></div>
+    <div class="modal-title">⚙️ Gestionar Crédito</div>
+    <div style="border:2px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px">
+    <div style="font-weight:700;margin-bottom:10px">⚖️ Penalidad por Atraso</div>
+    <button class="btn btn-sm" 
+      style="width:100%; height:40px; font-weight:700; 
+             background:${cr.mora_activa ? '#fff5f5' : '#f0fff4'}; 
+             color:${cr.mora_activa ? 'var(--danger)' : 'var(--success)'}; 
+             border:2px solid ${cr.mora_activa ? '#fed7d7' : '#c6f6d5'}"
+      onclick="console.log('Click en Toggle Mora'); toggleMora('${cr.id}', ${!cr.mora_activa})">
+      ${cr.mora_activa ? '🔕 Desactivar Mora (S/ 5.00)' : '🔔 Activar Mora (S/ 5.00)'}
+    </button>
+    <p style="font-size:11px; color:var(--muted); margin-top:8px; text-align:center; line-height:1.2">
+        ${cr.mora_activa 
+          ? 'La mora está activa y sumando al "Total Pendiente".' 
+          : 'La mora está desactivada para este cliente.'}
+    </p>
+  </div>
+
+
+    <div style="background:var(--bg);border-radius:12px;padding:14px;margin-bottom:16px">
+        <div style="font-weight:700;font-size:16px;margin-bottom:8px">${c.nombre}</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+            ${mostrarAlertaRoja ? 
+                `<span style="background:#fff5f5;color:var(--danger);padding:4px 10px;border-radius:20px;font-size:12px;font-weight:700;border:1px solid #fed7d7">${textoBadge}</span>` : 
+                `<span style="background:#f0f9ff;color:#0369a1;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:500;border:1px solid #bae6fd">🟢 Al día</span>`
+            }
+            <span style="background:#fef2f2;color:var(--danger);padding:4px 10px;border-radius:20px;font-size:12px;font-weight:500;border:1px solid #fee2e2">
+                Total Pendiente: ${formatMoney(saldoBase + mora)}
+            </span>
+        </div>
+    </div>
+
+    <div style="border:2px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px">
+        <div style="font-weight:500;margin-bottom:10px">📅 Extender plazo</div>
+        <div class="form-group" style="margin-bottom:8px">
+            <label style="font-size:12px;color:var(--muted)">Días adicionales (actual: ${cr.diasTotal || 0} días)</label>
+            <input class="form-control" id="extDias" type="number" placeholder="Ej: 5" min="1">
+        </div>
+        <button class="btn btn-primary btn-sm" style="width:100%" onclick="extenderCredito()">Aplicar Extensión</button>
+    </div>
+
+    <div style="border:2px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px">
+        <div style="font-weight:500;margin-bottom:10px">🤝 Fecha de compromiso</div>
+        <div class="form-group" style="margin-bottom:8px">
+            <input class="form-control" id="fechaCompromiso" type="date" value="${cr.fechaCompromiso || ''}">
+        </div>
+        <button class="btn btn-primary btn-sm" style="width:100%" onclick="guardarCompromiso()">Guardar compromiso</button>
+    </div>
+
+    <div style="border:2px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px">
+        <div style="font-weight:700;margin-bottom:10px">📝 Nota del crédito</div>
+        <textarea class="form-control" id="notaCredito" style="resize:none;height:80px"
+            placeholder="Escribe aquí observaciones sobre el cliente...">${cr.nota || ''}</textarea>
+        <button class="btn btn-primary btn-sm" style="width:100%;margin-top:8px" onclick="guardarNotaCredito()">Guardar nota</button>
+    </div>`;
+};
 // ── MODAL BANNER ALERTAS ──────────────────────────────────────
 window.renderModalBannerAlertas = function renderModalBannerAlertas() {
   const alertas = getAlertasCreditos();
+  const pagos = DB._cache['pagos'] || [];
+
   return `
   <div class="modal-handle"></div>
-  <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
-    <span style="font-size:32px">🚨</span>
+
+  <!-- HEADER -->
+  <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px;
+              background:#fff1f2; padding:14px 16px; border-radius:10px;">
+    <span style="font-size:28px; flex-shrink:0">🚨</span>
     <div>
-      <div style="font-size:20px;font-weight:800;color:var(--danger)">¡Atención!</div>
-      <div style="font-size:14px;color:var(--muted)">${alertas.length} crédito${alertas.length > 1 ? 's' : ''} requiere${alertas.length > 1 ? 'n' : ''} atención</div>
+      <div style="font-size:16px; font-weight:800; color:#9f1239">Créditos Críticos</div>
+      <div style="font-size:12px; color:var(--muted); margin-top:2px">
+        ${alertas.length} préstamo${alertas.length !== 1 ? 's' : ''} requieren gestión
+      </div>
     </div>
   </div>
-  ${alertas.map(a => `
-    <div style="background:var(--bg);border-radius:10px;padding:12px;margin-bottom:8px;border-left:4px solid ${a.tipo === 'vencido' ? 'var(--danger)' : 'var(--warning)'}">
-      <div style="font-weight:700">${a.cliente?.nombre || '—'}</div>
-      <div style="font-size:12px;color:var(--muted)">Cobrador: ${a.cobrador?.nombre || '—'}</div>
-      <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
-        <span style="background:${a.tipo === 'vencido' ? '#fff5f5' : '#fffbeb'};color:${a.tipo === 'vencido' ? 'var(--danger)' : '#b7791f'};padding:3px 8px;border-radius:20px;font-size:11px;font-weight:700">
-          ${a.tipo === 'vencido' ? '🔴 VENCIDO' : `⚠️ ${a.dias} días sin pagar`}
-        </span>
-        <span style="background:#fff5f5;color:var(--danger);padding:3px 8px;border-radius:20px;font-size:11px;font-weight:700">
-          Saldo: ${formatMoney(a.saldo)}
-        </span>
-      </div>
-    </div>`).join('')}
-  <button class="btn btn-primary" style="margin-top:8px" onclick="closeModal(event);navigate('admin')">Ver en Admin</button>
-  <button class="btn btn-outline" style="margin-top:8px" onclick="closeModal(event)">Cerrar</button>`;
-};
 
+  <!-- LISTA -->
+  <div style="max-height:400px; overflow-y:auto; scrollbar-width:thin;">
+    ${alertas.length === 0 ?
+      `<div style="text-align:center; padding:24px; color:var(--muted); font-size:13.5px">
+         ✅ No hay alertas pendientes
+       </div>` :
+      alertas.map(a => {
+        const colorAlerta = a.tipo === 'vencido' ? 'var(--danger)' : 'var(--warning)';
+        const bgAlerta   = a.tipo === 'vencido' ? '#fff1f2' : '#fffbeb';
+        const icon       = a.tipo === 'vencido' ? '🚩' : '⏳';
+        const statusText = a.tipo === 'vencido'
+          ? `Vencido hace ${a.dias || 0} días`
+          : `Sin abonar ${a.dias || 0} días`;
+
+        return `
+        <div style="background:white; border-radius:10px; padding:14px 14px 14px 18px;
+                    margin-bottom:10px; box-shadow:var(--shadow);
+                    position:relative; overflow:hidden;">
+
+          <!-- LÍNEA LATERAL -->
+          <div style="position:absolute; left:0; top:0; bottom:0; width:3px;
+                      background:${colorAlerta}; border-radius:3px 0 0 3px"></div>
+
+          <!-- FILA SUPERIOR -->
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:12px">
+            <div style="flex:1; min-width:0">
+              <div style="font-weight:700; font-size:14.5px; color:var(--text);
+                          white-space:nowrap; overflow:hidden; text-overflow:ellipsis">
+                ${a.cliente?.nombre || 'Cliente sin nombre'}
+              </div>
+              <div style="font-size:11.5px; color:var(--muted); margin-top:3px">
+                👤 ${a.cobrador?.nombre || 'Sin cobrador'}
+              </div>
+            </div>
+            <div style="text-align:right; flex-shrink:0">
+              <div style="font-size:10px; font-weight:700; color:var(--muted);
+                          text-transform:uppercase; letter-spacing:0.5px">Saldo</div>
+              <div style="font-size:16px; font-weight:800; color:${colorAlerta}; letter-spacing:-0.3px">
+                ${formatMoney(a.saldo)}
+              </div>
+            </div>
+          </div>
+
+          <!-- FILA INFERIOR -->
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;
+                      padding-top:10px; border-top:1px solid var(--border)">
+            <div style="background:${bgAlerta}; color:${colorAlerta};
+                        padding:4px 10px; border-radius:6px;
+                        font-size:10.5px; font-weight:700;
+                        display:flex; align-items:center; gap:5px">
+              ${icon} ${statusText}
+            </div>
+            <button onclick="closeModal(event); selectClient('${a.cliente?.id}')"
+              style="background:#0f172a; color:white; border:none;
+                     padding:7px 14px; border-radius:8px;
+                     font-size:12px; font-weight:600; cursor:pointer;
+                     display:flex; align-items:center; gap:5px; flex-shrink:0">
+              Gestionar <span>→</span>
+            </button>
+          </div>
+
+        </div>`;
+      }).join('')
+    }
+  </div>
+
+  <!-- BOTONES -->
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:16px">
+    <button class="btn btn-outline" onclick="closeModal(event)">Cerrar</button>
+    <button class="btn btn-primary" onclick="closeModal(event); navigate('admin')">Panel Admin</button>
+  </div>`;
+};
 // ── MODAL EDITAR USUARIO ──────────────────────────────────────
 window.renderModalEditarUsuario = function renderModalEditarUsuario() {
   const users = DB._cache['users'] || [];
   const u = users.find(x => x.id === state.selectedCobrador);
   if (!u) return '';
+
   return `
   <div class="modal-handle"></div>
-  <div class="modal-title">✏️ Editar Usuario</div>
-  <div class="form-group"><label>Nombre completo</label><input class="form-control" id="euNombre" value="${u.nombre}"></div>
-  <div class="form-group"><label>Usuario</label><input class="form-control" id="euUser" value="${u.user}"></div>
+  <div class="modal-title">Editar Usuario</div>
+
+  <div class="form-group">
+    <label>Nombre completo</label>
+    <input class="form-control" id="euNombre" value="${u.nombre}">
+  </div>
+
+  <div class="form-group">
+    <label>Usuario</label>
+    <input class="form-control" id="euUser" value="${u.user}">
+  </div>
+
+  <div class="form-group">
+    <label>Teléfono (WhatsApp)</label>
+    <input class="form-control" id="euTelefono" type="tel" maxlength="9"
+      value="${u.telefono || ''}" placeholder="Ej: 987654321">
+  </div>
+
   <div class="form-group">
     <label>Nueva contraseña</label>
     <div style="position:relative">
-      <input class="form-control" id="euPass" type="password" placeholder="Dejar vacío para no cambiar" style="padding-right:40px">
-      <button type="button" onclick="togglePass('euPass')" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);border:none;background:none;font-size:18px;cursor:pointer">👁️</button>
+      <input class="form-control" id="euPass" type="password"
+        placeholder="Dejar vacío para no cambiar"
+        style="padding-right:44px">
+      <button type="button" onclick="
+  const inp = document.getElementById('euPass');
+  const btn = this;
+  if(inp.type === 'password') {
+    inp.type = 'text';
+    btn.style.color = 'var(--primary)';
+  } else {
+    inp.type = 'password';
+    btn.style.color = 'var(--muted)';
+  }"
+  style="position:absolute; right:12px; top:50%; transform:translateY(-50%);
+         border:none; background:none; cursor:pointer;
+         color:var(--muted); display:flex; align-items:center">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+       stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+    <circle cx="12" cy="12" r="3"/>
+  </svg>
+</button>
     </div>
   </div>
-  <div class="form-group"><label>Rol</label>
+
+  <div class="form-group">
+    <label>Rol</label>
     <select class="form-control" id="euRol">
       <option value="cobrador" ${u.role === 'cobrador' ? 'selected' : ''}>Cobrador</option>
       <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>Administrador</option>
     </select>
   </div>
-  <button class="btn btn-primary" onclick="actualizarUsuario()">Actualizar</button>
-  <div style="margin-top:16px;padding-top:16px;border-top:1px solid #fee2e2">
-    ${u.role !== 'admin' ? `
-    <button class="btn btn-danger" style="width:100%" onclick="eliminarCobrador('${u.id}')">
-      🗑️ Eliminar cobrador
-    </button>` : ''}
-  </div>`;
-};
 
+  <button class="btn btn-primary" onclick="actualizarUsuario()">Actualizar Datos</button>
+
+  ${u.role !== 'admin' ? `
+    <div style="margin-top:14px; padding-top:14px; border-top:1px solid var(--border)">
+      <button class="btn btn-danger" onclick="eliminarCobrador('${u.id}')">
+        Eliminar cobrador
+      </button>
+    </div>` : ''}`;
+};
 // ── MODAL EDITAR / CREAR ADMIN ────────────────────────────────
 window.renderModalEditarAdmin = function renderModalEditarAdmin() {
-  const u     = state._editingAdmin;
+  const u = state._editingAdmin;
   const isNew = !u;
+
   return `
   <div class="modal-handle"></div>
-  <div class="modal-title">${isNew ? '➕ Nuevo Administrador' : '🛡️ Editar Administrador'}</div>
+  <div class="modal-title">${isNew ? 'Nuevo Administrador' : 'Editar Administrador'}</div>
+
   <div class="form-group">
     <label>Nombre completo *</label>
-    <input class="form-control" id="adNombre" value="${u ? u.nombre : ''}" placeholder="Nombre del admin">
+    <input class="form-control" id="adNombre"
+      value="${u ? u.nombre : ''}"
+      placeholder="Nombre del admin">
   </div>
+
   <div class="form-group">
     <label>Usuario *</label>
-    <input class="form-control" id="adUser" value="${u ? u.user : ''}" placeholder="usuario" autocomplete="off">
+    <input class="form-control" id="adUser"
+      value="${u ? u.user : ''}"
+      placeholder="usuario"
+      autocomplete="off">
   </div>
+
   <div class="form-group">
     <label>${isNew ? 'Contraseña *' : 'Nueva contraseña (dejar vacío para no cambiar)'}</label>
     <div style="position:relative">
       <input class="form-control" id="adPass" type="password"
-        placeholder="${isNew ? '••••••••' : 'Dejar vacío para no cambiar'}" style="padding-right:40px">
-      <button type="button" onclick="togglePass('adPass')"
-        style="position:absolute;right:10px;top:50%;transform:translateY(-50%);border:none;background:none;font-size:18px;cursor:pointer">👁️</button>
+        placeholder="${isNew ? '••••••••' : 'Dejar vacío para no cambiar'}"
+        style="padding-right:44px">
+      <button type="button" onclick="
+  const inp = document.getElementById('adPass');
+  const btn = this;
+  if(inp.type === 'password') {
+    inp.type = 'text';
+    btn.style.color = 'var(--primary)';
+  } else {
+    inp.type = 'password';
+    btn.style.color = 'var(--muted)';
+  }"
+  style="position:absolute; right:12px; top:50%; transform:translateY(-50%);
+         border:none; background:none; cursor:pointer;
+         color:var(--muted); display:flex; align-items:center">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+       stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+    <circle cx="12" cy="12" r="3"/>
+  </svg>
+</button>
     </div>
   </div>
-  <button class="btn btn-primary" onclick="guardarAdmin(${isNew ? 'null' : `'${u.id}'`})">${isNew ? 'Crear Admin' : 'Actualizar'}</button>
+
+  <button class="btn btn-primary" onclick="guardarAdmin(${isNew ? 'null' : `'${u.id}'`})">
+    ${isNew ? 'Crear Administrador' : 'Actualizar'}
+  </button>
+
   ${!isNew ? `
-  <div style="margin-top:16px;padding-top:16px;border-top:1px solid #fee2e2">
-    <button class="btn btn-danger" style="width:100%" onclick="eliminarAdmin('${u.id}')">
-      🗑️ Eliminar administrador
-    </button>
-  </div>` : ''}`;
+    <div style="margin-top:14px; padding-top:14px; border-top:1px solid var(--border)">
+      <button class="btn btn-danger" onclick="eliminarAdmin('${u.id}')">
+        Eliminar administrador
+      </button>
+    </div>` : ''}`;
 };
 
 window.eliminarAdmin = async function eliminarAdmin(id) {
-  const users  = DB._cache['users'] || [];
+  const users = DB._cache['users'] || [];
   const admins = users.filter(u => u.role === 'admin');
   if (admins.length <= 1) { alert('No puedes eliminar el único administrador del sistema.'); return; }
   if (id === state.currentUser.id) { alert('No puedes eliminarte a ti mismo.'); return; }
@@ -345,7 +741,6 @@ window.guardarAdmin = async function guardarAdmin(idExistente) {
   const pass   = document.getElementById('adPass').value.trim();
   if (!nombre || !user) { alert('Nombre y usuario son obligatorios'); return; }
   const users = DB._cache['users'] || [];
-
   if (!idExistente) {
     if (!pass) { alert('La contraseña es obligatoria para un nuevo admin'); return; }
     if (users.find(u => u.user === user)) { alert('Ese nombre de usuario ya existe'); return; }
@@ -364,7 +759,6 @@ window.guardarAdmin = async function guardarAdmin(idExistente) {
     }
     showToast('Administrador actualizado');
   }
-
   state._editingAdmin = null;
   state.modal = null;
   render();
@@ -374,7 +768,7 @@ window.guardarAdmin = async function guardarAdmin(idExistente) {
 window.renderModalHistorialCliente = function renderModalHistorialCliente() {
   const { c, creditos, pagos, cobrador } = state._historialCliente;
   const totalPagado = pagos.reduce((s, p) => s + p.monto, 0);
-
+  
   return `
   <div class="modal-handle"></div>
   <div class="modal-title">📋 ${c.nombre}</div>
@@ -404,6 +798,15 @@ window.renderModalHistorialCliente = function renderModalHistorialCliente() {
           <div style="color:var(--muted)">Total</div>
           <div style="font-weight:800">${formatMoney(cr.total)}</div>
         </div>
+        ${cr.seguro ? `
+        <div style="background:#fff7ed;border-radius:8px;padding:8px;font-size:12px">
+          <div style="color:#c2410c">🛡️ Seguro</div>
+          <div style="font-weight:800;color:#c2410c">${formatMoney(cr.montoSeguro)}</div>
+        </div>
+        <div style="background:#eff6ff;border-radius:8px;padding:8px;font-size:12px">
+          <div style="color:var(--primary)">💵 Entregado</div>
+          <div style="font-weight:800;color:var(--primary)">${formatMoney(cr.montoEntregado)}</div>
+        </div>` : ''}
         <div style="background:#f0fff4;border-radius:8px;padding:8px;font-size:12px">
           <div style="color:#276749">Pagado</div>
           <div style="font-weight:800;color:#276749">${formatMoney(pagadoCr)}</div>
@@ -429,9 +832,9 @@ window.renderModalHistorialCliente = function renderModalHistorialCliente() {
     style="width:100%;padding:13px;background:#25d366;color:white;border:none;
     border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:8px;
     display:flex;align-items:center;justify-content:center;gap:8px">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="white" style="flex-shrink:0"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-  Enviar estado de crédito por WhatsApp
-</button>
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="white" style="flex-shrink:0"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+    Enviar estado de crédito por WhatsApp
+  </button>
   <button onclick="state.modal=null;state._historialCliente=null;render()"
     style="width:100%;padding:12px;background:#f1f5f9;color:var(--text);border:none;
     border-radius:12px;font-size:14px;font-weight:600;cursor:pointer">
@@ -443,3 +846,26 @@ window.compartirWhatsAppHistorial = function compartirWhatsAppHistorial() {
   if (!state._historialCliente) return;
   enviarEstadoWhatsApp(state._historialCliente.c.id);
 };
+
+window.aplicarRestriccionMontos = function() {
+  // Buscamos todos los inputs que tengan la clase 'monto-control'
+  const inputs = document.querySelectorAll('.monto-control');
+  
+  inputs.forEach(input => {
+    // 1. Forzamos el teclado numérico en móviles
+    input.setAttribute('inputmode', 'decimal');
+    
+    // 2. Evitamos que la rueda del ratón cambie el valor
+    input.addEventListener('wheel', function(e) {
+      e.preventDefault();
+    }, { passive: false });
+
+    // 3. Filtro de seguridad: Solo números y un punto
+    input.addEventListener('input', function() {
+      this.value = this.value
+        .replace(/[^0-9.]/g, '') // Quita letras
+        .replace(/(\..*?)\..*/g, '$1'); // Evita dos puntos decimales
+    });
+  });
+};
+

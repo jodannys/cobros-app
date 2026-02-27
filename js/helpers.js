@@ -6,13 +6,16 @@ window.genId = () => '_' + Math.random().toString(36).substr(2, 9);
 
 window.today = () => new Date().toISOString().split('T')[0];
 
-window.formatDate = (d) => { 
-    if (!d) return ''; 
-    const [y, m, dd] = d.split('-'); 
-    return `${dd}/${m}/${y}`; 
+window.parseMonto = function parseMonto(valor) {
+    return Math.round(parseFloat(valor) || 0);
+};
+window.formatDate = (d) => {
+    if (!d) return '';
+    const [y, m, dd] = d.split('-');
+    return `${dd}/${m}/${y}`;
 };
 
-window.formatMoney = function(amount) {
+window.formatMoney = function (amount) {
     const num = Number(amount) || 0;
     return 'S/ ' + num.toLocaleString('es-PE', {
         minimumFractionDigits: 2,
@@ -20,13 +23,13 @@ window.formatMoney = function(amount) {
     });
 }
 
-window.showToast = function(msg, type = 'success') {
+window.showToast = function (msg, type = 'success') {
     state.toast = { msg, type };
     render();
     setTimeout(() => { state.toast = null; render(); }, 2500);
 }
 
-window.previewFoto = function(input, previewId) {
+window.previewFoto = function (input, previewId) {
     const file = input.files[0];
     if (!file) return;
     const reader = new FileReader();
@@ -38,21 +41,21 @@ window.previewFoto = function(input, previewId) {
     reader.readAsDataURL(file);
 }
 
-window.calcularFechaFin = function(fechaInicio, dias) {
+window.calcularFechaFin = function (fechaInicio, dias) {
     if (!fechaInicio) return '—';
     const fecha = new Date(fechaInicio + 'T00:00:00');
     fecha.setDate(fecha.getDate() + dias);
     return formatDate(fecha.toISOString().split('T')[0]);
 }
 
-window.estaVencido = function(fechaInicio, dias) {
+window.estaVencido = function (fechaInicio, dias) {
     if (!fechaInicio) return false;
     const fin = new Date(fechaInicio + 'T00:00:00');
     fin.setDate(fin.getDate() + dias);
     return new Date() > fin;
 }
 
-window.diasSinPagar = function(creditoId) {
+window.diasSinPagar = function (creditoId) {
     const pagos = DB._cache['pagos'] || [];
     const pagosCr = pagos.filter(p => p.creditoId === creditoId);
     if (pagosCr.length === 0) return null;
@@ -60,46 +63,159 @@ window.diasSinPagar = function(creditoId) {
     return Math.floor((new Date() - new Date(ultimo + 'T00:00:00')) / (1000 * 60 * 60 * 24));
 }
 
-window.getAlertasCreditos = function() {
-    const creditos = (DB._cache['creditos'] || []).filter(c => c.activo);
+window.getAlertasCreditos = function () {
+    if (!DB || !DB._cache) return [];
+
+    const creditos = (DB._cache['creditos'] || []).filter(c => c.activo === true);
     const clientes = DB._cache['clientes'] || [];
     const users = DB._cache['users'] || [];
+    const todosLosPagos = DB._cache['pagos'] || [];
     const alertas = [];
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
 
     creditos.forEach(cr => {
-        const cliente = clientes.find(c => c.id === cr.clienteId);
-        const cobrador = users.find(u => u.id === cliente?.cobradorId);
-        const pagos = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id);
-        const totalPagado = pagos.reduce((s, p) => s + p.monto, 0);
-        const saldo = cr.total - totalPagado;
-        const vencido = estaVencido(cr.fechaInicio, cr.diasTotal);
-        const dias = diasSinPagar(cr.id);
+        try {
+            // 1. Validaciones de Seguridad (Evita que el Admin se rompa)
+            const cliente = clientes.find(c => c.id === cr.clienteId);
+            if (!cliente) return; // Si el cliente no existe, ignoramos el crédito
 
-        if (vencido && saldo > 0) {
-            alertas.push({ tipo: 'vencido', cr, cliente, cobrador, saldo, dias });
-        } else if (dias !== null && dias >= 2 && saldo > 0) {
-            alertas.push({ tipo: 'moroso', cr, cliente, cobrador, saldo, dias });
+            const cobrador = users.find(u => u.id === cliente.cobradorId) || { nombre: 'Sin Cobrador', id: 'n/a' };
+
+            const pagosCr = todosLosPagos.filter(p => p.creditoId === cr.id);
+            const totalPagado = pagosCr.reduce((s, p) => s + (Number(p.monto) || 0), 0);
+            const saldo = Number(cr.total || 0) - totalPagado;
+
+            if (saldo < 1) return; // Si ya pagó, no es alerta
+
+            // 2. Cálculo de Fechas
+            let fFin;
+            if (cr.fechaFin && cr.fechaFin !== 'undefined') {
+                fFin = new Date(cr.fechaFin + 'T00:00:00');
+            } else {
+                fFin = new Date(cr.fechaInicio + 'T00:00:00');
+                fFin.setDate(fFin.getDate() + Number(cr.diasTotal || 0));
+            }
+            fFin.setHours(0, 0, 0, 0);
+
+            // 3. Días de Inactividad
+            const fechasPagos = pagosCr.map(p => p.fecha).sort((a, b) => b.localeCompare(a));
+            const ultimaFechaRef = fechasPagos.length > 0 ? fechasPagos[0] : cr.fechaInicio;
+            const uAbono = new Date(ultimaFechaRef + 'T00:00:00');
+            uAbono.setHours(0, 0, 0, 0);
+            const diasInactivo = Math.floor((hoy - uAbono) / (1000 * 60 * 60 * 24));
+
+            // 4. Clasificación de Alertas
+            if (hoy > fFin) {
+                const diasVencido = Math.floor((hoy - fFin) / (1000 * 60 * 60 * 24));
+                alertas.push({
+                    tipo: 'vencido',
+                    cr, // Pasamos el objeto crédito completo para el botón "Gestionar"
+                    cliente,
+                    cobrador,
+                    saldo,
+                    dias: diasVencido || 0
+                });
+            } else if (diasInactivo >= 2) {
+                alertas.push({
+                    tipo: 'moroso',
+                    cr,
+                    cliente,
+                    cobrador,
+                    saldo,
+                    dias: diasInactivo || 0
+                });
+            }
+        } catch (e) {
+            console.error("Error en crédito individual:", e);
         }
     });
 
     return alertas;
+};
+
+
+// Función auxiliar para evitar errores de fecha
+function calcularFechaFinSimple(inicio, dias) {
+    const d = new Date(inicio + 'T00:00:00');
+    d.setDate(d.getDate() + Number(dias));
+    return d.toISOString().split('T')[0];
 }
 
-window.calcularMora = function(cr) {
-    if (!cr.activo || !cr.mora_activa) return 0;
-    const pagos = DB._cache['pagos'] || [];
-    const totalPagado = pagos.filter(p => p.creditoId === cr.id).reduce((s, p) => s + p.monto, 0);
-    const saldo = cr.total - totalPagado;
-    if (saldo <= 0) return 0;
-    const vencido = estaVencido(cr.fechaInicio, cr.diasTotal);
-    if (!vencido) return 0;
-    const fin = new Date(cr.fechaInicio + 'T00:00:00');
-    fin.setDate(fin.getDate() + cr.diasTotal);
-    const diasMora = Math.floor((new Date() - fin) / (1000 * 60 * 60 * 24));
-    return diasMora > 0 ? diasMora * 5 : 0;
-}
 
-window.mostrarPagoExitoso = function(titulo, subtitulo, esCierre) {
+
+window.calcularMora = function (cr) {
+    // Si no hay crédito, no está activo o la mora está apagada, 0 soles.
+    if (!cr || !cr.mora_activa || !cr.activo) return 0;
+
+    // Llamamos a la función optimizada que ya tienes para obtener los días
+    const info = obtenerDatosMora(cr);
+    
+    // Si ya venció (diasVencido > 0), multiplicamos por S/ 5
+    if (info.diasVencido > 0) {
+        return info.diasVencido * 5;
+    }
+
+    return 0;
+};
+// Versión optimizada: Una sola lógica para todo
+window.obtenerDatosMora = function (credito, pagos) {
+    // 1. SEGURIDAD DE ENTRADA
+    const listaPagos = pagos || (DB && DB._cache ? DB._cache['pagos'] : []) || [];
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+
+    if (!credito) return { esVencido: false, dias: 0, total: 0, diasInactivo: 0 };
+
+    // 2. REPARACIÓN DE FECHA FIN (Si noz existe, la calculamos al vuelo)
+    let fFin;
+    if (credito.fechaFin && credito.fechaFin !== 'undefined') {
+        fFin = new Date(credito.fechaFin + 'T00:00:00');
+    } else {
+        // Si no hay fecha fin, usamos Inicio + diasTotal
+        fFin = new Date(credito.fechaInicio + 'T00:00:00');
+        fFin.setDate(fFin.getDate() + Number(credito.diasTotal || 0));
+    }
+    fFin.setHours(0, 0, 0, 0);
+
+    // 3. CÁLCULO DE ÚLTIMO PAGO
+    const pagosCr = listaPagos.filter(p => p.creditoId === credito.id);
+    let fechaRef = credito.fechaInicio;
+    if (pagosCr.length > 0) {
+        const fechas = pagosCr.map(p => p.fecha).filter(f => f); // quitar nulos
+        if (fechas.length > 0) {
+            fechaRef = fechas.sort((a, b) => b.localeCompare(a))[0];
+        }
+    }
+    const fUltimo = new Date(fechaRef + 'T00:00:00');
+    fUltimo.setHours(0, 0, 0, 0);
+
+    // 4. CÁLCULO DE DÍAS
+    const difVencimiento = Math.floor((hoy - fFin) / (1000 * 60 * 60 * 24));
+    const diasInactividad = Math.floor((hoy - fUltimo) / (1000 * 60 * 60 * 24));
+
+   const esVencido = hoy > fFin;
+    const diasDeMora = esVencido ? difVencimiento : 0;
+
+    return {
+        esVencido: esVencido,
+        dias: diasDeMora, // Usamos solo los días de vencimiento para el cobro
+        diasVencido: diasDeMora,
+        diasInactivo: diasInactividad,
+        // CLAVE: Si la mora está activa, multiplicamos por S/ 5
+        total: (credito.mora_activa && diasDeMora > 0) ? (diasDeMora * 5) : 0 
+    };
+};
+// Reparamos también la función calcularMora para que no de error
+window.calcularMora = function (cr) {
+    const info = obtenerDatosMora(cr);
+    return info.total || 0;
+};
+
+window.mostrarPagoExitoso = function (titulo, subtitulo, esCierre) {
+    // 1. SI YA EXISTE UN MODAL DE PAGO, NO HACER NADA
+    if (document.querySelector('[data-overlay="pago"]')) return;
+
     const overlay = document.createElement('div');
     overlay.style.cssText = `
     position:fixed;inset:0;background:rgba(0,0,0,0.6);
@@ -128,6 +244,8 @@ window.mostrarPagoExitoso = function(titulo, subtitulo, esCierre) {
     </div>`;
 
     overlay.setAttribute('data-overlay', 'pago');
+    
+    // Al hacer clic fuera, también removemos el overlay
     overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
 
     if (!document.getElementById('animaciones-pago')) {
@@ -143,5 +261,11 @@ window.mostrarPagoExitoso = function(titulo, subtitulo, esCierre) {
     }
 
     document.body.appendChild(overlay);
-    setTimeout(() => overlay?.remove(), 3000);
+
+    // Auto-remover después de 3 segundos
+    setTimeout(() => {
+        if (document.body.contains(overlay)) {
+            overlay.remove();
+        }
+    }, 3000);
 }

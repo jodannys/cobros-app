@@ -1,131 +1,180 @@
 // ============================================================
-// GESTIÓN DE PAGOS (REGISTRO Y PROCESAMIENTO)
+// 1. UN SOLO CANDADO GLOBAL (reemplaza los dos anteriores)
 // ============================================================
+let isProcessingPayment = false;
 
+// ============================================================
+// 2. FUNCIÓN AUXILIAR: Bloquea todos los botones de pago
+// ============================================================
+window.deshabilitarBotonesPago = function(estado) {
+  document.querySelectorAll('button[id^="btn-pago-"]').forEach(btn => {
+    btn.disabled = estado;
+    btn.style.opacity = estado ? '0.5' : '1';
+  });
+  
+  document.querySelectorAll('button[onclick*="pagoRapido"]').forEach(btn => {
+    btn.disabled = estado;
+    btn.style.opacity = estado ? '0.5' : '1';
+  });
+};
+
+// ============================================================
+// 3. EJECUTAR PAGO PROTEGIDO (corregido)
+// ============================================================
+window.ejecutarPagoProtegido = function(btn, creditoId) {
+  console.log(`[PAGO] Clic detectado en crédito: ${creditoId}`);
+
+  // VERIFICACIÓN 1: ¿Ya está procesando?
+  if (isProcessingPayment) {
+    console.warn("⚠️ Ya hay un pago en proceso. Ignorando clic.");
+    return;
+  }
+
+  // VERIFICACIÓN 2: ¿El botón ya está deshabilitado?
+  if (btn.disabled) {
+    console.warn("⚠️ Botón deshabilitado. Ignorando clic.");
+    return;
+  }
+
+  // ACTIVAR CANDADO
+  isProcessingPayment = true;
+  deshabilitarBotonesPago(true);
+
+  const icon = document.getElementById(`icon-${creditoId}`);
+  const text = document.getElementById(`text-${creditoId}`);
+  
+  if (icon) icon.innerHTML = "⏳";
+  if (text) text.innerText = "Procesando...";
+
+  console.log("✅ Abriendo modal de pago...");
+  openRegistrarPago(creditoId);
+};
+
+// ============================================================
+// 4. ABRIR MODAL DE PAGO (corregido)
+// ============================================================
 window.openRegistrarPago = function(crId) {
+  // VERIFICACIÓN: ¿Hay otro modal ya abierto?
+  if (state.modal && state.modal !== 'registrar-pago') {
+    console.warn("⚠️ Ya hay otro modal abierto. Cerrando primero...");
+    state.modal = null;
+  }
+
   const cr = (DB._cache['creditos'] || []).find(x => x.id === crId);
-  if (!cr) return;
+  if (!cr) {
+    console.error("❌ Crédito no encontrado");
+    isProcessingPayment = false;
+    deshabilitarBotonesPago(false);
+    return;
+  }
+
   state.selectedCredito = cr;
   state.modal = 'registrar-pago';
   render();
 };
 
+// ============================================================
+// 5. PAGO RÁPIDO (corregido - usar el mismo sistema)
+// ============================================================
 window.pagoRapido = function(crId) {
+  if (isProcessingPayment) {
+    console.warn("⚠️ Ya hay un pago en proceso.");
+    return;
+  }
+
+  console.log(`[PAGO RÁPIDO] Crédito: ${crId}`);
+  isProcessingPayment = true;
+  deshabilitarBotonesPago(true);
+
   const cr = (DB._cache['creditos'] || []).find(x => x.id === crId);
-  if (!cr) return;
+  if (!cr) {
+    isProcessingPayment = false;
+    deshabilitarBotonesPago(false);
+    return;
+  }
+
   state.selectedCredito = cr;
   state.modal = 'registrar-pago';
   render();
 };
 
+// ============================================================
+// 6. GUARDAR PAGO (corregido - candado único + esperar BD)
+// ============================================================
+// ============================================================
+// 6. GUARDAR PAGO (CORREGIDO - Evita duplicidad por sincronización)
+// ============================================================
 window.guardarPago = async function() {
-  const cr = state.selectedCredito;
-  if (!cr) return;
-
-  const montoInput = document.getElementById('pMonto');
-  const monto = parseFloat(montoInput.value);
-  if (!monto || monto <= 0) { 
-    alert('Ingresa un monto válido'); 
-    return; 
-  }
-
-  const tipo = document.getElementById('pTipo').value;
-  const fecha = document.getElementById('pFecha').value;
-  const nota = document.getElementById('pNota').value.trim();
-  if (!fecha) { 
-    alert('Selecciona una fecha'); 
-    return; 
-  }
-
-  // ── Calcular deuda actual ──────────────────────────────────────────────────
-  const pagosAnteriores = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id);
-  const totalPagadoAntes = pagosAnteriores.reduce((s, p) => s + Number(p.monto), 0);
-  const saldoRestante = Math.max(0, cr.total - totalPagadoAntes);
-  const mora = typeof calcularMora === 'function' ? calcularMora(cr) : 0;
-  const totalDeuda = saldoRestante + mora;
-
-  // ── División proporcional (Saldo vs Mora) ──────────────────────────────────
-  let aplicadoSaldo, aplicadoMora;
-  if (mora > 0 && totalDeuda > 0) {
-    const propSaldo = saldoRestante / totalDeuda;
-    const propMora = mora / totalDeuda;
-    aplicadoMora = Math.min(parseFloat((monto * propMora).toFixed(2)), mora);
-    // Saldo = todo lo que no fue a mora, para evitar pérdida por redondeo
-    aplicadoSaldo = Math.min(parseFloat((monto - aplicadoMora).toFixed(2)), saldoRestante);
-  } else {
-    aplicadoSaldo = Math.min(monto, saldoRestante);
-    aplicadoMora = 0;
-  }
-
-  const id = genId();
-
-  // cobradorId: si admin registra, usar el del cliente original
-  const clienteDelCr = (DB._cache['clientes'] || []).find(c => c.id === cr.clienteId);
-  const cobradorId = (state.currentUser.role === 'admin' && clienteDelCr?.cobradorId)
-    ? clienteDelCr.cobradorId
-    : state.currentUser.id;
-
-  const nuevoPago = {
-    id,
-    creditoId: cr.id,
-    clienteId: cr.clienteId,
-    cobradorId,
-    registradoPor: state.currentUser.id,
-    monto,
-    aplicadoSaldo,   // cuánto se aplicó al saldo del crédito
-    aplicadoMora,    // cuánto se aplicó a la mora
-    tieneMora: aplicadoMora > 0,
-    tipo,
-    fecha,
-    nota
-  };
+  if (isProcessingPayment === false) return;
 
   try {
-    await DB.set('pagos', id, nuevoPago);
-    if (!DB._cache['pagos']) DB._cache['pagos'] = [];
-    DB._cache['pagos'].push(nuevoPago);
-
-    // ── Verificar si quedó todo saldado ───────────────────────────────────────
-    const todosLosPagos = DB._cache['pagos'].filter(p => p.creditoId === cr.id);
-    const totalAplicadoSaldo = todosLosPagos.reduce((s, p) => s + (Number(p.aplicadoSaldo) || 0), 0);
-    const totalAplicadoMora = todosLosPagos.reduce((s, p) => s + (Number(p.aplicadoMora) || 0), 0);
+    const cr = state.selectedCredito;
+    const monto = parseMonto(document.getElementById('pMonto').value);
+    const fecha = document.getElementById('pFecha').value;
     
-    const saldoFinal = Math.max(0, cr.total - totalAplicadoSaldo);
-    const moraTotalActual = typeof calcularMora === 'function' ? calcularMora(cr) : 0;
-    const moraFinal = Math.max(0, moraTotalActual - totalAplicadoMora);
-
-    if (saldoFinal <= 0 && moraFinal <= 0) {
-      await DB.update('creditos', cr.id, { activo: false });
-      const idx = (DB._cache['creditos'] || []).findIndex(x => x.id === cr.id);
-      if (idx !== -1) DB._cache['creditos'][idx].activo = false;
-      if (window.mostrarPagoExitoso) {
-        mostrarPagoExitoso('🎉 ¡Crédito completado!', 'El crédito fue cerrado automáticamente', true);
-      } else {
-        alert('🎉 ¡Crédito completado! El crédito fue cerrado.');
-      }
-    } else if (saldoFinal <= 0 && moraFinal > 0) {
-      if (window.mostrarPagoExitoso) {
-        mostrarPagoExitoso('✅ Saldo cubierto', `Mora pendiente: ${formatMoney(moraFinal)}`, false);
-      } else {
-        alert(`✅ Saldo cubierto. Mora pendiente: ${formatMoney(moraFinal)}`);
-      }
-    } else {
-      if (window.mostrarPagoExitoso) {
-        mostrarPagoExitoso('💰 Cuota registrada', `Saldo restante: ${formatMoney(saldoFinal)}`, false);
-      } else {
-        showToast(`💰 Pago de ${formatMoney(monto)} registrado`);
-      }
+    if (!cr || !monto || !fecha) {
+      alert('Datos incompletos');
+      return;
     }
 
+    // Bloqueo visual del botón del modal
+    const btnConfirmar = document.querySelector('button[onclick="guardarPago()"]');
+    if (btnConfirmar) {
+      btnConfirmar.disabled = true;
+      btnConfirmar.innerHTML = '⏳ Guardando...';
+    }
+
+    const id = genId(); // Generamos el ID único aquí
+    
+    // Armamos el objeto del pago
+    const nuevoPago = {
+      id,
+      creditoId: cr.id,
+      clienteId: cr.clienteId,
+      registradoPor: state.currentUser.id,
+      monto,
+      tipo: window._pagoTipo || 'efectivo',
+      fecha,
+      nota: document.getElementById('pNota').value.trim(),
+      creadoEn: new Date().toISOString()
+    };
+
+    console.log(`%c [BD] Guardando pago ID: ${id}`, "color: orange");
+
+    // 1. PRIMERO guardamos en la Base de Datos (Esperamos el await)
+    await DB.set('pagos', id, nuevoPago);
+    
+    // 2. VERIFICACIÓN ANTI-DUPLICADO: 
+    // Solo lo metemos al caché si NO existe ya (por si el listener de Firebase fue más rápido)
+    if (!DB._cache['pagos']) DB._cache['pagos'] = [];
+    const yaExiste = DB._cache['pagos'].some(p => p.id === id);
+    
+    if (!yaExiste) {
+      DB._cache['pagos'].push(nuevoPago);
+      console.log("✅ Cache actualizado manualmente");
+    } else {
+      console.log("⚠️ El pago ya fue añadido por el listener de Firebase");
+    }
+
+    // 3. CERRAR MODAL Y LIMPIAR
     state.modal = null;
     state.selectedCredito = null;
+    showToast('✅ Pago registrado con éxito');
+    
     render();
-  } catch (e) {
-    console.error(e);
-    alert('Error al registrar el pago');
+
+  } catch (error) {
+    console.error("❌ ERROR:", error);
+    alert('No se pudo guardar: ' + error.message);
+  } finally {
+    // 4. LIBERAR CANDADOS
+    isProcessingPayment = false;
+    deshabilitarBotonesPago(false);
   }
 };
-
+// ============================================================
+// 7. RENDERIZAR MODAL (agregar deshabilitar botón)
+// ============================================================
 window.renderModalRegistrarPago = function() {
   const cr = state.selectedCredito;
   if (!cr) return '';
@@ -133,66 +182,104 @@ window.renderModalRegistrarPago = function() {
   const pagos = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id);
   const totalPagado = pagos.reduce((s, p) => s + p.monto, 0);
   const saldo = Math.max(0, cr.total - totalPagado);
-  const mora = typeof calcularMora === 'function' ? calcularMora(cr) : 0;
+  
+  const infoMora = obtenerDatosMora(cr);
+  const mora = infoMora.total;
   const totalConMora = saldo + mora;
   const tieneVencido = mora > 0;
 
   return `
   <div class="modal-handle"></div>
-  <div class="modal-title">💰 Registrar Pago</div>
+  <div class="modal-title">Registrar Pago</div>
 
-  <div style="background:var(--bg);border-radius:12px;padding:14px;margin-bottom:16px">
+  <!-- RESUMEN -->
+  <div style="background:var(--bg); border-radius:10px; padding:14px; margin-bottom:14px">
     ${tieneVencido ? `
-    <div style="display:flex;justify-content:space-between;margin-bottom:8px;
-      padding-bottom:8px;border-bottom:1px solid #e2e8f0">
-      <span style="color:var(--muted);font-size:13px">Saldo crédito:</span>
-      <span style="font-weight:700;color:var(--text)">${formatMoney(saldo)}</span>
-    </div>
-    <div style="display:flex;justify-content:space-between;margin-bottom:8px;
-      padding-bottom:8px;border-bottom:2px solid #fed7d7">
-      <span style="color:var(--danger);font-size:13px">⚠️ Mora acumulada:</span>
-      <span style="font-weight:700;color:var(--danger)">${formatMoney(mora)}</span>
-    </div>
-    <div style="display:flex;justify-content:space-between">
-      <span style="font-weight:800;font-size:15px">Total a cobrar:</span>
-      <span style="font-weight:800;font-size:18px;color:var(--danger)">${formatMoney(totalConMora)}</span>
-    </div>
-    <div style="font-size:11px;color:var(--muted);margin-top:6px">
-      El pago se divide proporcional: ${Math.round((saldo/totalConMora)*100)}% al saldo · ${Math.round((mora/totalConMora)*100)}% a mora
-    </div>` : `
-    <div class="flex-between">
-      <span class="text-muted">Cuota diaria:</span>
-      <span class="fw-bold">${formatMoney(cr.cuotaDiaria)}</span>
-    </div>
-    <div class="flex-between mt-2">
-      <span class="text-muted">Saldo pendiente:</span>
-      <span class="fw-bold text-danger">${formatMoney(saldo)}</span>
-    </div>`}
+      <div style="display:flex; justify-content:space-between; align-items:center;
+                  margin-bottom:8px; padding-bottom:8px; border-bottom:1px solid var(--border)">
+        <span style="color:var(--muted); font-size:13px">Saldo crédito</span>
+        <span style="font-weight:700; color:var(--text)">${formatMoney(saldo)}</span>
+      </div>
+      <div style="display:flex; justify-content:space-between; align-items:center;
+                  margin-bottom:10px; padding-bottom:10px; border-bottom:1px solid #fecdd3">
+        <span style="color:var(--danger); font-size:13px; font-weight:600">
+          ⚠️ Mora (${infoMora.dias} días)
+        </span>
+        <span style="font-weight:700; color:var(--danger)">${formatMoney(mora)}</span>
+      </div>
+      <div style="display:flex; justify-content:space-between; align-items:center">
+        <span style="font-weight:700; font-size:13px; color:var(--text); text-transform:uppercase;
+                     letter-spacing:0.5px">Total a cobrar</span>
+        <span style="font-weight:900; font-size:22px; color:var(--danger); letter-spacing:-0.5px">
+          ${formatMoney(totalConMora)}
+        </span>
+      </div>` :
+    `
+      <div style="display:flex; justify-content:space-between; align-items:center;
+                  margin-bottom:8px">
+        <span style="color:var(--muted); font-size:13px">Cuota diaria</span>
+        <span style="font-weight:700; color:var(--text)">${formatMoney(cr.cuotaDiaria)}</span>
+      </div>
+      <div style="display:flex; justify-content:space-between; align-items:center">
+        <span style="color:var(--muted); font-size:13px">Saldo pendiente</span>
+        <span style="font-weight:700; color:var(--danger)">${formatMoney(saldo)}</span>
+      </div>`}
   </div>
 
   <div class="form-group">
     <label>Monto recibido (S/)</label>
     <input class="form-control" id="pMonto" type="number"
-      value="${tieneVencido ? totalConMora.toFixed(2) : cr.cuotaDiaria.toFixed(2)}"
+      value="${Math.round(tieneVencido ? totalConMora : cr.cuotaDiaria)}"
+      style="font-size:20px; font-weight:800; text-align:center; letter-spacing:-0.5px"
       step="0.01">
   </div>
+
   <div class="form-group">
     <label>Forma de pago</label>
-    <select class="form-control" id="pTipo">
-      <option value="efectivo">💵 Efectivo</option>
-      <option value="yape">📱 Yape/Plin</option>
-      <option value="transferencia">🏦 Transferencia</option>
-    </select>
+    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px">
+      <button type="button"
+        onclick="document.querySelectorAll('.pago-tipo').forEach(b=>b.classList.remove('active')); this.classList.add('active'); window._pagoTipo='efectivo'"
+        class="pago-tipo active"
+        style="padding:10px 6px; border-radius:8px; border:1.5px solid var(--border);
+               background:white; font-size:12px; font-weight:600; cursor:pointer;
+               display:flex; flex-direction:column; align-items:center; gap:4px">
+        <span style="font-size:18px">💵</span>
+        <span>Efectivo</span>
+      </button>
+      <button type="button"
+        onclick="document.querySelectorAll('.pago-tipo').forEach(b=>b.classList.remove('active')); this.classList.add('active'); window._pagoTipo='yape'"
+        class="pago-tipo"
+        style="padding:10px 6px; border-radius:8px; border:1.5px solid var(--border);
+               background:white; font-size:12px; font-weight:600; cursor:pointer;
+               display:flex; flex-direction:column; align-items:center; gap:4px">
+        <span style="font-size:18px">📱</span>
+        <span>Yape/Plin</span>
+      </button>
+      <button type="button"
+        onclick="document.querySelectorAll('.pago-tipo').forEach(b=>b.classList.remove('active')); this.classList.add('active'); window._pagoTipo='transferencia'"
+        class="pago-tipo"
+        style="padding:10px 6px; border-radius:8px; border:1.5px solid var(--border);
+               background:white; font-size:12px; font-weight:600; cursor:pointer;
+               display:flex; flex-direction:column; align-items:center; gap:4px">
+        <span style="font-size:18px">🏦</span>
+        <span>Transf.</span>
+      </button>
+    </div>
   </div>
+
   <div class="form-group">
     <label>Fecha</label>
     <input class="form-control" id="pFecha" type="date" value="${today()}">
   </div>
+
   <div class="form-group">
     <label>Nota (opcional)</label>
     <input class="form-control" id="pNota" placeholder="Observaciones...">
   </div>
-  <div style="margin-top:20px">
-    <button class="btn btn-success" style="width:100%; padding:14px; font-weight:700" onclick="guardarPago()">✓ Confirmar Pago</button>
-  </div>`;
+
+  <button class="btn btn-success" style="height:48px; font-size:15px; font-weight:700;
+    disabled:${isProcessingPayment ? 'true' : 'false'}"
+    onclick="guardarPago()">
+    💰 Confirmar Pago
+  </button>`;
 };

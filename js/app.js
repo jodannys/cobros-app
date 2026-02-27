@@ -1,7 +1,33 @@
 // ============================================================
 // APP.JS — Render principal e inicialización
 // ============================================================
+window.abrirChatWhatsApp = function(telefono, nombre) {
+  if (!telefono) return alert("El cliente no tiene teléfono");
 
+  // 1. Limpiamos el número: solo dejamos dígitos
+  const numero = telefono.replace(/\D/g, '');
+  
+  // 2. Personalizamos el mensaje (opcional)
+  const texto = `Hola ${nombre}`;
+
+  // 3. Aplicamos tu lógica de prefijo Perú (51)
+  const numeroFinal = numero.startsWith('51') ? numero : `51${numero}`;
+  
+  // 4. Detectamos dispositivo para usar el protocolo directo 'whatsapp://'
+  const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
+  
+  const url = /Android|iPhone|iPad/i.test(navigator.userAgent)
+    ? `whatsapp://send?phone=${numeroFinal}`
+    : `https://wa.me/${numeroFinal}`;
+
+  // 5. SALTO DIRECTO: 
+  // En móvil usamos location.href para que no abra pestañas extras
+  if (isMobile) {
+    window.location.href = url;
+  } else {
+    window.open(url, '_blank');
+  }
+};
 // ── RENDER PRINCIPAL ─────────────────────────────────────────
 window.render = function render() {
   const root = document.getElementById('root');
@@ -24,26 +50,54 @@ window.render = function render() {
             state.nav === 'historial' && isAdmin ? renderHistorial() : renderClientes()}
     ${!state.selectedClient ? `
     <nav class="bottom-nav">
-      <div class="nav-item ${state.nav === 'clientes' ? 'active' : ''}" onclick="navigate('clientes')">
-        <span class="nav-icon">👥</span><span>Clientes</span>
+  <div class="nav-item ${state.nav === 'clientes' ? 'active' : ''}" onclick="navigate('clientes')">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+      <circle cx="9" cy="7" r="4"/>
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+    </svg>
+    <span>Clientes</span>
+  </div>
+
+  <div class="nav-item ${state.nav === 'cuadre' ? 'active' : ''}" onclick="navigate('cuadre')">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="18" y1="20" x2="18" y2="10"/>
+      <line x1="12" y1="20" x2="12" y2="4"/>
+      <line x1="6" y1="20" x2="6" y2="14"/>
+    </svg>
+    <span>Cuadre</span>
+  </div>
+
+  ${isAdmin ? `
+  <div class="nav-item ${state.nav === 'admin' ? 'active' : ''}" onclick="navigate('admin')">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 2L3 7v5c0 5 4 9.3 9 10.3C17 21.3 21 17 21 12V7z"/>
+      <polyline points="9 12 11 14 15 10"/>
+    </svg>
+    <span>Admin</span>
+  </div>
+
+  <div class="nav-item ${state.nav === 'historial' ? 'active' : ''}" onclick="navigate('historial')">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="11" cy="11" r="8"/>
+      <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+    </svg>
+    <span>Historial</span>
+  </div>` : ''}
+
+  <div class="nav-item" onclick="if(confirm('¿Desea salir?')) logout()">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+      <polyline points="16 17 21 12 16 7"/>
+      <line x1="21" y1="12" x2="9" y2="12"/>
+   </svg>
+        <span>Salir</span>
       </div>
-      <div class="nav-item ${state.nav === 'cuadre' ? 'active' : ''}" onclick="navigate('cuadre')">
-        <span class="nav-icon">📊</span><span>Cuadre</span>
-      </div>
-      ${isAdmin ? `
-      <div class="nav-item ${state.nav === 'admin' ? 'active' : ''}" onclick="navigate('admin')">
-        <span class="nav-icon">🛡️</span><span>Admin</span>
-      </div>
-      <div class="nav-item ${state.nav === 'historial' ? 'active' : ''}" onclick="navigate('historial')">
-        <span class="nav-icon">🔍</span><span>Historial</span>
-      </div>` : ''}
-      <div class="nav-item" onclick="if(confirm('¿Desea salir?')) logout()">
-        <span class="nav-icon">🚪</span><span>Salir</span>
-      </div>
-    </nav>` : ''}
+    </nav>
+    ` : ''}
   </div>`;
 };
-
 // ── HISTORIAL ─────────────────────────────────────────────────
 window.renderHistorial = function renderHistorial() {
   const usuarios  = DB._cache['users']    || [];

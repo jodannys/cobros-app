@@ -28,10 +28,25 @@ window.renderLogin = function() {
           <input class="form-control" id="loginPass" type="password" placeholder="••••••••" 
                  value="${state.loginPassField || ''}" style="padding-right:45px"
                  autocomplete="current-password">
-          <button type="button" onclick="togglePass('loginPass')" 
-                  style="position:absolute;right:5px;top:50%;transform:translateY(-50%);border:none;background:none;font-size:20px;padding:8px;cursor:pointer">
-            👁️
-          </button>
+          <button type="button" onclick="
+  const inp = document.getElementById('loginPass');
+  const btn = this;
+  if(inp.type === 'password') {
+    inp.type = 'text';
+    btn.style.color = 'var(--primary)';
+  } else {
+    inp.type = 'password';
+    btn.style.color = 'var(--muted)';
+  }"
+  style="position:absolute; right:12px; top:50%; transform:translateY(-50%);
+         border:none; background:none; cursor:pointer;
+         color:var(--muted); display:flex; align-items:center">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+       stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+    <circle cx="12" cy="12" r="3"/>
+  </svg>
+</button>
         </div>
       </div>
       
@@ -65,7 +80,7 @@ window.bindLogin = function() {
 const userExists = users.find(u => u.user?.toLowerCase() === userVal.toLowerCase());
 const found = users.find(u => u.user?.toLowerCase() === userVal.toLowerCase() && u.pass === passVal);
       
-      if (found) {
+     if (found) {
         localStorage.setItem('lastUser', found.user);
         state.currentUser = found;
         state.screen = 'main';
@@ -73,8 +88,8 @@ const found = users.find(u => u.user?.toLowerCase() === userVal.toLowerCase() &&
         state.loginUserField = found.user; 
         state.loginPassField = '';
         
-        // Reset de navegación por defecto al entrar
-        state.nav = found.role === 'admin' ? 'clientes' : 'cuadre';
+        // CAMBIO AQUÍ: Todos entran directo a Clientes, sin importar el rol
+        state.nav = 'clientes'; 
         
         render();
         

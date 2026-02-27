@@ -26,6 +26,7 @@ import './creditos.js';
 import './pagos.js';
 import './cuadre.js';
 import './cajachica.js';
+import './cartera.js';
 import './admin.js';
 import './modals.js';
 import './app.js';         // último: llama a todo lo anterior en su INIT
