@@ -262,7 +262,6 @@ window.renderModalRegistrarPago = function() {
   </div>
 
   <button class="btn btn-success" style="height:48px; width:100%; font-weight:700; margin-top:10px"
-    ${isProcessingPayment ? '' : 'disabled'} 
     onclick="guardarPago()">
     💰 Confirmar Pago
   </button>`;

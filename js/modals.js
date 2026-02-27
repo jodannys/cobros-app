@@ -27,6 +27,8 @@ window.closeModal = function closeModal(e) {
   state._crPctSeguro = undefined;
   state._movCarteraTipo = null;
   state._movCarteraCobrador = null;
+  isProcessingPayment = false;       
+  deshabilitarBotonesPago(false);     
   render();
 };
 window.togglePass = function togglePass(id) {
