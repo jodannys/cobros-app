@@ -271,12 +271,12 @@ window.renderPanelCartera = function () {
     <div style="background:rgba(251,191,36,0.12); border-radius:8px; padding:12px">
       <div style="font-size:10px; color:rgba(251,191,36,0.7); font-weight:700;
                   text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px">En la calle</div>
-      <div style="font-size:16px; font-weight:800; color:#fbbf24">${formatMoney(capitalInv)}</div>
+      <div style="font-size:16px; font-weight:800; color:#fbbf24">${formatMoney(enLaCalle)}</div>
     </div>
     <div style="background:rgba(96,165,250,0.12); border-radius:8px; padding:12px">
       <div style="font-size:10px; color:rgba(147,197,253,0.7); font-weight:700;
                   text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px">En mochilas</div>
-      <div style="font-size:16px; font-weight:800; color:#93c5fd">${formatMoney(capitalInv)}</div>
+ <div style="font-size:16px; font-weight:800; color:#93c5fd">${formatMoney(enMochilas)}</div>
     </div>
     <div style="background:rgba(34,197,94,0.12); border-radius:8px; padding:12px">
       <div style="font-size:10px; color:rgba(74,222,128,0.7); font-weight:700;
