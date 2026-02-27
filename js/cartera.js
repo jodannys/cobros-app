@@ -68,9 +68,12 @@ function _calcularMochila(cobradorId, fechaLimite) {
 
   // (-) Todo lo devuelto al admin y confirmado
   const devuelto = movs
-  .filter(m => (m.tipo === 'confirmar_yape' || m.tipo === 'deposito_cobrador') 
-               && m.cobradorId === cobradorId && antes(m.fecha))
-  .reduce((s, m) => s + Number(m.monto), 0);
+    .filter(m => m.tipo === 'confirmar_yape' && m.cobradorId === cobradorId && antes(m.fecha))
+    .reduce((s, m) => s + Number(m.monto), 0);
+
+  return enviado + cobros + seguros - prestamos - totalGastos - devuelto;
+}
+
 // ── CARTERA: Saldo del admin ──────────────────────────────────
 window.getSaldoCartera = function () {
   const movs = DB._cache['movimientos_cartera'] || [];
@@ -223,7 +226,7 @@ window.renderPanelCartera = function () {
     <div style="font-size:48px; font-weight:900; letter-spacing:-2px;
                 color:${saldoOk ? '#4ade80' : '#f87171'};
                 text-shadow:0 0 50px ${saldoOk ? 'rgba(74,222,128,0.5)' : 'rgba(248,113,113,0.5)'}">
-      S/ ${Math.abs(saldo).toLocaleString('es-PE')}
+      S/ ${Math.abs(saldo).formatMoney()}
     </div>
     ${!saldoOk ? `
       <div style="font-size:12px; color:#f87171; font-weight:700; margin-top:6px">
@@ -238,23 +241,23 @@ window.renderPanelCartera = function () {
     <div style="background:rgba(255,255,255,0.06); border-radius:8px; padding:12px">
       <div style="font-size:10px; color:rgba(255,255,255,0.4); font-weight:700;
                   text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px">Capital invertido</div>
-      <div style="font-size:16px; font-weight:800; color:white">S/ ${capitalInv.toLocaleString('es-PE')}</div>
+      <div style="font-size:16px; font-weight:800; color:white">S/ ${capitalInv.formatMoney()}</div>
     </div>
     <div style="background:rgba(251,191,36,0.12); border-radius:8px; padding:12px">
       <div style="font-size:10px; color:rgba(251,191,36,0.7); font-weight:700;
                   text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px">En la calle</div>
-      <div style="font-size:16px; font-weight:800; color:#fbbf24">S/ ${enLaCalle.toLocaleString('es-PE')}</div>
+      <div style="font-size:16px; font-weight:800; color:#fbbf24">S/ ${enLaCalle.formatMoney()}</div>
     </div>
     <div style="background:rgba(96,165,250,0.12); border-radius:8px; padding:12px">
       <div style="font-size:10px; color:rgba(147,197,253,0.7); font-weight:700;
                   text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px">En mochilas</div>
-      <div style="font-size:16px; font-weight:800; color:#93c5fd">S/ ${enMochilas.toLocaleString('es-PE')}</div>
+      <div style="font-size:16px; font-weight:800; color:#93c5fd">S/ ${enMochilas.formatMoney()}</div>
     </div>
     <div style="background:rgba(34,197,94,0.12); border-radius:8px; padding:12px">
       <div style="font-size:10px; color:rgba(74,222,128,0.7); font-weight:700;
                   text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px">Total negocio</div>
       <div style="font-size:16px; font-weight:800; color:#4ade80">
-        S/ ${(saldo + enMochilas + enLaCalle).toLocaleString('es-PE')}
+        S/ ${(saldo + enMochilas + enLaCalle).formatMoney()}
       </div>
     </div>
   </div>
@@ -363,7 +366,7 @@ window.renderPanelCartera = function () {
         </div>
         <div style="display:flex; align-items:center; gap:8px">
           <div style="font-size:14px; font-weight:800; color:#fbbf24">
-            S/ ${Number(m.monto).toLocaleString('es-PE')}
+            S/ ${Number(m.monto).formatMoney()}
           </div>
           <button onclick="confirmarDeposito('${m.id}')"
             style="padding:5px 12px; border-radius:6px; border:none; cursor:pointer;
@@ -404,7 +407,7 @@ window.renderPanelCartera = function () {
           </div>
           <div style="display:flex; align-items:center; gap:10px">
             <div style="font-size:17px; font-weight:900; color:${ok ? '#16a34a' : 'var(--danger)'}">
-              S/ ${Math.abs(sm).toLocaleString('es-PE')} ${!ok ? '⚠️' : ''}
+              S/ ${Math.abs(sm).formatMoney()} ${!ok ? '⚠️' : ''}
             </div>
             <button onclick="abrirEnviarCobrador('${u.id}')"
               style="padding:6px 12px; border-radius:8px; border:none;
@@ -460,7 +463,7 @@ window.renderPanelCartera = function () {
           </div>
           <div style="font-size:14px; font-weight:900; flex-shrink:0;
                       color:${cfg.signo === '+' ? '#16a34a' : cfg.signo === '-' ? 'var(--danger)' : 'var(--muted)'}">
-            ${cfg.signo}S/${Number(m.monto).toLocaleString('es-PE')}
+            ${cfg.signo}S/${Number(m.monto).formatMoney()}
           </div>
         </div>`;
       }).join('')}
@@ -663,10 +666,10 @@ window.guardarMovimientoCartera = async function () {
     state._movCarteraCobrador = null;
 
     const labels = {
-      inyeccion:      `➕ S/${monto.toLocaleString('es-PE')} inyectados`,
-      envio_cobrador: `💰 Caja asignada — S/${monto.toLocaleString('es-PE')}`,
-      gasto_admin:    `💸 Gasto de S/${monto.toLocaleString('es-PE')} registrado`,
-      retiro:         `🏦 Retiro de S/${monto.toLocaleString('es-PE')} registrado`,
+      inyeccion:      `➕ S/${monto.formatMoney()} inyectados`,
+      envio_cobrador: `💰 Caja asignada — S/${monto.formatMoney()}`,
+      gasto_admin:    `💸 Gasto de S/${monto.formatMoney()} registrado`,
+      retiro:         `🏦 Retiro de S/${monto.formatMoney()} registrado`,
     };
     showToast(labels[tipo] || 'Movimiento registrado');
     render();
