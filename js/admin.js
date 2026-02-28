@@ -536,7 +536,3 @@ window.guardarCreditoEditado = async function guardarCreditoEditado() {
     alert('Error al guardar: ' + e.message);
   }
 };
-
-const cobradorId = 'EL_ID_DEL_COBRADOR'; 
-const cajas = DB._cache['cajas'].filter(c => c.cobradorId === cobradorId);
-console.table(cajas);
