@@ -100,37 +100,46 @@ window.render = function render() {
 };
 // ── HISTORIAL ─────────────────────────────────────────────────
 window.renderHistorial = function renderHistorial() {
-  const usuarios  = DB._cache['users']    || [];
-  const clientes  = DB._cache['clientes'] || [];
-  const creditos  = DB._cache['creditos'] || [];
-  const pagos     = DB._cache['pagos']    || [];
-  const gastos    = DB._cache['gastos']   || [];
+  const usuarios = DB._cache['users'] || [];
+  const clientes = DB._cache['clientes'] || [];
+  const creditos = DB._cache['creditos'] || [];
+  const pagos = DB._cache['pagos'] || [];
+  const gastos = DB._cache['gastos'] || [];
   const cobradores = usuarios.filter(u => u.role === 'cobrador');
 
-  const filtroFecha      = state._hFecha    || today();
+  const filtroFecha = state._hFecha || today();
   const filtroCobradorId = state._hCobrador || 'todos';
-  const filtroVista      = state._hVista    || 'pagos';
-  const filtroBusqueda   = state._hBusqueda || '';
+  const filtroVista = state._hVista || 'pagos';
+  const filtroBusqueda = state._hBusqueda || '';
 
   const pagosFiltrados = pagos.filter(p => {
-    const matchFecha    = p.fecha === filtroFecha;
+    const matchFecha = p.fecha === filtroFecha;
     const matchCobrador = filtroCobradorId === 'todos' || p.cobradorId === filtroCobradorId;
     return matchFecha && matchCobrador;
   });
 
   const gastosFiltrados = gastos.filter(g => {
-    const matchFecha    = g.fecha === filtroFecha;
+    const matchFecha = g.fecha === filtroFecha;
     const matchCobrador = filtroCobradorId === 'todos' || g.cobradorId === filtroCobradorId;
     return matchFecha && matchCobrador;
   });
 
+  // Filtramos créditos por fecha (fechaInicio) y por cobrador
   const creditosFiltrados = creditos.filter(cr => {
-    if (filtroCobradorId === 'todos') return true;
-    const cliente = clientes.find(c => c.id === cr.clienteId);
-    return cliente && cliente.cobradorId === filtroCobradorId;
+    // 1. Validamos que coincida la fecha de inicio del crédito
+    const matchFecha = cr.fechaInicio === filtroFecha;
+
+    // 2. Validamos el cobrador
+    let matchCobrador = true;
+    if (filtroCobradorId !== 'todos') {
+      const cliente = clientes.find(c => c.id === cr.clienteId);
+      matchCobrador = cliente && cliente.cobradorId === filtroCobradorId;
+    }
+
+    return matchFecha && matchCobrador;
   });
 
-  const totalPagos  = pagosFiltrados.reduce((s, p) => s + p.monto, 0);
+  const totalPagos = pagosFiltrados.reduce((s, p) => s + p.monto, 0);
   const totalGastos = gastosFiltrados.reduce((s, g) => s + (g.monto || 0), 0);
 
   return `
@@ -184,7 +193,7 @@ window.renderHistorial = function renderHistorial() {
       </div>
 
       <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px">
-        ${[['pagos','💰 Pagos'],['gastos','💸 Gastos'],['creditos','📋 Créditos']].map(([v,l]) => `
+        ${[['pagos', '💰 Pagos'], ['gastos', '💸 Gastos'], ['creditos', '📋 Créditos']].map(([v, l]) => `
           <button onclick="state._hVista='${v}'; render()"
             style="padding:9px 4px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer;
                    border:2px solid ${filtroVista === v ? 'var(--primary)' : '#e2e8f0'};
@@ -248,24 +257,24 @@ window.renderHistorial = function renderHistorial() {
     </div>` : ''}
 
     <!-- VISTA: CRÉDITOS -->
-    ${filtroVista === 'creditos' ? `
+   ${filtroVista === 'creditos' ? `
     <div class="card" style="padding:14px; border-left:4px solid var(--primary)">
       <div style="font-weight:700; font-size:14px; margin-bottom:12px">
-        ${creditosFiltrados.length} crédito${creditosFiltrados.length !== 1 ? 's' : ''}
-        <span style="font-weight:400; color:var(--muted); font-size:12px">
-          (${creditosFiltrados.filter(c => c.activo).length} activos,
-           ${creditosFiltrados.filter(c => !c.activo).length} cerrados)
+        Créditos del ${formatDate(filtroFecha)} 
+        <span style="font-weight:400; color:var(--muted); font-size:12px; display:block; margin-top:2px">
+          (${creditosFiltrados.length} préstamo${creditosFiltrados.length !== 1 ? 's' : ''} entregado${creditosFiltrados.length !== 1 ? 's' : ''})
         </span>
       </div>
+      <div style="border-top:1px solid var(--border); margin-bottom:8px"></div>
       <div style="border-top:1px solid var(--border); margin-bottom:8px"></div>
       ${creditosFiltrados.length === 0
         ? `<div style="text-align:center; color:var(--muted); font-size:13.5px; padding:20px 0">Sin créditos</div>`
         : creditosFiltrados.map(cr => {
           const cl = clientes.find(c => c.id === cr.clienteId);
           const pagosCredito = pagos.filter(p => p.creditoId === cr.id);
-          const totalPagado  = pagosCredito.reduce((s, p) => s + p.monto, 0);
-          const saldo        = cr.total - totalPagado;
-          const porcentaje   = cr.total > 0 ? Math.min(100, Math.round((totalPagado / cr.total) * 100)) : 0;
+          const totalPagado = pagosCredito.reduce((s, p) => s + p.monto, 0);
+          const saldo = cr.total - totalPagado;
+          const porcentaje = cr.total > 0 ? Math.min(100, Math.round((totalPagado / cr.total) * 100)) : 0;
           return `
           <div style="padding:12px 0; border-bottom:1px solid var(--border); cursor:pointer"
             onclick="verHistorialCliente('${cr.clienteId}')">

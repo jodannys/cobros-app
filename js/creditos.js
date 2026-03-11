@@ -318,9 +318,7 @@ window.guardarCredito = async function () {
   const diasTotal = 24;
 
   // Cálculo de Fecha Fin
-  const f = new Date(fechaInicio + 'T00:00:00');
-  f.setDate(f.getDate() + diasTotal);
-  const fechaFin = f.toISOString().split('T')[0];
+  const fechaFin = sumarDiasHabiles(fechaInicio, diasTotal);
 
   const seguroActivo = state._crSeguro !== false;
   const porcentajeSeguro = seguroActivo ? (state._crPctSeguro ?? 5) : 0;
@@ -385,9 +383,7 @@ window.extenderCredito = async function() {
     const nuevoTotalDias = Number(cr.diasTotal) + diasExtra;
 
     // --- MEJORA: Recalcular la fecha de fin ---
-    const f = new Date(cr.fechaInicio + 'T00:00:00');
-    f.setDate(f.getDate() + nuevoTotalDias);
-    const nuevaFechaFin = f.toISOString().split('T')[0];
+    const nuevaFechaFin = sumarDiasHabiles(cr.fechaInicio, nuevoTotalDias);
 
     try {
         await DB.update('creditos', cr.id, { 

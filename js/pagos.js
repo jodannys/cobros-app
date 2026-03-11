@@ -219,7 +219,7 @@ window.renderModalRegistrarPago = function() {
 
   <div class="form-group">
     <label>Fecha</label>
-    <input class="form-control" id="pFecha" type="date" value="${new Date().toISOString().split('T')[0]}">
+    <input class="form-control" id="pFecha" type="date" value="${today()}">
   </div>
 
   <div class="form-group">

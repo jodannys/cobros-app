@@ -199,14 +199,15 @@ window.clienteEstaAtrasado = function (cr, pagos) {
   const totalPagado = pagos.filter(p => p.creditoId === cr.id).reduce((s, p) => s + Number(p.monto), 0);
   const saldo = cr.total - totalPagado;
   if (saldo <= 0) return false;
-  const inicio = new Date(cr.fechaInicio + 'T00:00:00');
-  const hoy = new Date(today() + 'T00:00:00');
-  const diasTranscurridos = Math.floor((hoy - inicio) / (1000 * 60 * 60 * 24));
+
+  // ✅ Días hábiles transcurridos (sin domingos)
+  const diasTranscurridos = contarDiasHabiles(cr.fechaInicio, today());
   if (diasTranscurridos <= 0) return false;
+
   const cuotasDebidas = Math.min(diasTranscurridos, cr.diasTotal);
   const cuotasCubiertas = Math.floor(totalPagado / cr.cuotaDiaria);
   return cuotasCubiertas < cuotasDebidas;
-}
+};
 
 window.cuotaAtrasada = function (cr, pagos) {
   const totalPagado = pagos.filter(p => p.creditoId === cr.id).reduce((s, p) => s + Number(p.monto), 0);
@@ -240,8 +241,7 @@ window.renderEsquemaCuotas = function (cr) {
   const fechaFormateada = formatDate(proximaFechaISO);
 
   // 4. Lógica de burbujas (Atraso)
-  const inicio = new Date(cr.fechaInicio + 'T00:00:00');
-  const diasTranscurridos = Math.max(0, Math.floor((hoy - inicio) / (1000 * 60 * 60 * 24)));
+ const diasTranscurridos = Math.max(0, contarDiasHabiles(cr.fechaInicio, hoyStr));
 
   const cuotas = [];
   for (let i = 1; i <= cr.diasTotal; i++) {
