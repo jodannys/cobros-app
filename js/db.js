@@ -1,4 +1,5 @@
 window.DB = {
+  _isLoading: false,
   _cache: {
     users: [],
     clientes: [],
@@ -51,18 +52,12 @@ window.DB = {
   },
 
   // INICIALIZACIÓN EN TIEMPO REAL
-  async init() {
+ async init() {
     console.log("🚀 Iniciando sincronización en tiempo real...");
-
+    
     const colecciones = [
-      'users',
-      'clientes',
-      'creditos',
-      'pagos',
-      'notas_cuadre',
-      'gastos',
-      'cajas',
-      'movimientos_cartera'
+      'users', 'clientes', 'creditos', 'pagos', 
+      'notas_cuadre', 'gastos', 'cajas', 'movimientos_cartera'
     ];
 
     colecciones.forEach(col => {
@@ -73,14 +68,14 @@ window.DB = {
       });
     });
 
+    // Mantenimiento automático a los 3 segundos de iniciar
     setTimeout(() => {
       this._corregirCreditosSaldados();
       this._limpiarHuerfanos();
     }, 3000);
-
-    console.log("✅ Sistema vinculado a la nube y listo.");
   },
 
+  
   async _limpiarHuerfanos() {
     console.log("🧹 Limpiando datos huérfanos...");
     const users    = this._cache['users']    || [];

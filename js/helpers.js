@@ -116,7 +116,7 @@ window.getAlertasCreditos = function() {
   const hoy = hoyPeru();
   const hoyStr = hoy.toISOString().split('T')[0];
 
-  creditos.forEach(cr => {
+ creditos.forEach(cr => {
     try {
       const cliente = clientes.find(c => c.id === cr.clienteId);
       if (!cliente) return;
@@ -128,6 +128,7 @@ window.getAlertasCreditos = function() {
 
       if (saldo < 1) return;
 
+      // Fecha fin
       let fFin;
       if (cr.fechaFin && cr.fechaFin !== 'undefined') {
         fFin = new Date(cr.fechaFin + 'T00:00:00');
@@ -138,21 +139,25 @@ window.getAlertasCreditos = function() {
       fFin.setHours(0, 0, 0, 0);
       const finStr = fFin.toISOString().split('T')[0];
 
-      const fechasPagos = pagosCr.map(p => p.fecha).sort((a, b) => b.localeCompare(a));
-      const ultimaFechaRef = fechasPagos.length > 0 ? fechasPagos[0] : cr.fechaInicio;
-      const diasInactivo = contarDiasHabiles(ultimaFechaRef, hoyStr);
-
       if (hoy > fFin) {
+        // VENCIDO
         const diasVencido = contarDiasHabiles(finStr, hoyStr);
         alertas.push({ tipo: 'vencido', cr, cliente, cobrador, saldo, dias: diasVencido || 0 });
-      } else if (diasInactivo >= 2) {
-        alertas.push({ tipo: 'moroso', cr, cliente, cobrador, saldo, dias: diasInactivo || 0 });
+      } else {
+        // ATRASADO — misma lógica que clienteEstaAtrasado
+        const diasTranscurridos = Math.max(0, contarDiasHabiles(cr.fechaInicio, hoyStr) - 1);
+        if (diasTranscurridos <= 0) return;
+        const cuotasDebidas = Math.min(diasTranscurridos, cr.diasTotal);
+        const cuotasCubiertas = Math.floor(totalPagado / (cr.cuotaDiaria || 1));
+        if (cuotasCubiertas < cuotasDebidas) {
+          const dias = cuotasDebidas - cuotasCubiertas;
+          alertas.push({ tipo: 'moroso', cr, cliente, cobrador, saldo, dias });
+        }
       }
     } catch (e) {
       console.error("Error en crédito individual:", e);
     }
   });
-
   return alertas;
 };
 

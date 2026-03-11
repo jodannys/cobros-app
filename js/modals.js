@@ -252,11 +252,18 @@ window.renderModalNuevoCredito = function renderModalNuevoCredito() {
   <div class="modal-handle"></div>
   <div class="modal-title">Nuevo Crédito</div>
 
+ <div class="form-group">
+    <label>Plan de crédito</label>
+    <select class="form-control" id="crPlan" onchange="calcularCredito()">
+      <option value="A">24 días — 20% interés</option>
+      <option value="B">20 días — 20% interés</option>
+    </select>
+  </div>
+
   <div class="form-group">
     <label>Monto a prestar (S/) *</label>
     <input class="form-control" id="crMonto" type="number" placeholder="1000" oninput="calcularCredito()">
   </div>
-
   <!-- MICRO SEGURO -->
   <div style="background:${seguroActivo ? '#eff6ff' : 'var(--bg)'}; border-radius:10px;
               padding:12px 14px; margin-bottom:12px;
@@ -311,7 +318,7 @@ window.renderModalNuevoCredito = function renderModalNuevoCredito() {
       </div>
       <div class="info-item">
         <div class="info-label">Plazo</div>
-        <div class="info-value">24 días</div>
+        <div class="info-value" id="crPlazo">24 días</div>
       </div>
     </div>
 

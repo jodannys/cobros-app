@@ -2,20 +2,20 @@
 // GESTIÓN DE CRÉDITOS Y PAGOS
 // ============================================================
 window.registrarPagoSeguro = function (btn, creditoId) {
-  if (btn.dataset.loading === 'true') return; // Si ya está cargando, no hace nada
+  if (btn.dataset.loading === 'true') return;
   btn.dataset.loading = 'true';
   btn.style.opacity = '0.5';
   btn.innerHTML = '⌛ Procesando...';
 
   openRegistrarPago(creditoId);
 
-  // Rehabilitar después de 2 segundos para evitar clics accidentales
   setTimeout(() => {
     btn.dataset.loading = 'false';
     btn.style.opacity = '1';
     btn.innerHTML = '💰 Registrar pago';
   }, 2000);
 };
+
 window.renderCreditoCard = function (cr) {
   const pagos = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id);
   const totalPagado = pagos.reduce((s, p) => s + p.monto, 0);
@@ -29,7 +29,6 @@ window.renderCreditoCard = function (cr) {
   const mora = infoMora.total;
   const totalConMora = saldo + mora;
   const cuotasCubiertas = Math.floor(totalPagado / cr.cuotaDiaria);
-
 
   return `
   <div class="credito-card" style="padding:16px; margin-bottom:12px; border-radius:10px">
@@ -130,7 +129,6 @@ window.renderCreditoCard = function (cr) {
     <div style="margin:12px 0 6px">
       <div style="display:flex; justify-content:space-between; font-size:11.5px;
                   color:var(--muted); margin-bottom:6px">
-
         <span>${cuotasCubiertas} de ${cr.diasTotal} cuotas</span>
         <span style="font-weight:700; color:${progreso >= 100 ? 'var(--success)' : 'var(--primary)'}">
           ${progreso}% pagado
@@ -144,14 +142,13 @@ window.renderCreditoCard = function (cr) {
     <!-- ACCIONES -->
     ${cr.activo ? `
     <div style="display:flex; flex-direction:column; gap:8px; margin-top:14px">
-
-     <button class="btn btn-success" 
-  id="btn-pago-${cr.id}"
-  style="height:46px; font-size:14px; font-weight:700; width:100%; display:flex; align-items:center; justify-content:center; gap:8px"
-  onclick="ejecutarPagoProtegido(this, '${cr.id}')">
-  <span id="icon-${cr.id}">💰</span> 
-  <span id="text-${cr.id}">Registrar pago</span>
-</button>
+      <button class="btn btn-success"
+        id="btn-pago-${cr.id}"
+        style="height:46px; font-size:14px; font-weight:700; width:100%; display:flex; align-items:center; justify-content:center; gap:8px"
+        onclick="ejecutarPagoProtegido(this, '${cr.id}')">
+        <span id="icon-${cr.id}">💰</span>
+        <span id="text-${cr.id}">Registrar pago</span>
+      </button>
       ${isAdmin ? `
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px">
           <button class="btn btn-outline btn-sm" onclick="cerrarCredito('${cr.id}')">
@@ -185,52 +182,49 @@ window.renderCreditoCard = function (cr) {
     ${renderEsquemaCuotas(cr)}
 
     <!-- HISTORIAL DE PAGOS -->
-${pagos.length > 0 ? `
-<div style="margin-top:14px">
-  <div style="font-size:10.5px; font-weight:700; color:var(--muted); text-transform:uppercase;
-              letter-spacing:0.6px; margin-bottom:10px">Historial de pagos</div>
+    ${pagos.length > 0 ? `
+    <div style="margin-top:14px">
+      <div style="font-size:10.5px; font-weight:700; color:var(--muted); text-transform:uppercase;
+                  letter-spacing:0.6px; margin-bottom:10px">Historial de pagos</div>
+      ${pagos.slice().reverse().map(p => `
+        <div class="cuota-item" style="display:flex; align-items:center; padding:10px 0;
+                                       border-bottom:1px solid var(--border)">
+          <div style="flex:1; min-width:0">
+            <div style="font-weight:600; font-size:13.5px; color:var(--text)">${formatDate(p.fecha)}</div>
+            <div style="display:flex; align-items:center; gap:6px; margin-top:3px">
+              <span style="font-size:10.5px; background:var(--bg); color:var(--muted);
+                           padding:2px 8px; border-radius:6px; font-weight:600; text-transform:capitalize">
+                ${p.tipo}
+              </span>
+              ${p.aplicadoMora ? `
+                <span style="font-size:10.5px; background:#fff1f2; color:#9f1239;
+                             padding:2px 8px; border-radius:6px; font-weight:600">
+                  mora incluida
+                </span>` : ''}
+            </div>
+          </div>
+          <div style="font-weight:800; font-size:15px; color:var(--success);
+                      margin-right:${isAdmin ? '10px' : '0'}; flex-shrink:0; letter-spacing:-0.3px">
+            ${formatMoney(p.monto)}
+          </div>
+          ${isAdmin ? `
+            <button onclick="abrirEditarPago('${p.id}')"
+              style="width:30px; height:30px; border-radius:8px; border:none;
+                     background:var(--bg); color:var(--muted); font-size:13px;
+                     cursor:pointer; display:flex; align-items:center; justify-content:center;
+                     flex-shrink:0">✏️</button>` : ''}
+        </div>`).join('')}
+    </div>` : ''}
 
-  ${pagos.slice().reverse().map(p => `
-    <div class="cuota-item" style="display:flex; align-items:center; padding:10px 0;
-                                   border-bottom:1px solid var(--border)">
-      <div style="flex:1; min-width:0">
-        <div style="font-weight:600; font-size:13.5px; color:var(--text)">${formatDate(p.fecha)}</div>
-        <div style="display:flex; align-items:center; gap:6px; margin-top:3px">
-          <span style="font-size:10.5px; background:var(--bg); color:var(--muted);
-                       padding:2px 8px; border-radius:6px; font-weight:600; text-transform:capitalize">
-            ${p.tipo}
-          </span>
-          ${p.aplicadoMora ? `
-            <span style="font-size:10.5px; background:#fff1f2; color:#9f1239;
-                         padding:2px 8px; border-radius:6px; font-weight:600">
-              mora incluida
-            </span>` : ''}
-        </div>
-      </div>
-
-      <div style="font-weight:800; font-size:15px; color:var(--success);
-                  margin-right:${isAdmin ? '10px' : '0'}; flex-shrink:0; letter-spacing:-0.3px">
-        ${formatMoney(p.monto)}
-      </div>
-
-      ${isAdmin ? `
-        <button onclick="abrirEditarPago('${p.id}')"
-          style="width:30px; height:30px; border-radius:8px; border:none;
-                 background:var(--bg); color:var(--muted); font-size:13px;
-                 cursor:pointer; display:flex; align-items:center; justify-content:center;
-                 flex-shrink:0">✏️</button>` : ''}
-    </div>`).join('')}
-</div>` : ''}
-
-</div>`;
+  </div>`;
 };
+
 window.renderFechasCredito = function (cr) {
   const fechaFin = calcularFechaFin(cr.fechaInicio, cr.diasTotal);
   const vencido = cr.activo && estaVencido(cr.fechaInicio, cr.diasTotal);
 
   return `
   <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:4px">
-
     <div style="display:flex; align-items:center; gap:6px; background:var(--bg);
                 padding:6px 12px; border-radius:8px">
       <span style="font-size:13px">📅</span>
@@ -240,7 +234,6 @@ window.renderFechasCredito = function (cr) {
         <div style="font-size:13px; font-weight:700; color:var(--text)">${formatDate(cr.fechaInicio)}</div>
       </div>
     </div>
-
     <div style="display:flex; align-items:center; gap:6px;
                 background:${vencido ? '#fff1f2' : 'var(--bg)'};
                 padding:6px 12px; border-radius:8px">
@@ -256,10 +249,10 @@ window.renderFechasCredito = function (cr) {
         </div>
       </div>
     </div>
-
   </div>`;
 };
-// ── calcularCredito — actualizado con seguro ──────────────────
+
+// ── calcularCredito ───────────────────────────────────────────
 window.calcularCredito = function () {
   const monto = parseFloat(document.getElementById('crMonto')?.value) || 0;
   if (monto <= 0) {
@@ -267,9 +260,15 @@ window.calcularCredito = function () {
     if (prev) prev.style.display = 'none';
     return;
   }
-  const interes = monto * 0.2;
+
+  const plan = document.getElementById('crPlan')?.value || 'A';
+  const diasTotal = plan === 'B' ? 20 : 24;
+  const elPlazo = document.getElementById('crPlazo');
+  if (elPlazo) elPlazo.textContent = diasTotal + ' días';
+  const pctInteres = 0.20; // siempre 20%
+  const interes = monto * pctInteres;
   const total = monto + interes;
-  const cuota = total / 24;
+  const cuota = total / diasTotal;
 
   const preview = document.getElementById('crPreview');
   if (preview) preview.style.display = 'block';
@@ -299,9 +298,8 @@ window.calcularCredito = function () {
   }
 };
 
-// ── guardarCredito — guarda campos de seguro ─────────────────
+// ── guardarCredito ────────────────────────────────────────────
 window.guardarCredito = async function () {
-  // Verificamos si ya tiene créditos activos
   const creditosExistentes = (DB._cache['creditos'] || [])
     .filter(c => c.clienteId === state.selectedClient.id && c.activo);
 
@@ -310,15 +308,16 @@ window.guardarCredito = async function () {
     return;
   }
 
+  const plan = document.getElementById('crPlan')?.value || 'A';
+  const diasTotal = plan === 'B' ? 20 : 24;
+  const pctInteres = 0.20; // siempre 20%
+
   const monto = parseMonto(document.getElementById('crMonto').value);
   const fechaInicio = document.getElementById('crFecha').value;
   if (monto <= 0 || !fechaInicio) { alert('Datos incompletos'); return; }
 
-  const total = monto * 1.2;
-  const cuotaDiaria = total / 24;
-  const diasTotal = 24;
-
-  // Cálculo de Fecha Fin
+  const total = monto * (1 + pctInteres);
+  const cuotaDiaria = total / diasTotal;
   const fechaFin = sumarDiasHabiles(fechaInicio, diasTotal);
 
   const seguroActivo = state._crSeguro !== false;
@@ -341,7 +340,6 @@ window.guardarCredito = async function () {
     porcentajeSeguro,
     montoSeguro,
     montoEntregado: monto - montoSeguro,
-    // --- CAMBIO AQUÍ: Usamos fecha local para evitar el error de serverTimestamp ---
     creadoEn: new Date().toISOString()
   };
 
@@ -382,38 +380,28 @@ window.extenderCredito = async function () {
 
   const cr = state.selectedCredito;
   const nuevoTotalDias = Number(cr.diasTotal) + diasExtra;
-
-  // --- MEJORA: Recalcular la fecha de fin ---
   const nuevaFechaFin = sumarDiasHabiles(cr.fechaInicio, nuevoTotalDias);
 
   try {
     await DB.update('creditos', cr.id, {
       diasTotal: nuevoTotalDias,
-      fechaFin: nuevaFechaFin // <--- IMPORTANTE ACTUALIZAR ESTO
+      fechaFin: nuevaFechaFin
     });
-
     showToast(`✅ Plazo extendido hasta ${formatDate(nuevaFechaFin)}`);
     render();
   } catch (error) { console.error(error); }
 };
 
-
 window.guardarCompromiso = async function () {
   const fecha = document.getElementById('fechaCompromiso').value;
-
   if (!fecha) return alert('⚠️ Selecciona una fecha para el compromiso.');
-
-  // Validación: No permitir fechas pasadas
-  if (fecha < today()) {
-    return alert('⚠️ La fecha de compromiso no puede ser anterior a hoy.');
-  }
+  if (fecha < today()) return alert('⚠️ La fecha de compromiso no puede ser anterior a hoy.');
 
   try {
     await DB.update('creditos', state.selectedCredito.id, {
       fechaCompromiso: fecha,
       estadoCompromiso: 'pendiente'
     });
-
     state.selectedCredito = { ...state.selectedCredito, fechaCompromiso: fecha };
     showToast(`📅 Compromiso: ${formatDate(fecha)}`);
     render();
@@ -425,15 +413,11 @@ window.guardarCompromiso = async function () {
 window.guardarNotaCredito = async function () {
   const notaInput = document.getElementById('notaCredito');
   const notaTexto = notaInput.value.trim();
-
   if (!notaTexto) return alert('⚠️ Escribe algo en la nota antes de guardar.');
 
   try {
-    // Opcional: Podrías acumular notas en lugar de sobrescribirlas
     const notaFinal = `${notaTexto} (Por: ${state.currentUser.nombre} - ${today()})`;
-
     await DB.update('creditos', state.selectedCredito.id, { nota: notaFinal });
-
     state.selectedCredito = { ...state.selectedCredito, nota: notaFinal };
     showToast('📝 Nota guardada correctamente');
     render();
@@ -441,32 +425,24 @@ window.guardarNotaCredito = async function () {
     alert('❌ Error al guardar la nota.');
   }
 };
+
 window.toggleMora = async function (crId, activar) {
   console.log(`--- Intentando ${activar ? 'Activar' : 'Desactivar'} Mora para ID: ${crId} ---`);
 
   try {
     const creditosCache = DB._cache['creditos'] || [];
-
-    // 1. Actualizar en Firebase
     await DB.update('creditos', crId, { mora_activa: activar });
 
-    // 2. Actualizar Caché local
     const idx = creditosCache.findIndex(c => c.id === crId);
     if (idx >= 0) {
       creditosCache[idx].mora_activa = activar;
-
-      // CLAVE: Si el crédito abierto en el modal es este, actualizamos su estado también
       if (state.selectedCredito && state.selectedCredito.id === crId) {
         state.selectedCredito.mora_activa = activar;
-        console.log("Estado del modal actualizado localmente");
       }
     }
 
     showToast(activar ? '🔔 Mora activada — S/5 por día' : '🔕 Mora desactivada');
-
-    // 3. Refrescar la interfaz
     render();
-
   } catch (error) {
     console.error("❌ Error en toggleMora:", error);
     alert("No se pudo cambiar el estado de la mora.");
@@ -521,6 +497,7 @@ window.renderModalEditarPago = function () {
     </button>
   </div>`;
 };
+
 window.guardarPagoEditado = async function () {
   const p = state._editandoPago;
   const monto = parseMonto(document.getElementById('epMonto').value);
@@ -572,17 +549,14 @@ window.nuevoCreditoRapido = function (clienteId) {
 };
 
 window.ejecutarPagoProtegido = function (btn, creditoId) {
-  // 1. RASTREO: Ver cada clic que hace el usuario
   console.log("%c [CLIC DETECTADO] ", "background: #222; color: #bada55", `Intentando pagar crédito: ${creditoId}`);
 
-  // 2. VERIFICACIÓN: ¿Está bloqueado ya?
   if (btn.disabled || btn.dataset.procesando === "true") {
-    console.warn("%c [BLOQUEADO] ", "background: red; color: white", "Se evitó un disparo doble. El botón ya está procesando.");
+    console.warn("%c [BLOQUEADO] ", "background: red; color: white", "Se evitó un disparo doble.");
     return;
   }
 
-  // 3. ACCIÓN: Si pasó el filtro, bloqueamos y disparamos
-  console.log("%c [PROCESANDO...] ", "background: green; color: white", "Filtro superado. Abriendo modal de pago...");
+  console.log("%c [PROCESANDO...] ", "background: green; color: white", "Abriendo modal de pago...");
 
   btn.disabled = true;
   btn.dataset.procesando = "true";
@@ -594,14 +568,12 @@ window.ejecutarPagoProtegido = function (btn, creditoId) {
   if (text) text.innerText = "Procesando...";
   btn.style.opacity = "0.7";
 
-  // Ejecutamos la apertura del pago
   if (typeof openRegistrarPago === 'function') {
     openRegistrarPago(creditoId);
   } else {
     console.error("CRÍTICO: No existe la función openRegistrarPago");
   }
 
-  // 4. RESET: Liberar después de 3 segundos
   setTimeout(() => {
     console.log("%c [BOTÓN LIBERADO] ", "background: blue; color: white", "El botón vuelve a estar activo.");
     btn.disabled = false;

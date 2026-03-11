@@ -1,8 +1,16 @@
 window.renderClientes = function () {
+  if (DB._isLoading) {
+    return `
+      <div class="page-loading">
+        <div class="spinner"></div>
+        <p>Sincronizando datos...</p>
+      </div>`;
+  }
   const clientes = DB._cache['clientes'] || [];
   const creditos = DB._cache['creditos'] || [];
   const users = DB._cache['users'] || [];
   const pagos = DB._cache['pagos'] || [];
+  if (!state.currentUser) return `<div class="page">Cargando sesión...</div>`;
   const isAdmin = state.currentUser.role === 'admin';
   const filtro = state.filtroClientes || 'todos';
 
@@ -38,6 +46,7 @@ window.renderClientes = function () {
       (c.negocio || '').toLowerCase().includes(q)
     );
   }
+
 
   const filtros = [
     { key: 'todos', label: 'Todos' },
@@ -113,10 +122,14 @@ window.renderClientes = function () {
 window._renderClienteItem = function (c, creditos, users, pagos, isAdmin) {
   const crs = creditos.filter(cr => cr.clienteId === c.id);
   const creditoActivo = crs.find(cr => cr.activo);
-  const cob = users.find(u => u.id === c.cobradorId);
+  
+  // AQUÍ: Ahora sí usaremos 'cob'
+  const cob = users.find(u => u.id === c.cobradorId) || { nombre: 'Sin asignar' };
+  
   const atrasado = creditoActivo ? clienteEstaAtrasado(creditoActivo, pagos) : false;
   const numCuotaAtrasada = atrasado ? cuotaAtrasada(creditoActivo, pagos) : null;
 
+  // ... (tu lógica de badges se mantiene igual) ...
   let badge, badgeStyle;
   if (atrasado) {
     const vencido = creditoActivo.fechaFin && today() > creditoActivo.fechaFin;
@@ -149,13 +162,13 @@ window._renderClienteItem = function (c, creditos, users, pagos, isAdmin) {
       <div class="client-name" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis">
         ${c.nombre}
       </div>
-      <div style="font-size:11.5px; color:var(--muted); display:flex; align-items:center; gap:4px; margin-top:2px">
+      <div style="font-size:11.5px; color:var(--muted); display:flex; flex-direction:column; gap:1px; margin-top:2px">
         <span>DNI: ${c.dni}</span>
+        ${isAdmin ? `<span style="color:var(--primary); font-weight:600; font-size:10px">🎙️ ${cob.nombre}</span>` : ''}
       </div>
     </div>
 
     <div style="display:flex; align-items:center; gap:8px; flex-shrink:0; margin-right:44px">
-
       <div style="width:36px; display:flex; justify-content:center">
         ${creditoActivo ? `
           <button onclick="event.stopPropagation(); pagoRapido('${creditoActivo.id}')"
@@ -174,11 +187,10 @@ window._renderClienteItem = function (c, creditos, users, pagos, isAdmin) {
 
       <div style="width:80px; display:flex; justify-content:center">
         <span style="font-size:10px; font-weight:700; padding:3px 8px; border-radius:6px;
-                     white-space:nowrap; text-align:center; ${badgeStyle}">
+                   white-space:nowrap; text-align:center; ${badgeStyle}">
           ${badge}
         </span>
       </div>
-
     </div>
     <div onclick="event.stopPropagation(); ${tieneTelefono ? `abrirChatWhatsApp('${c.telefono}', '${c.nombre}')` : `alert('Sin teléfono')`}"
          style="position:absolute; right:0; top:0; bottom:0; width:44px;
@@ -193,10 +205,8 @@ window._renderClienteItem = function (c, creditos, users, pagos, isAdmin) {
         </svg>
       </div>
     </div>
-
   </div>`;
 }
-
 // ============================================================
 // HELPERS DE ESTADO DE CUOTAS
 // ============================================================
@@ -285,8 +295,8 @@ window.renderEsquemaCuotas = function (cr) {
   </div>`;
     return `
       <div>
-        <div style="width:100%; padding-top:100%; position:relative; border-radius:8px;
-                    background:${bg[d.estado]}; border:1.5px solid ${bdr[d.estado]};">
+     <div style="width:100%; padding-top:85%; position:relative; border-radius:6px;
+            background:${bg[d.estado]}; border:1.2px solid ${bdr[d.estado]};">
           <span style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
                        font-size:11px; font-weight:800; color:${txt[d.estado]}">${d.num}</span>
         </div>
@@ -336,9 +346,9 @@ window.renderEsquemaCuotas = function (cr) {
 // ============================================================
 window.setFiltroClientes = function (f) {
   state.filtroClientes = f;
-  const searchInput = document.getElementById('search-clientes');
-  if (searchInput) state.search = searchInput.value;
-  render();
+ const searchInput = document.getElementById('search-clientes');
+if (searchInput) state.search = searchInput.value;
+render();
   const nuevoInput = document.getElementById('search-clientes');
   if (nuevoInput && state.search) {
     nuevoInput.focus();

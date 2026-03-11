@@ -1,8 +1,4 @@
-// ══════════════════════════════════════════════════════════════
-// AUTENTICACIÓN (Compatibles con Vite/Modules)
-// ══════════════════════════════════════════════════════════════
-
-window.renderLogin = function() {
+window.renderLogin = function () {
   return `
   <div class="login-screen">
     <div class="login-card">
@@ -61,7 +57,7 @@ window.renderLogin = function() {
   </div>`;
 };
 
-window.bindLogin = function() {
+window.bindLogin = function () {
   const btnLogin = document.getElementById('btnLogin');
   const loginPassInput = document.getElementById('loginPass');
   const loginUserInput = document.getElementById('loginUser');
@@ -75,31 +71,32 @@ window.bindLogin = function() {
       const userVal = document.getElementById('loginUser').value.trim();
       const passVal = document.getElementById('loginPass').value.trim();
       const users = DB._cache['users'] || [];
-      
+
       // DESPUÉS — guarda contra campos undefined
-const userExists = users.find(u => u.user?.toLowerCase() === userVal.toLowerCase());
-const found = users.find(u => u.user?.toLowerCase() === userVal.toLowerCase() && u.pass === passVal);
-      
-     if (found) {
+      const userExists = users.find(u => u.user?.toLowerCase() === userVal.toLowerCase());
+      const found = users.find(u => u.user?.toLowerCase() === userVal.toLowerCase() && u.pass === passVal);
+
+      if (found) {
         localStorage.setItem('lastUser', found.user);
+        localStorage.setItem('sessionUser', JSON.stringify(found));
         state.currentUser = found;
         state.screen = 'main';
         state.loginError = '';
-        state.loginUserField = found.user; 
+        state.loginUserField = found.user;
         state.loginPassField = '';
-        
+
         // CAMBIO AQUÍ: Todos entran directo a Clientes, sin importar el rol
-        state.nav = 'clientes'; 
-        
+        state.nav = 'clientes';
+
         render();
-        
+
         // Alerta de créditos vencidos (Solo para Admin)
         if (found.role === 'admin' && typeof getAlertasCreditos === 'function') {
           const alertas = getAlertasCreditos();
           if (alertas.length > 0) {
-            setTimeout(() => { 
-              state.modal = 'banner-alertas'; 
-              render(); 
+            setTimeout(() => {
+              state.modal = 'banner-alertas';
+              render();
             }, 500);
           }
         }
@@ -128,23 +125,23 @@ const found = users.find(u => u.user?.toLowerCase() === userVal.toLowerCase() &&
   });
 };
 
+
 window.logout = function() {
-  if (confirm('¿Cerrar sesión?')) {
-    state.screen = 'login';
-    state.currentUser = null;
-    state.loginPassField = '';
-    state.nav = 'clientes';
-    state.selectedClient = null;
-    state.modal = null;
-    render();
-  }
+  localStorage.removeItem('sessionUser');
+  state.screen = 'login';
+  state.currentUser = null;
+  state.loginPassField = '';
+  state.nav = 'clientes';
+  state.selectedClient = null;
+  state.modal = null;
+  render();
 };
 
-window.togglePass = function(id) {
+window.togglePass = function (id) {
   const input = document.getElementById(id);
   if (input) {
     const isPass = input.type === 'password';
     input.type = isPass ? 'text' : 'password';
-    // Opcional: podrías cambiar el emoji de 👁️ a 🙈
+  
   }
 };

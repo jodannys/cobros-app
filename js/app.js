@@ -1,38 +1,51 @@
-// ============================================================
-// APP.JS — Render principal e inicialización
-// ============================================================
 window.abrirChatWhatsApp = function (telefono, nombre) {
   if (!telefono) return alert("El cliente no tiene teléfono");
 
-  // 1. Limpiamos el número: solo dejamos dígitos
   const numero = telefono.replace(/\D/g, '');
-
-  // 2. Personalizamos el mensaje (opcional)
-  const texto = `Hola ${nombre}`;
-
-  // 3. Aplicamos tu lógica de prefijo Perú (51)
   const numeroFinal = numero.startsWith('51') ? numero : `51${numero}`;
-
-  // 4. Detectamos dispositivo para usar el protocolo directo 'whatsapp://'
   const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
-
-  const url = /Android|iPhone|iPad/i.test(navigator.userAgent)
+  const url = isMobile
     ? `whatsapp://send?phone=${numeroFinal}`
     : `https://wa.me/${numeroFinal}`;
 
-  // 5. SALTO DIRECTO: 
-  // En móvil usamos location.href para que no abra pestañas extras
   if (isMobile) {
     window.location.href = url;
   } else {
     window.open(url, '_blank');
   }
 };
+
 // ── RENDER PRINCIPAL ─────────────────────────────────────────
 window.render = function render() {
   const root = document.getElementById('root');
-  if (state.screen === 'login') { root.innerHTML = renderLogin(); bindLogin(); return; }
 
+  // 1. PRIORIDAD ABSOLUTA: Mostrar pantalla de carga si los datos se están obteniendo
+  if (state._cargando) {
+    root.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:center;
+        height:100vh;flex-direction:column;gap:16px">
+        <div style="font-size:36px">💰</div>
+        <div style="font-size:15px;font-weight:700;color:#1e293b">Cargando CobrosApp...</div>
+        <div style="width:40px;height:40px;border:4px solid #e2e8f0;
+          border-top-color:#1a56db;border-radius:50%;
+          animation:spin 0.8s linear infinite"></div>
+        <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+      </div>`;
+    return; // Detenemos el render aquí hasta que cargue
+  }
+
+  // 2. CONTROL DE SESIÓN: Solo se evalúa si ya terminó de cargar
+  if (!state.currentUser && state.screen !== 'login') {
+    state.screen = 'login';
+  }
+  
+  if (state.screen === 'login') { 
+    root.innerHTML = renderLogin(); 
+    bindLogin(); 
+    return; 
+  }
+
+  // 3. RENDER DE LA APP (si ya cargó y hay usuario)
   const isAdmin = state.currentUser.role === 'admin';
   root.innerHTML = `
   <div class="app">
@@ -42,62 +55,118 @@ window.render = function render() {
       color:white;padding:12px 20px;border-radius:10px;z-index:9999;
       font-weight:600;font-size:14px;max-width:300px;text-align:center;
       box-shadow:0 4px 12px rgba(0,0,0,0.2)">${state.toast.msg}</div>` : ''}
+    
     ${state.modal ? renderModal() : ''}
+    
     ${state.selectedClient ? renderClientDetail() :
       state.nav === 'clientes' ? renderClientes() :
         state.nav === 'cuadre' ? renderCuadre() :
           state.nav === 'admin' && isAdmin ? renderAdmin() :
             state.nav === 'historial' && isAdmin ? renderHistorial() : renderClientes()}
+            
     ${!state.selectedClient ? `
     <nav class="bottom-nav">
-  <div class="nav-item ${state.nav === 'clientes' ? 'active' : ''}" onclick="navigate('clientes')">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-      <circle cx="9" cy="7" r="4"/>
-      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-    </svg>
-    <span>Clientes</span>
-  </div>
+      <div class="nav-item ${state.nav === 'clientes' ? 'active' : ''}" onclick="navigate('clientes')">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+        <span>Clientes</span>
+      </div>
+ 
+      <div class="nav-item ${state.nav === 'cuadre' ? 'active' : ''}" onclick="navigate('cuadre')">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="20" x2="18" y2="10"/>
+          <line x1="12" y1="20" x2="12" y2="4"/>
+          <line x1="6" y1="20" x2="6" y2="14"/>
+        </svg>
+        <span>Cuadre</span>
+      </div>
 
-  <div class="nav-item ${state.nav === 'cuadre' ? 'active' : ''}" onclick="navigate('cuadre')">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <line x1="18" y1="20" x2="18" y2="10"/>
-      <line x1="12" y1="20" x2="12" y2="4"/>
-      <line x1="6" y1="20" x2="6" y2="14"/>
-    </svg>
-    <span>Cuadre</span>
-  </div>
+      ${isAdmin ? `
+      <div class="nav-item ${state.nav === 'admin' ? 'active' : ''}" onclick="navigate('admin')">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2L3 7v5c0 5 4 9.3 9 10.3C17 21.3 21 17 21 12V7z"/>
+          <polyline points="9 12 11 14 15 10"/>
+        </svg>
+        <span>Admin</span>
+      </div>
 
-  ${isAdmin ? `
-  <div class="nav-item ${state.nav === 'admin' ? 'active' : ''}" onclick="navigate('admin')">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M12 2L3 7v5c0 5 4 9.3 9 10.3C17 21.3 21 17 21 12V7z"/>
-      <polyline points="9 12 11 14 15 10"/>
-    </svg>
-    <span>Admin</span>
-  </div>
+      <div class="nav-item ${state.nav === 'historial' ? 'active' : ''}" onclick="navigate('historial')">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <span>Historial</span>
+      </div>` : ''}
 
-  <div class="nav-item ${state.nav === 'historial' ? 'active' : ''}" onclick="navigate('historial')">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="11" cy="11" r="8"/>
-      <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-    </svg>
-    <span>Historial</span>
-  </div>` : ''}
-
-  <div class="nav-item" onclick="if(confirm('¿Desea salir?')) logout()">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
-      <polyline points="16 17 21 12 16 7"/>
-      <line x1="21" y1="12" x2="9" y2="12"/>
-   </svg>
+      <div class="nav-item" onclick="confirmarSalida()">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+          <polyline points="16 17 21 12 16 7"/>
+          <line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
         <span>Salir</span>
       </div>
     </nav>
     ` : ''}
   </div>`;
 };
+
+// ── CONFIRMAR SALIDA (overlay custom) ────────────────────────
+window.confirmarSalida = function () {
+  if (document.querySelector('[data-overlay="salida"]')) return;
+
+  const overlay = document.createElement('div');
+  overlay.style.cssText = `
+    position:fixed;inset:0;background:rgba(0,0,0,0.6);
+    z-index:99999;display:flex;align-items:center;
+    justify-content:center;animation:fadeIn 0.2s ease`;
+
+  overlay.innerHTML = `
+    <div style="background:white;border-radius:24px;padding:32px 28px;
+      text-align:center;max-width:300px;width:90%;
+      animation:popIn 0.35s cubic-bezier(0.34,1.56,0.64,1);
+      box-shadow:0 20px 60px rgba(0,0,0,0.3)">
+      <div style="font-size:52px;margin-bottom:16px">👋</div>
+      <div style="font-size:18px;font-weight:800;color:#1e293b;margin-bottom:8px">¿Cerrar sesión?</div>
+      <div style="font-size:13.5px;color:#64748b;margin-bottom:24px;line-height:1.5">
+        Tu sesión quedará guardada para la próxima vez.
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <button onclick="this.closest('[data-overlay]').remove()"
+          style="padding:13px;border-radius:12px;border:1.5px solid #e2e8f0;
+          background:white;font-size:14px;font-weight:700;cursor:pointer;color:#64748b">
+          Cancelar
+        </button>
+        <button onclick="this.closest('[data-overlay]').remove(); logout()"
+          style="padding:13px;border-radius:12px;border:none;
+          background:linear-gradient(135deg,#0f172a,#1a56db);
+          color:white;font-size:14px;font-weight:700;cursor:pointer">
+          Salir
+        </button>
+      </div>
+    </div>`;
+
+  overlay.setAttribute('data-overlay', 'salida');
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+};
+
+// ── LOGOUT ────────────────────────────────────────────────────
+window.logout = function () {
+  localStorage.removeItem('sessionUser');
+  state.screen = 'login';
+  state.currentUser = null;
+  state.loginPassField = '';
+  state.nav = 'clientes';
+  state.selectedClient = null;
+  state.modal = null;
+  render();
+};
+
 // ── HISTORIAL ─────────────────────────────────────────────────
 window.renderHistorial = function renderHistorial() {
   const usuarios = DB._cache['users'] || [];
@@ -124,18 +193,13 @@ window.renderHistorial = function renderHistorial() {
     return matchFecha && matchCobrador;
   });
 
-  // Filtramos créditos por fecha (fechaInicio) y por cobrador
   const creditosFiltrados = creditos.filter(cr => {
-    // 1. Validamos que coincida la fecha de inicio del crédito
     const matchFecha = cr.fechaInicio === filtroFecha;
-
-    // 2. Validamos el cobrador
     let matchCobrador = true;
     if (filtroCobradorId !== 'todos') {
       const cliente = clientes.find(c => c.id === cr.clienteId);
       matchCobrador = cliente && cliente.cobradorId === filtroCobradorId;
     }
-
     return matchFecha && matchCobrador;
   });
 
@@ -257,15 +321,14 @@ window.renderHistorial = function renderHistorial() {
     </div>` : ''}
 
     <!-- VISTA: CRÉDITOS -->
-   ${filtroVista === 'creditos' ? `
+    ${filtroVista === 'creditos' ? `
     <div class="card" style="padding:14px; border-left:4px solid var(--primary)">
       <div style="font-weight:700; font-size:14px; margin-bottom:12px">
-        Créditos del ${formatDate(filtroFecha)} 
+        Créditos del ${formatDate(filtroFecha)}
         <span style="font-weight:400; color:var(--muted); font-size:12px; display:block; margin-top:2px">
           (${creditosFiltrados.length} préstamo${creditosFiltrados.length !== 1 ? 's' : ''} entregado${creditosFiltrados.length !== 1 ? 's' : ''})
         </span>
       </div>
-      <div style="border-top:1px solid var(--border); margin-bottom:8px"></div>
       <div style="border-top:1px solid var(--border); margin-bottom:8px"></div>
       ${creditosFiltrados.length === 0
         ? `<div style="text-align:center; color:var(--muted); font-size:13.5px; padding:20px 0">Sin créditos</div>`
@@ -311,6 +374,7 @@ window.renderHistorial = function renderHistorial() {
 
   </div>`;
 };
+
 // ── BÚSQUEDA EN VIVO ──────────────────────────────────────────
 window.renderBusquedaClientes = function renderBusquedaClientes() {
   const filtroBusqueda = state._hBusqueda || '';
@@ -425,30 +489,45 @@ window.addEventListener('popstate', () => {
     render();
     return;
   }
-  const confirmSalir = confirm('¿Deseas salir de CobrosApp?');
-  if (confirmSalir) {
-    history.back();
-  } else {
-    history.pushState({ nav: state.nav }, '', '#' + state.nav);
-  }
+  // Nunca salir de la app con el botón atrás — solo mantener posición
+  history.pushState({ nav: state.nav }, '', '#' + state.nav);
 });
 
-// ── EVITAR CIERRE ACCIDENTAL ──────────────────────────────────
-window.addEventListener('beforeunload', (e) => {
-  if (state.screen === 'main' && state.currentUser) {
-    e.preventDefault();
-    e.returnValue = '¿Salir de CobrosApp?';
-  }
-});
-
-// ── INIT ASYNC ────────────────────────────────────────────────
 (async () => {
   try {
-    await DB.init();
-
+    // Restaurar sesión PRIMERO, antes de init
+    try {
+      const saved = localStorage.getItem('sessionUser');
+      if (saved) {
+        const savedUser = JSON.parse(saved);
+        state.currentUser = savedUser;
+        state.screen = 'main';
+      }
+    } catch (_) {
+      localStorage.removeItem('sessionUser');
+    }
+    state._cargando = true;
+    await DB.init(); // ← ahora cuando DB llame render(), ya hay sesión
+    if (state.currentUser) {
+      const users = DB._cache['users'] || [];
+      if (users.length > 0) {
+        // Solo verificar si el cache ya cargó
+        const userActual = users.find(u => u.id === state.currentUser.id);
+        if (!userActual) {
+          localStorage.removeItem('sessionUser');
+          state.currentUser = null;
+          state.screen = 'login';
+        } else {
+          state.currentUser = userActual;
+        }
+      }
+      // Si users está vacío, mantener sesión guardada sin verificar
+    }
+    state._cargando = false;
     history.replaceState({ nav: 'clientes' }, '', '#clientes');
     render();
   } catch (e) {
+
     console.error('Error iniciando app:', e);
     document.getElementById('root').innerHTML = `
       <div style="display:flex;align-items:center;justify-content:center;height:100vh;
