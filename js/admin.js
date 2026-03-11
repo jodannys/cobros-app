@@ -26,32 +26,47 @@ window.renderAdmin = function renderAdmin() {
               <div style="font-size:11.5px; color:var(--muted)">Requieren atención</div>
             </div>
           </div>
-
-          ${alertas.map(a => `
-            <div style="background:white; border-radius:8px; padding:12px; margin-bottom:8px;
-                        border-left:3px solid ${a.tipo === 'vencido' ? 'var(--danger)' : 'var(--warning)'}">
-              <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px">
-                <div style="flex:1; min-width:0">
-                  <div style="font-weight:700; font-size:14px; color:var(--text)">${a.cliente?.nombre || '—'}</div>
-                  <div style="font-size:11.5px; color:var(--muted); margin-top:2px">Cobrador: ${a.cobrador?.nombre || '—'}</div>
-                  <div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap">
-                  <span style="background:${a.tipo === 'vencido' ? '#fff1f2' : '#fffbeb'};
-             color:${a.tipo === 'vencido' ? 'var(--danger)' : 'var(--warning)'};
-             padding:2px 8px; border-radius:6px; font-size:10.5px; font-weight:700">
-  ${a.tipo === 'vencido' ? '🔴 VENCIDO' : `⚠️ ${a.dias} días sin pagar`}
-</span>
-
-<span style="background:#fff1f2; color:var(--danger); padding:2px 8px;
-             border-radius:6px; font-size:10.5px; font-weight:700">
-  Saldo: ${formatMoney(a.saldo)}
-</span>
-                  </div>
-                </div>
-                <button class="btn btn-sm btn-primary" style="white-space:nowrap; flex-shrink:0"
-                  onclick="abrirGestionCredito('${a.cr?.id}','${a.cliente?.id}')">Gestionar</button>
-              </div>
-            </div>`).join('')}
+${(() => {
+        const mostrarTodas = state._verTodasAlertas || false;
+        const alertasVisible = mostrarTodas ? alertas : alertas.slice(0, 3);
+        const hayMas = alertas.length > 3;
+        return `
+    ${alertasVisible.map(a => `
+      <div style="background:white; border-radius:8px; padding:12px; margin-bottom:8px;
+                  border-left:3px solid ${a.tipo === 'vencido' ? 'var(--danger)' : 'var(--warning)'}">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px">
+          <div style="flex:1; min-width:0">
+            <div style="font-weight:700; font-size:14px; color:var(--text)">${a.cliente?.nombre || '—'}</div>
+            <div style="font-size:11.5px; color:var(--muted); margin-top:2px">Cobrador: ${a.cobrador?.nombre || '—'}</div>
+            <div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap">
+              <span style="background:${a.tipo === 'vencido' ? '#fff1f2' : '#fffbeb'};
+                           color:${a.tipo === 'vencido' ? 'var(--danger)' : 'var(--warning)'};
+                           padding:2px 8px; border-radius:6px; font-size:10.5px; font-weight:700">
+                ${a.tipo === 'vencido' ? '🔴 VENCIDO' : `⚠️ ${a.dias} días sin pagar`}
+              </span>
+              <span style="background:#fff1f2; color:var(--danger); padding:2px 8px;
+                           border-radius:6px; font-size:10.5px; font-weight:700">
+                Saldo: ${formatMoney(a.saldo)}
+              </span>
+            </div>
+          </div>
+          <button class="btn btn-sm btn-primary" style="white-space:nowrap; flex-shrink:0"
+            onclick="abrirGestionCredito('${a.cr?.id}','${a.cliente?.id}')">Gestionar</button>
         </div>
+      </div>`).join('')}
+
+    ${hayMas ? `
+      <button onclick="state._verTodasAlertas=!state._verTodasAlertas; render()"
+        style="width:100%; padding:10px; border-radius:8px; border:1px solid #fecdd3;
+               background:white; font-size:13px; font-weight:700; color:#9f1239;
+               cursor:pointer; margin-top:4px">
+        ${mostrarTodas
+              ? '▲ Ver menos'
+              : `▼ Ver todas las alertas (${alertas.length})`}
+      </button>` : ''}
+  `;
+      })()}
+       </div>
       ` : `
         <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px;
                     padding:13px 16px; margin-bottom:16px; display:flex; align-items:center; gap:10px">
@@ -73,10 +88,10 @@ window.renderAdmin = function renderAdmin() {
   <button class="btn btn-primary btn-sm" onclick="openModal('nuevo-usuario')">+ Usuario</button>
 </div>
       ${cobradores.map(u => {
-  const mis = clientes.filter(c => c.cobradorId === u.id);
-  const activos = creditos.filter(c => mis.some(cl => cl.id === c.clienteId) && c.activo);
-  const alertasCobrador = alertas.filter(a => a.cobrador?.id === u.id);
-  return `
+        const mis = clientes.filter(c => c.cobradorId === u.id);
+        const activos = creditos.filter(c => mis.some(cl => cl.id === c.clienteId) && c.activo);
+        const alertasCobrador = alertas.filter(a => a.cobrador?.id === u.id);
+        return `
     <div class="cobrador-row" style="display:flex; align-items:center; gap:12px; padding-right:12px">
 
       <div style="display:flex; align-items:center; flex:1; cursor:pointer; min-width:0"
@@ -121,7 +136,7 @@ window.renderAdmin = function renderAdmin() {
       </div>
 
     </div>`;
-}).join('')}
+      }).join('')}
 
       <!-- ADMINISTRADORES -->
       <div class="flex-between" style="margin-top:20px; margin-bottom:10px">

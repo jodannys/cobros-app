@@ -119,8 +119,14 @@ window._renderClienteItem = function (c, creditos, users, pagos, isAdmin) {
 
   let badge, badgeStyle;
   if (atrasado) {
-    badge = numCuotaAtrasada ? `⚠️ Atrasado ${numCuotaAtrasada}` : '⚠️ Atrasado';
-    badgeStyle = 'background:#fff1f2; color:#9f1239;';
+    const vencido = creditoActivo.fechaFin && today() > creditoActivo.fechaFin;
+    if (vencido) {
+      badge = '🔴 Vencido';
+      badgeStyle = 'background:#fff1f2; color:#9f1239;';
+    } else {
+      badge = numCuotaAtrasada ? `⚠️ Atrasado ${numCuotaAtrasada}` : '⚠️ Atrasado';
+      badgeStyle = 'background:#fff7ed; color:#c2410c;';
+    }
   } else if (creditoActivo) {
     badge = '● Activo';
     badgeStyle = 'background:#f0fdf4; color:#166534;';
@@ -145,7 +151,6 @@ window._renderClienteItem = function (c, creditos, users, pagos, isAdmin) {
       </div>
       <div style="font-size:11.5px; color:var(--muted); display:flex; align-items:center; gap:4px; margin-top:2px">
         <span>DNI: ${c.dni}</span>
-        
       </div>
     </div>
 
@@ -191,6 +196,7 @@ window._renderClienteItem = function (c, creditos, users, pagos, isAdmin) {
 
   </div>`;
 }
+
 // ============================================================
 // HELPERS DE ESTADO DE CUOTAS
 // ============================================================
@@ -199,11 +205,8 @@ window.clienteEstaAtrasado = function (cr, pagos) {
   const totalPagado = pagos.filter(p => p.creditoId === cr.id).reduce((s, p) => s + Number(p.monto), 0);
   const saldo = cr.total - totalPagado;
   if (saldo <= 0) return false;
-
-  // ✅ Días hábiles transcurridos (sin domingos)
-  const diasTranscurridos = contarDiasHabiles(cr.fechaInicio, today());
+  const diasTranscurridos = Math.max(0, contarDiasHabiles(cr.fechaInicio, today()) - 1);
   if (diasTranscurridos <= 0) return false;
-
   const cuotasDebidas = Math.min(diasTranscurridos, cr.diasTotal);
   const cuotasCubiertas = Math.floor(totalPagado / cr.cuotaDiaria);
   return cuotasCubiertas < cuotasDebidas;
@@ -212,57 +215,92 @@ window.clienteEstaAtrasado = function (cr, pagos) {
 window.cuotaAtrasada = function (cr, pagos) {
   const totalPagado = pagos.filter(p => p.creditoId === cr.id).reduce((s, p) => s + Number(p.monto), 0);
   const cuotasCubiertas = Math.floor(totalPagado / cr.cuotaDiaria);
-  return cuotasCubiertas + 1;
-}
-
+  const diasTranscurridos = Math.max(0, contarDiasHabiles(cr.fechaInicio, today()) - 1);
+  const cuotasDebidas = Math.min(diasTranscurridos, cr.diasTotal);
+  return Math.max(0, cuotasDebidas - cuotasCubiertas); // cuántas están atrasadas
+};
 // ============================================================
-// ESQUEMA VISUAL DE CUOTAS
+// ESQUEMA VISUAL DE CUOTAS — calendario Lun-Sáb sin domingos
 // ============================================================
 window.renderEsquemaCuotas = function (cr) {
   const pagos = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id);
   const totalPagado = pagos.reduce((s, p) => s + Number(p.monto), 0);
   const cuotaDiaria = Number(cr.cuotaDiaria);
   const cuotasCubiertas = Math.floor(totalPagado / cuotaDiaria);
+  const hoyStr = today();
+  const diasTranscurridos = Math.max(0, contarDiasHabiles(cr.fechaInicio, hoyStr) - 1);
 
-  // 1. Obtener "Hoy" basándonos en el string de tu DB (YYYY-MM-DD)
-  const hoyStr = today(); // Ejemplo: "2026-02-26"
-  const hoy = new Date(hoyStr + 'T00:00:00');
+  // 1. Primer día hábil después del inicio
+  const primerDia = new Date(cr.fechaInicio + 'T00:00:00');
+  primerDia.setDate(primerDia.getDate() + 1);
+  while (primerDia.getDay() === 0) primerDia.setDate(primerDia.getDate() + 1);
 
-  // 2. Calcular "Mañana" sumando 1 día al objeto local
-  const fechaManana = new Date(hoy);
-  fechaManana.setDate(fechaManana.getDate() + 1);
+  // 2. Lunes de esa semana (inicio de grilla)
+  const inicioGrilla = new Date(primerDia);
+  while (inicioGrilla.getDay() !== 1) inicioGrilla.setDate(inicioGrilla.getDate() - 1);
 
-  // 3. Extraer Año, Mes y Día MANUALMENTE (Esto ignora zonas horarias)
-  const yyyy = fechaManana.getFullYear();
-  const mm = String(fechaManana.getMonth() + 1).padStart(2, '0');
-  const dd = String(fechaManana.getDate()).padStart(2, '0');
-
-  const proximaFechaISO = `${yyyy}-${mm}-${dd}`; // Siempre será "2026-02-27"
-  const fechaFormateada = formatDate(proximaFechaISO);
-
-  // 4. Lógica de burbujas (Atraso)
- const diasTranscurridos = Math.max(0, contarDiasHabiles(cr.fechaInicio, hoyStr));
-
-  const cuotas = [];
-  for (let i = 1; i <= cr.diasTotal; i++) {
-    let estado;
-    if (i <= cuotasCubiertas) estado = 'pagada';
-    else if (i <= diasTranscurridos) estado = 'atrasada';
-    else estado = 'pendiente';
-    cuotas.push({ num: i, estado });
+  // 3. Celdas vacías desde el lunes hasta el primer día hábil (sin domingos)
+  const celdas = [];
+  const tempCursor = new Date(inicioGrilla);
+  while (tempCursor < primerDia) {
+    if (tempCursor.getDay() !== 0) celdas.push({ vacia: true });
+    tempCursor.setDate(tempCursor.getDate() + 1);
   }
 
-  const pagadas = cuotas.filter(c => c.estado === 'pagada').length;
-  const atrasadas = cuotas.filter(c => c.estado === 'atrasada').length;
-  const pendientes = cuotas.filter(c => c.estado === 'pendiente').length;
+  // 4. Días de cuotas (sin domingos)
+  const cursor = new Date(primerDia);
+  let cuotaNum = 0;
+  while (cuotaNum < cr.diasTotal) {
+    if (cursor.getDay() !== 0) {
+      const dd = String(cursor.getDate()).padStart(2, '0');
+      const mm = String(cursor.getMonth() + 1).padStart(2, '0');
+      cuotaNum++;
+      let estado;
+      if (cuotaNum <= cuotasCubiertas) estado = 'pagada';
+      else if (cuotaNum <= diasTranscurridos) estado = 'atrasada';
+      else estado = 'pendiente';
+      celdas.push({ dd, mm, num: cuotaNum, estado });
+    }
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  const pagadas = celdas.filter(d => d.estado === 'pagada').length;
+  const atrasadas = celdas.filter(d => d.estado === 'atrasada').length;
+  const pendientes = celdas.filter(d => d.estado === 'pendiente').length;
+
+  const bg = { pagada: '#dcfce7', atrasada: '#fff1f2', pendiente: '#f8fafc' };
+  const bdr = { pagada: '#86efac', atrasada: '#fecdd3', pendiente: '#e2e8f0' };
+  const txt = { pagada: '#166534', atrasada: '#9f1239', pendiente: '#94a3b8' };
+
+  // Renderiza TODAS las celdas con estructura idéntica para no descuadrar la grilla
+  const renderCelda = d => {
+    if (d.vacia) return `
+  <div>
+    <div style="width:100%; padding-top:100%; position:relative; border-radius:8px;
+                background:#f8fafc; border:1.5px dashed #e2e8f0;">
+      <span style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+                   font-size:11px; font-weight:700; color:#e2e8f0">—</span>
+    </div>
+    <div style="height:14px;"></div>
+  </div>`;
+    return `
+      <div>
+        <div style="width:100%; padding-top:100%; position:relative; border-radius:8px;
+                    background:${bg[d.estado]}; border:1.5px solid ${bdr[d.estado]};">
+          <span style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+                       font-size:11px; font-weight:800; color:${txt[d.estado]}">${d.num}</span>
+        </div>
+        <div style="height:14px; display:flex; align-items:center; justify-content:center;
+                    font-size:8px; font-weight:600; color:${txt[d.estado]}">
+          ${d.dd}/${d.mm}
+        </div>
+      </div>`;
+  };
 
   return `
   <div style="margin-top:14px">
-
     <div style="font-size:10.5px; font-weight:700; color:var(--muted); text-transform:uppercase;
-                letter-spacing:0.6px; margin-bottom:10px">
-      Esquema de Cuotas
-    </div>
+                letter-spacing:0.6px; margin-bottom:10px">Esquema de Cuotas</div>
 
     <div style="display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap">
       <span style="font-size:10.5px; background:#f0fdf4; color:#166534;
@@ -270,23 +308,26 @@ window.renderEsquemaCuotas = function (cr) {
         ✅ ${pagadas} pagadas
       </span>
       ${atrasadas > 0 ? `
-        <span style="font-size:10.5px; background:#fff1f2; color:#9f1239;
-                     padding:3px 10px; border-radius:6px; font-weight:700">
-          ⚠️ ${atrasadas} atrasadas
-        </span>` : ''}
+        <span style="font-size:10.5px; background:#fff7ed; color:#c2410c; ...">
+  ⚠️ ${atrasadas} atrasadas
+</span>` : ''}
       <span style="font-size:10.5px; background:var(--bg); color:var(--muted);
                    padding:3px 10px; border-radius:6px; font-weight:700">
         🔘 ${pendientes} pendientes
       </span>
     </div>
 
-    <div class="cuotas-grid" style="gap:5px">
-      ${cuotas.map(c => `
-        <div title="Cuota ${c.num}" class="cuota-burbuja cuota-${c.estado}">
-          ${c.num}
-        </div>`).join('')}
+    <!-- CABECERA Lun-Sáb -->
+    <div style="display:grid; grid-template-columns:repeat(6, 1fr); gap:4px; margin-bottom:2px">
+      ${['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map(d => `
+        <div style="text-align:center; font-size:9px; font-weight:700;
+                    color:var(--muted); padding:2px 0">${d}</div>`).join('')}
     </div>
 
+    <!-- GRILLA — cada celda tiene padding-top:100% para cuadrado perfecto -->
+    <div style="display:grid; grid-template-columns:repeat(6, 1fr); gap:4px">
+      ${celdas.map(renderCelda).join('')}
+    </div>
   </div>`;
 };
 
@@ -295,27 +336,20 @@ window.renderEsquemaCuotas = function (cr) {
 // ============================================================
 window.setFiltroClientes = function (f) {
   state.filtroClientes = f;
-
-  // Mantenemos lo que el usuario ya escribió en el input
   const searchInput = document.getElementById('search-clientes');
-  if (searchInput) {
-    state.search = searchInput.value;
-  }
-
-  render(); // Renderiza todo con el nuevo filtro + el texto de búsqueda actual
-
-  // Después del render, si había texto, devolvemos el foco al final
+  if (searchInput) state.search = searchInput.value;
+  render();
   const nuevoInput = document.getElementById('search-clientes');
   if (nuevoInput && state.search) {
     nuevoInput.focus();
     nuevoInput.setSelectionRange(state.search.length, state.search.length);
   }
-}
+};
 
 window.updateSearch = function (v) {
   state.search = v;
   _renderListaClientes();
-}
+};
 
 window._renderListaClientes = function () {
   const contenedor = document.getElementById('lista-clientes');
@@ -328,16 +362,14 @@ window._renderListaClientes = function () {
   const pagos = DB._cache['pagos'] || [];
   const isAdmin = state.currentUser.role === 'admin';
   const filtro = state.filtroClientes || 'todos';
-  const hoy = today();
 
   let lista = isAdmin
     ? clientes
     : clientes.filter(c => c.cobradorId === state.currentUser.id);
-  // --- FILTRO PARA OCULTAR PRÉSTAMOS DE HOY ---
+
   if (!isAdmin) {
     lista = lista.filter(c => {
       const crActivo = creditos.find(cr => cr.clienteId === c.id && cr.activo);
-      // SI EL CRÉDITO ES DE HOY, NO LO MUESTRES EN LA RUTA
       if (crActivo && crActivo.fechaInicio === today()) return false;
       return true;
     });
@@ -373,11 +405,10 @@ window._renderListaClientes = function () {
   }
 
   if (contador) contador.textContent = `${lista.length} cliente${lista.length !== 1 ? 's' : ''}`;
-
   contenedor.innerHTML = lista.length === 0
     ? '<div class="empty-state"><div class="icon">👤</div><p>No se encontraron clientes</p></div>'
     : lista.map(c => _renderClienteItem(c, creditos, users, pagos, isAdmin)).join('');
-}
+};
 
 // ============================================================
 // DETALLE DE CLIENTE
@@ -392,7 +423,6 @@ window.renderClientDetail = function () {
 
   return `
   <div>
-    <!-- HEADER -->
     <div style="background:linear-gradient(135deg,#1a56db,#0ea96d); padding-bottom:16px;">
       <div style="padding:14px 20px; display:flex; align-items:center; gap:12px">
         <button class="back-btn" style="color:rgba(255,255,255,0.8); font-size:20px" onclick="backFromClient()">←</button>
@@ -417,13 +447,10 @@ window.renderClientDetail = function () {
       </div>
     </div>
 
-    <!-- CONTENIDO -->
     <div class="page" style="padding-top:12px">
 
-      <!-- DATOS GENERALES -->
       <div class="card">
         <div class="card-title">📋 Datos Generales</div>
-
         <div class="info-grid">
           <div class="info-item">
             <div class="info-label">Teléfono</div>
@@ -434,17 +461,14 @@ window.renderClientDetail = function () {
             <div class="info-value" style="font-size:14px">${formatDate(c.creado)}</div>
           </div>
         </div>
-
         <div class="info-item" style="margin-top:8px">
           <div class="info-label">Dirección</div>
           <div class="info-value" style="font-size:14px; font-weight:500; line-height:1.4">${c.direccion || '—'}</div>
         </div>
-
         ${c.lat ? renderMapaCliente(c.lat, c.lng, c.nombre) : ''}
         ${c.foto ? `<img src="${c.foto}" class="uploaded-img" style="margin-top:10px">` : ''}
       </div>
 
-      <!-- BOTÓN WHATSAPP -->
       ${todosLosCreditos.length > 0 ? `
         <button onclick="enviarEstadoWhatsApp('${c.id}')"
           style="width:100%; padding:13px; background:white; border:1px solid var(--border);
@@ -457,36 +481,36 @@ window.renderClientDetail = function () {
           <span>Enviar estado de cuenta</span>
         </button>` : ''}
 
-      <!-- SECCIÓN CRÉDITOS -->
       <div class="flex-between mb-2">
         <div class="card-title" style="margin:0">💳 Créditos</div>
         ${!creditoActivo
-          ? `<button class="btn btn-primary btn-sm" onclick="openModal('nuevo-credito')">+ Nuevo crédito</button>`
-          : `<span style="font-size:11.5px; color:var(--muted); font-style:italic">Crédito activo en curso</span>`}
+      ? `<button class="btn btn-primary btn-sm" onclick="openModal('nuevo-credito')">+ Nuevo crédito</button>`
+      : `<span style="font-size:11.5px; color:var(--muted); font-style:italic">Crédito activo en curso</span>`}
       </div>
 
       ${todosLosCreditos.length === 0
-        ? `<div class="empty-state"><div class="icon">💳</div><p>Sin créditos registrados</p></div>`
-        : todosLosCreditos
-            .sort((a, b) => (b.activo ? 1 : 0) - (a.activo ? 1 : 0))
-            .map(cr => renderCreditoCard(cr)).join('')}
+      ? `<div class="empty-state"><div class="icon">💳</div><p>Sin créditos registrados</p></div>`
+      : todosLosCreditos
+        .sort((a, b) => (b.activo ? 1 : 0) - (a.activo ? 1 : 0))
+        .map(cr => renderCreditoCard(cr)).join('')}
 
     </div>
 
     <nav class="bottom-nav">
-  <div class="nav-item" onclick="backFromClient()"
-    style="width:100%; text-align:center; font-size:13.5px; font-weight:600;
-           display:flex; align-items:center; justify-content:center; gap:8px;
-           color:var(--text); padding:10px 0">
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-         stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M19 12H5M12 19l-7-7 7-7"/>
-    </svg>
-    Volver
-  </div>
-</nav>
+      <div class="nav-item" onclick="backFromClient()"
+        style="width:100%; text-align:center; font-size:13.5px; font-weight:600;
+               display:flex; align-items:center; justify-content:center; gap:8px;
+               color:var(--text); padding:10px 0">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 12H5M12 19l-7-7 7-7"/>
+        </svg>
+        Volver
+      </div>
+    </nav>
   </div>`;
-}
+};
+
 // ============================================================
 // ENVIAR ESTADO POR WHATSAPP
 // ============================================================
@@ -494,9 +518,7 @@ window.enviarEstadoWhatsApp = function (clienteId) {
   const c = (DB._cache['clientes'] || []).find(x => x.id === clienteId);
   if (!c) return;
 
-  // Filtrar solo el crédito activo
   const creditosActivos = (DB._cache['creditos'] || []).filter(cr => cr.clienteId === c.id && cr.activo);
-
   if (creditosActivos.length === 0) {
     alert("📲 El cliente no tiene créditos activos para enviar.");
     return;
@@ -506,44 +528,30 @@ window.enviarEstadoWhatsApp = function (clienteId) {
   const pagosCr = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id);
   const totalPagadoCr = pagosCr.reduce((s, p) => s + p.monto, 0);
   const saldoCapital = Math.max(0, cr.total - totalPagadoCr);
-
-  // Lógica de Mora
   const infoMora = obtenerDatosMora(cr);
   const montoMora = infoMora.total;
   const totalCobrar = saldoCapital + montoMora;
 
-  // 1. Confirmar o editar número
   const numeroRegistrado = c.telefono ? c.telefono.replace(/\D/g, '') : '';
-  const numeroInput = prompt(
-    `📲 Enviar historial a ${c.nombre}:\n(Confirma o edita el número)`,
-    numeroRegistrado
-  );
-
+  const numeroInput = prompt(`📲 Enviar historial a ${c.nombre}:\n(Confirma o edita el número)`, numeroRegistrado);
   if (numeroInput === null) return;
   const numero = numeroInput.replace(/\D/g, '').trim();
   if (!numero) { alert('⚠️ Número inválido'); return; }
 
-  // 2. Construcción del mensaje (Sin nombres externos)
   let texto = `*ESTADO DE CUENTA* 📋\n`;
   texto += `━━━━━━━━━━━━━━━━━━\n`;
   texto += `👤 *Cliente:* ${c.nombre}\n`;
   if (c.negocio) texto += `🏪 *Negocio:* ${c.negocio}\n`;
   texto += `📅 *Fecha de consulta:* ${today()}\n\n`;
-
   texto += `*DETALLE DEL CRÉDITO* 💳\n`;
   texto += `• Monto total: S/ ${cr.total.toFixed(2)}\n`;
   texto += `• Total pagado: S/ ${totalPagadoCr.toFixed(2)}\n`;
   texto += `• Saldo pendiente: S/ ${saldoCapital.toFixed(2)}\n`;
-
-  if (montoMora > 0) {
-    texto += `• Mora acumulada (${infoMora.dias} días): S/ ${montoMora.toFixed(2)} ⚠️\n`;
-  }
-
+  if (montoMora > 0) texto += `• Mora acumulada (${infoMora.dias} días): S/ ${montoMora.toFixed(2)} ⚠️\n`;
   texto += `━━━━━━━━━━━━━━━━━━\n`;
   texto += `💰 *TOTAL A COBRAR: S/ ${totalCobrar.toFixed(2)}*\n`;
   texto += `━━━━━━━━━━━━━━━━━━\n\n`;
 
-  // 3. HISTORIAL COMPLETO
   if (pagosCr.length > 0) {
     texto += `*HISTORIAL DE ABONOS:* 📝\n`;
     pagosCr.sort((a, b) => new Date(a.fecha) - new Date(b.fecha)).forEach((p, index) => {
@@ -552,15 +560,12 @@ window.enviarEstadoWhatsApp = function (clienteId) {
   } else {
     texto += `_No se registran abonos a la fecha._\n`;
   }
-
   texto += `\n_Si tiene alguna duda sobre sus pagos, por favor contacte con su asesor._\n`;
 
-  // 4. Envío
   const numeroFinal = numero.startsWith('51') ? numero : `51${numero}`;
   const url = /Android|iPhone|iPad/i.test(navigator.userAgent)
     ? `whatsapp://send?phone=${numeroFinal}&text=${encodeURIComponent(texto)}`
     : `https://wa.me/${numeroFinal}?text=${encodeURIComponent(texto)}`;
-
   window.location.href = url;
 };
 
@@ -568,16 +573,14 @@ window.selectClient = function (id) {
   state.selectedClient = (DB._cache['clientes'] || []).find(x => x.id === id);
   render();
   const c = state.selectedClient;
-  if (c?.lat && c?.lng) {
-    iniciarMapaCliente(c.lat, c.lng, c.nombre);
-  }
-}
+  if (c?.lat && c?.lng) iniciarMapaCliente(c.lat, c.lng, c.nombre);
+};
 
 window.backFromClient = function () {
   state.selectedClient = null;
   state.search = "";
   render();
-}
+};
 
 // ============================================================
 // GUARDAR CLIENTE
@@ -586,17 +589,10 @@ window.guardarCliente = async function () {
   try {
     const dni = document.getElementById('nDNI').value.trim();
     const nombre = document.getElementById('nNombre').value.trim();
-
-    if (!dni || !nombre) {
-      alert('DNI y nombre son obligatorios');
-      return;
-    }
+    if (!dni || !nombre) { alert('DNI y nombre son obligatorios'); return; }
 
     const clientes = DB._cache['clientes'] || [];
-    if (clientes.find(c => c.dni === dni)) {
-      alert('Ya existe un cliente con ese DNI');
-      return;
-    }
+    if (clientes.find(c => c.dni === dni)) { alert('Ya existe un cliente con ese DNI'); return; }
 
     const isAdmin = state.currentUser.role === 'admin';
     const cobradorId = isAdmin ? document.getElementById('nCobrador').value : state.currentUser.id;
@@ -607,16 +603,14 @@ window.guardarCliente = async function () {
       foto = await comprimirImagen(fotoEl.src, 600, 0.6);
     }
 
-    const negocio = document.getElementById('nNegocio').value.trim();
-    const telefono = document.getElementById('nTelefono').value.trim();
-    const direccion = document.getElementById('nDireccion').value.trim();
     const id = genId();
-
     const nuevoCliente = {
-      id, dni, nombre,
-      negocio,
-      telefono,
-      direccion,
+      id,
+      dni,
+      nombre,
+      negocio: document.getElementById('nNegocio').value.trim(),
+      telefono: document.getElementById('nTelefono').value.trim(),
+      direccion: document.getElementById('nDireccion').value.trim(),
       lat: _coordsSeleccionadas?.lat || null,
       lng: _coordsSeleccionadas?.lng || null,
       cobradorId,
@@ -624,30 +618,24 @@ window.guardarCliente = async function () {
       creado: today()
     };
 
-    // Guardar en la base de datos
     await DB.set('clientes', id, nuevoCliente);
-
     _coordsSeleccionadas = null;
     showToast('Cliente guardado exitosamente');
 
-    // LÓGICA DE REDIRECCIÓN
     if (state.abrirCreditoAlGuardar) {
-      // Si el botón "+ Con crédito" estaba activo:
       state.selectedClient = nuevoCliente;
       state.modal = 'nuevo-credito';
-      state.abrirCreditoAlGuardar = false; // Resetear para la próxima vez
+      state.abrirCreditoAlGuardar = false;
     } else {
-      // Si no, solo cerrar el modal
       state.modal = null;
     }
-
     render();
-
   } catch (err) {
     console.error('❌ Error en guardarCliente:', err);
     alert('Ocurrió un error al guardar el cliente.');
   }
-}
+};
+
 // ============================================================
 // ACTUALIZAR CLIENTE
 // ============================================================
@@ -659,9 +647,7 @@ window.actualizarCliente = async function () {
   const fotoEl = document.getElementById('previewEFoto');
   let foto = c.foto;
   if (fotoEl && fotoEl.style.display !== 'none' && fotoEl.src && fotoEl.src !== window.location.href) {
-    if (fotoEl.src !== c.foto) {
-      foto = await comprimirImagen(fotoEl.src, 600, 0.6);
-    }
+    if (fotoEl.src !== c.foto) foto = await comprimirImagen(fotoEl.src, 600, 0.6);
   }
 
   const updated = {
@@ -681,20 +667,18 @@ window.actualizarCliente = async function () {
   state.selectedClient = updated;
   state.modal = null;
   showToast('Cliente actualizado');
-}
+};
 
-// ── EN clientes.js: reemplaza window.eliminarCliente ─────────
 window.eliminarCliente = async function () {
   if (!confirm('¿Eliminar este cliente? Se borrarán también sus créditos y pagos. Esta acción no se puede deshacer.')) return;
   const c = state.selectedClient;
-  await eliminarClienteCascade(c.id);   // 👈 usa cascade
+  await eliminarClienteCascade(c.id);
   state.selectedClient = null;
   state.modal = null;
   showToast('Cliente eliminado');
   render();
 };
 
-// ── EN admin.js: reemplaza window.eliminarCobrador ───────────
 window.eliminarCobrador = async function (id) {
   const users = DB._cache['users'] || [];
   const u = users.find(x => x.id === id);
@@ -703,7 +687,7 @@ window.eliminarCobrador = async function (id) {
     return;
   }
   if (!confirm('¿Eliminar este cobrador? Sus clientes quedarán sin cobrador asignado. Esta acción no se puede deshacer.')) return;
-  await eliminarCobradorCascade(id);    // 👈 usa cascade
+  await eliminarCobradorCascade(id);
   state.selectedCobrador = null;
   state.modal = null;
   showToast('Cobrador eliminado');

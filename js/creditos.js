@@ -1,7 +1,7 @@
 // ============================================================
 // GESTIÓN DE CRÉDITOS Y PAGOS
 // ============================================================
-window.registrarPagoSeguro = function(btn, creditoId) {
+window.registrarPagoSeguro = function (btn, creditoId) {
   if (btn.dataset.loading === 'true') return; // Si ya está cargando, no hace nada
   btn.dataset.loading = 'true';
   btn.style.opacity = '0.5';
@@ -23,12 +23,12 @@ window.renderCreditoCard = function (cr) {
   const pagadoReal = saldo <= 0;
   const progreso = Math.min(100, Math.round((totalPagado / cr.total) * 100));
   const isAdmin = state.currentUser.role === 'admin';
-  const hoyStr = new Date().toISOString().split('T')[0];
+  const hoyStr = today();
   const vencido = cr.activo && cr.fechaFin && hoyStr > cr.fechaFin;
   const infoMora = obtenerDatosMora(cr);
   const mora = infoMora.total;
   const totalConMora = saldo + mora;
- 
+  const cuotasCubiertas = Math.floor(totalPagado / cr.cuotaDiaria);
 
 
   return `
@@ -130,7 +130,8 @@ window.renderCreditoCard = function (cr) {
     <div style="margin:12px 0 6px">
       <div style="display:flex; justify-content:space-between; font-size:11.5px;
                   color:var(--muted); margin-bottom:6px">
-        <span>${pagos.length} de ${cr.diasTotal} cuotas</span>
+
+        <span>${cuotasCubiertas} de ${cr.diasTotal} cuotas</span>
         <span style="font-weight:700; color:${progreso >= 100 ? 'var(--success)' : 'var(--primary)'}">
           ${progreso}% pagado
         </span>
@@ -167,7 +168,7 @@ window.renderCreditoCard = function (cr) {
         <button class="btn btn-sm btn-outline" onclick="abrirEditarCredito('${cr.id}')">
           ✏️ Corregir monto
         </button>` :
-      vencido ? `
+        vencido ? `
         <div style="text-align:center; font-size:12px; color:var(--danger); font-weight:600">
           ⚠️ Coordina con el administrador
         </div>` : ''}
@@ -341,7 +342,7 @@ window.guardarCredito = async function () {
     montoSeguro,
     montoEntregado: monto - montoSeguro,
     // --- CAMBIO AQUÍ: Usamos fecha local para evitar el error de serverTimestamp ---
-    creadoEn: new Date().toISOString() 
+    creadoEn: new Date().toISOString()
   };
 
   try {
@@ -374,26 +375,26 @@ window.cerrarCredito = async function (crId) {
   render();
 };
 
-window.extenderCredito = async function() {
-    const input = document.getElementById('extDias');
-    const diasExtra = parseInt(input.value) || 0;
-    if (diasExtra <= 0) return alert('⚠️ Ingresa días válidos.');
-    
-    const cr = state.selectedCredito;
-    const nuevoTotalDias = Number(cr.diasTotal) + diasExtra;
+window.extenderCredito = async function () {
+  const input = document.getElementById('extDias');
+  const diasExtra = parseInt(input.value) || 0;
+  if (diasExtra <= 0) return alert('⚠️ Ingresa días válidos.');
 
-    // --- MEJORA: Recalcular la fecha de fin ---
-    const nuevaFechaFin = sumarDiasHabiles(cr.fechaInicio, nuevoTotalDias);
+  const cr = state.selectedCredito;
+  const nuevoTotalDias = Number(cr.diasTotal) + diasExtra;
 
-    try {
-        await DB.update('creditos', cr.id, { 
-            diasTotal: nuevoTotalDias,
-            fechaFin: nuevaFechaFin // <--- IMPORTANTE ACTUALIZAR ESTO
-        });
+  // --- MEJORA: Recalcular la fecha de fin ---
+  const nuevaFechaFin = sumarDiasHabiles(cr.fechaInicio, nuevoTotalDias);
 
-        showToast(`✅ Plazo extendido hasta ${formatDate(nuevaFechaFin)}`);
-        render();
-    } catch (error) { console.error(error); }
+  try {
+    await DB.update('creditos', cr.id, {
+      diasTotal: nuevoTotalDias,
+      fechaFin: nuevaFechaFin // <--- IMPORTANTE ACTUALIZAR ESTO
+    });
+
+    showToast(`✅ Plazo extendido hasta ${formatDate(nuevaFechaFin)}`);
+    render();
+  } catch (error) { console.error(error); }
 };
 
 
@@ -441,35 +442,35 @@ window.guardarNotaCredito = async function () {
   }
 };
 window.toggleMora = async function (crId, activar) {
-    console.log(`--- Intentando ${activar ? 'Activar' : 'Desactivar'} Mora para ID: ${crId} ---`);
-    
-    try {
-        const creditosCache = DB._cache['creditos'] || [];
-        
-        // 1. Actualizar en Firebase
-        await DB.update('creditos', crId, { mora_activa: activar });
-        
-        // 2. Actualizar Caché local
-        const idx = creditosCache.findIndex(c => c.id === crId);
-        if (idx >= 0) {
-            creditosCache[idx].mora_activa = activar;
-            
-            // CLAVE: Si el crédito abierto en el modal es este, actualizamos su estado también
-            if (state.selectedCredito && state.selectedCredito.id === crId) {
-                state.selectedCredito.mora_activa = activar;
-                console.log("Estado del modal actualizado localmente");
-            }
-        }
-        
-        showToast(activar ? '🔔 Mora activada — S/5 por día' : '🔕 Mora desactivada');
-        
-        // 3. Refrescar la interfaz
-        render(); 
-        
-    } catch (error) {
-        console.error("❌ Error en toggleMora:", error);
-        alert("No se pudo cambiar el estado de la mora.");
+  console.log(`--- Intentando ${activar ? 'Activar' : 'Desactivar'} Mora para ID: ${crId} ---`);
+
+  try {
+    const creditosCache = DB._cache['creditos'] || [];
+
+    // 1. Actualizar en Firebase
+    await DB.update('creditos', crId, { mora_activa: activar });
+
+    // 2. Actualizar Caché local
+    const idx = creditosCache.findIndex(c => c.id === crId);
+    if (idx >= 0) {
+      creditosCache[idx].mora_activa = activar;
+
+      // CLAVE: Si el crédito abierto en el modal es este, actualizamos su estado también
+      if (state.selectedCredito && state.selectedCredito.id === crId) {
+        state.selectedCredito.mora_activa = activar;
+        console.log("Estado del modal actualizado localmente");
+      }
     }
+
+    showToast(activar ? '🔔 Mora activada — S/5 por día' : '🔕 Mora desactivada');
+
+    // 3. Refrescar la interfaz
+    render();
+
+  } catch (error) {
+    console.error("❌ Error en toggleMora:", error);
+    alert("No se pudo cambiar el estado de la mora.");
+  }
 };
 
 window.abrirEditarPago = function (pagoId) {
@@ -504,8 +505,8 @@ window.renderModalEditarPago = function () {
   <div class="form-group">
     <label>Tipo de pago</label>
     <select class="form-control" id="epTipo">
-      <option value="efectivo"      ${p.tipo === 'efectivo'      ? 'selected' : ''}>Efectivo</option>
-      <option value="yape"          ${p.tipo === 'yape'          ? 'selected' : ''}>Yape / Plin</option>
+      <option value="efectivo"      ${p.tipo === 'efectivo' ? 'selected' : ''}>Efectivo</option>
+      <option value="yape"          ${p.tipo === 'yape' ? 'selected' : ''}>Yape / Plin</option>
       <option value="transferencia" ${p.tipo === 'transferencia' ? 'selected' : ''}>Transferencia</option>
     </select>
   </div>
@@ -570,27 +571,27 @@ window.nuevoCreditoRapido = function (clienteId) {
   render();
 };
 
-window.ejecutarPagoProtegido = function(btn, creditoId) {
+window.ejecutarPagoProtegido = function (btn, creditoId) {
   // 1. RASTREO: Ver cada clic que hace el usuario
   console.log("%c [CLIC DETECTADO] ", "background: #222; color: #bada55", `Intentando pagar crédito: ${creditoId}`);
 
   // 2. VERIFICACIÓN: ¿Está bloqueado ya?
   if (btn.disabled || btn.dataset.procesando === "true") {
     console.warn("%c [BLOQUEADO] ", "background: red; color: white", "Se evitó un disparo doble. El botón ya está procesando.");
-    return; 
+    return;
   }
 
   // 3. ACCIÓN: Si pasó el filtro, bloqueamos y disparamos
   console.log("%c [PROCESANDO...] ", "background: green; color: white", "Filtro superado. Abriendo modal de pago...");
-  
+
   btn.disabled = true;
   btn.dataset.procesando = "true";
-  
+
   const icon = document.getElementById(`icon-${creditoId}`);
   const text = document.getElementById(`text-${creditoId}`);
-  
-  if(icon) icon.innerHTML = "⏳";
-  if(text) text.innerText = "Procesando...";
+
+  if (icon) icon.innerHTML = "⏳";
+  if (text) text.innerText = "Procesando...";
   btn.style.opacity = "0.7";
 
   // Ejecutamos la apertura del pago
@@ -606,7 +607,7 @@ window.ejecutarPagoProtegido = function(btn, creditoId) {
     btn.disabled = false;
     btn.dataset.procesando = "false";
     btn.style.opacity = "1";
-    if(icon) icon.innerHTML = "💰";
-    if(text) text.innerText = "Registrar pago";
+    if (icon) icon.innerHTML = "💰";
+    if (text) text.innerText = "Registrar pago";
   }, 3000);
 };
