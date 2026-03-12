@@ -398,10 +398,14 @@ window.renderCuadre = function () {
                     </div>
                    <div style="font-size:11.5px; color:var(--muted); margin-top:2px; display:flex; gap:6px; align-items:center">
   Cuota: ${formatMoney(d.cuota)}
-  <span style="background:#eff6ff; color:#1d4ed8; font-size:10px; font-weight:700;
-               padding:1px 6px; border-radius:4px">
-    📅 Hoy
-  </span>
+<span style="background:#eff6ff; color:#1d4ed8; font-size:10px; font-weight:700;
+             padding:1px 6px; border-radius:4px">
+  ${(() => {
+    const d = new Date();
+    const dias = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+    return dias[d.getDay()] + ' ' + String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0');
+  })()}
+</span>
 </div>
                   </div>
                   <button

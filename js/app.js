@@ -71,13 +71,23 @@ window.render = function render() {
       </div>
 
       <div class="nav-item ${state.nav === 'cuadre' ? 'active' : ''}" onclick="navigate('cuadre')">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="18" y1="20" x2="18" y2="10"/>
-          <line x1="12" y1="20" x2="12" y2="4"/>
-          <line x1="6" y1="20" x2="6" y2="14"/>
-        </svg>
-        <span>Cuadre</span>
-      </div>
+  <div style="position:relative; display:inline-flex">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="18" y1="20" x2="18" y2="10"/>
+      <line x1="12" y1="20" x2="12" y2="4"/>
+      <line x1="6" y1="20" x2="6" y2="14"/>
+    </svg>
+    ${isAdmin && getDepositosPendientes().length > 0 ? `
+      <span style="position:absolute; top:-4px; right:-6px;
+                   background:#ef4444; color:white; font-size:9px; font-weight:800;
+                   min-width:16px; height:16px; border-radius:8px;
+                   display:flex; align-items:center; justify-content:center;
+                   padding:0 3px; border:2px solid white">
+        ${getDepositosPendientes().length}
+      </span>` : ''}
+  </div>
+  <span>Cuadre</span>
+</div>
 
       ${isAdmin ? `
       <div class="nav-item ${state.nav === 'admin' ? 'active' : ''}" onclick="navigate('admin')">
@@ -110,7 +120,7 @@ window.render = function render() {
 };
 
 // ── CONFIRMAR SALIDA (overlay custom) ────────────────────────
-window.confirmarSalida = function() {
+window.confirmarSalida = function () {
   if (document.querySelector('[data-overlay="salida"]')) return;
 
   const overlay = document.createElement('div');
