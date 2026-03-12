@@ -16,7 +16,7 @@ window.registrarPagoSeguro = function (btn, creditoId) {
   }, 2000);
 };
 
-window.renderSeccionCreditosCliente = function(clienteId) {
+window.renderSeccionCreditosCliente = function (clienteId) {
   const todos = (DB._cache['creditos'] || [])
     .filter(c => c.clienteId === clienteId)
     .sort((a, b) => new Date(b.creadoEn || 0) - new Date(a.creadoEn || 0));
@@ -51,11 +51,11 @@ window.renderSeccionCreditosCliente = function(clienteId) {
   `;
 };
 
-window.toggleHistorial = function() {
+window.toggleHistorial = function () {
   const cajon = document.getElementById('cajon-historial');
   const flecha = document.getElementById('flecha-hist');
   if (!cajon) return;
-  
+
   const isHidden = cajon.style.display === 'none';
   cajon.style.display = isHidden ? 'block' : 'none';
   flecha.innerText = isHidden ? '▲' : '▼';
@@ -66,8 +66,8 @@ window.toggleHistorial = function() {
 
 window.renderCreditoCard = function (cr) {
   const esAntiguo = !cr.activo;
-  const estiloCard = esAntiguo 
-    ? `background: #f8fafc; opacity: 0.85; border: 1.5px dashed var(--border);` 
+  const estiloCard = esAntiguo
+    ? `background: #f8fafc; opacity: 0.85; border: 1.5px dashed var(--border);`
     : `background: white; border: 1px solid transparent;`;
   const pagos = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id);
   const totalPagado = pagos.reduce((s, p) => s + p.monto, 0);
@@ -351,6 +351,7 @@ window.calcularCredito = function () {
 };
 
 // ── guardarCredito ────────────────────────────────────────────
+// ── guardarCredito ────────────────────────────────────────────
 window.guardarCredito = async function () {
   const creditosExistentes = (DB._cache['creditos'] || [])
     .filter(c => c.clienteId === state.selectedClient.id && c.activo);
@@ -395,25 +396,47 @@ window.guardarCredito = async function () {
     creadoEn: new Date().toISOString()
   };
 
-  v
+  try {
+    console.log("Intentando guardar nuevo crédito...", nuevoCredito);
+    await DB.set('creditos', id, nuevoCredito);
+
+    // 🔥 ACTUALIZAR CACHE LOCAL (Para que aparezca sin recargar)
+    if (!DB._cache['creditos']) DB._cache['creditos'] = [];
+    DB._cache['creditos'].push(nuevoCredito);
+
+    state.modal = null;
+    showToast(`✅ Crédito creado con éxito`);
+    render();
+  } catch (error) {
+    console.error("Error al guardar:", error);
+    alert("Hubo un error al guardar el crédito.");
+  }
+};
 
 window.cerrarCredito = async function (crId) {
   const cr = (DB._cache['creditos'] || []).find(c => c.id === crId);
   if (!cr) return;
+
   const pagos = (DB._cache['pagos'] || []).filter(p => p.creditoId === crId);
   const totalPagado = pagos.reduce((s, p) => s + p.monto, 0);
   const saldo = cr.total - totalPagado;
+
   if (saldo > 0) {
     if (!confirm(`¡CUIDADO! Aún debe ${formatMoney(saldo)}. ¿Cerrar de todos modos?`)) return;
   } else {
     if (!confirm('¿Marcar este crédito como pagado totalmente y cerrarlo?')) return;
   }
-  await DB.update('creditos', crId, { activo: false });
-  const idx = (DB._cache['creditos'] || []).findIndex(c => c.id === crId);
-  if (idx !== -1) DB._cache['creditos'][idx].activo = false;
-  showToast('Crédito cerrado');
-  render();
-}
+
+  try {
+    await DB.update('creditos', crId, { activo: false });
+    const idx = (DB._cache['creditos'] || []).findIndex(c => c.id === crId);
+    if (idx !== -1) DB._cache['creditos'][idx].activo = false;
+
+    showToast('✅ Crédito cerrado');
+    render();
+  } catch (e) {
+    alert('Error al cerrar: ' + e.message);
+  }
 };
 
 window.extenderCredito = async function () {
