@@ -149,7 +149,7 @@ window._renderClienteItem = function (c, creditos, users, pagos, isAdmin) {
       </div>
       <div style="font-size:11.5px; color:var(--muted); display:flex; flex-direction:column; gap:1px; margin-top:2px">
         <span>DNI: ${c.dni}</span>
-        ${isAdmin ? `<span style="color:var(--primary); font-weight:600; font-size:8px">${cob.nombre}</span>` : ''}
+        ${isAdmin ? `<span style="color:var(--muted); font-weight:600; font-size:8px">${cob.nombre}</span>` : ''}
       </div>
     </div>
 
@@ -243,20 +243,30 @@ window.renderEsquemaCuotas = function (cr) {
   }
 
   const cursor = new Date(primerDia);
-  let cuotaNum = 0;
-  while (cuotaNum < cr.diasTotal) {
-    if (cursor.getDay() !== 0) {
-      const dd = String(cursor.getDate()).padStart(2, '0');
-      const mm = String(cursor.getMonth() + 1).padStart(2, '0');
-      cuotaNum++;
-      let estado;
-      if (cuotaNum <= cuotasCubiertas) estado = 'pagada';
-      else if (cuotaNum <= diasTranscurridos) estado = 'atrasada';
-      else estado = 'pendiente';
-      celdas.push({ dd, mm, num: cuotaNum, estado });
-    }
-    cursor.setDate(cursor.getDate() + 1);
+let cuotaNum = 0;
+while (cuotaNum < cr.diasTotal) {
+  const yyyy = cursor.getFullYear();
+  const mm0 = String(cursor.getMonth() + 1).padStart(2, '0');
+  const dd0 = String(cursor.getDate()).padStart(2, '0');
+  const fechaStr = `${yyyy}-${mm0}-${dd0}`;
+
+  if (esDiaLaboral(fechaStr)) {
+    const dd = dd0;
+    const mm = mm0;
+    cuotaNum++;
+    let estado;
+    if (cuotaNum <= cuotasCubiertas) estado = 'pagada';
+    else if (cuotaNum <= diasTranscurridos) estado = 'atrasada';
+    else estado = 'pendiente';
+    celdas.push({ dd, mm, num: cuotaNum, estado });
+  } else if (cursor.getDay() !== 0) {
+    // Feriado — mostrar celda vacía en el calendario
+    const dd = dd0;
+    const mm = mm0;
+    celdas.push({ vacia: true, dd, mm, feriado: true });
   }
+  cursor.setDate(cursor.getDate() + 1);
+}
 
   const pagadas = celdas.filter(d => d.estado === 'pagada').length;
   const atrasadas = celdas.filter(d => d.estado === 'atrasada').length;
@@ -266,29 +276,46 @@ window.renderEsquemaCuotas = function (cr) {
   const bdr = { pagada: '#86efac', atrasada: '#fecdd3', pendiente: '#e2e8f0' };
   const txt = { pagada: '#166534', atrasada: '#9f1239', pendiente: '#94a3b8' };
 
-  const renderCelda = d => {
-    if (d.vacia) return `
-      <div>
-        <div style="width:100%; padding-top:100%; position:relative; border-radius:8px;
-                    background:#f8fafc; border:1.5px dashed #e2e8f0;">
-          <span style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-                       font-size:11px; font-weight:700; color:#e2e8f0">—</span>
-        </div>
-        <div style="height:14px;"></div>
-      </div>`;
-    return `
-      <div>
-        <div style="width:100%; padding-top:85%; position:relative; border-radius:6px;
-               background:${bg[d.estado]}; border:1.2px solid ${bdr[d.estado]};">
-          <span style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-                       font-size:11px; font-weight:800; color:${txt[d.estado]}">${d.num}</span>
-        </div>
-        <div style="height:14px; display:flex; align-items:center; justify-content:center;
-                    font-size:8px; font-weight:600; color:${txt[d.estado]}">
-          ${d.dd}/${d.mm}
-        </div>
-      </div>`;
+const renderCelda = d => {
+  if (d.vacia) return `
+    <div>
+      <div style="width:100%; padding-top:100%; position:relative; border-radius:6px;
+                  background:${d.feriado ? '#fdf4ff' : 'transparent'};
+                  border:1px ${d.feriado ? 'solid #e9d5ff' : 'dashed #f1f5f9'};">
+        <span style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:14px">
+          ${d.feriado ? '🎉 ' : ''}
+        </span>
+      </div>
+      <div style="height:13px; display:flex; align-items:center; justify-content:center;
+                  font-size:7.5px; font-weight:600; color:#c4b5fd">
+        ${d.feriado ? `${d.dd}/${d.mm}` : ''}
+      </div>
+    </div>`;
+
+  const estilos = {
+    pagada:    { bg: '#f0fdf4', num: '#16a34a', fecha: '#86efac', punto: '#22c55e' },
+    atrasada:  { bg: '#fff1f2', num: '#e11d48', fecha: '#fda4af', punto: '#f43f5e' },
+    pendiente: { bg: '#f8fafc', num: '#94a3b8', fecha: '#cbd5e1', punto: 'transparent' },
   };
+  const s = estilos[d.estado];
+
+  return `
+    <div>
+      <div style="width:100%; padding-top:100%; position:relative; border-radius:6px;
+                  background:${s.bg};">
+        <div style="position:absolute; inset:0; display:flex; flex-direction:column;
+                    align-items:center; justify-content:center; gap:2px">
+          <span style="font-size:11px; font-weight:700; color:${s.num}; line-height:1">${d.num}</span>
+          ${s.punto !== 'transparent' ? `
+            <span style="width:4px; height:4px; border-radius:50%; background:${s.punto}"></span>` : ''}
+        </div>
+      </div>
+      <div style="height:13px; display:flex; align-items:center; justify-content:center;
+                  font-size:7.5px; font-weight:600; color:${s.fecha}">
+        ${d.dd}/${d.mm}
+      </div>
+    </div>`;
+};
 
   return `
   <div style="margin-top:14px">

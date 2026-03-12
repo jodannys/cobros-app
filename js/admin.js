@@ -609,21 +609,24 @@ window.renderModalAgregarFeriado = function() {
 
 window.guardarFeriado = async function() {
   const fecha = document.getElementById('feriadoFecha').value;
+  console.log('Fecha capturada:', fecha);
   if (!fecha) { alert('Selecciona una fecha'); return; }
 
   const cfg = DB._cache['configuracion'] || [];
   const doc = cfg.find(c => c.id === 'dias_no_laborables');
   const fechas = doc?.fechas || [];
+  console.log('Fechas actuales:', fechas);
 
   if (fechas.includes(fecha)) { alert('Esa fecha ya está bloqueada'); return; }
 
   const nuevasFechas = [...fechas, fecha].sort();
   const nuevoDoc = { id: 'dias_no_laborables', fechas: nuevasFechas };
+  console.log('Guardando:', nuevoDoc);
 
   try {
     await DB.set('configuracion', 'dias_no_laborables', nuevoDoc);
+    console.log('DB.set OK');
 
-    // Actualizar cache local
     if (!DB._cache['configuracion']) DB._cache['configuracion'] = [];
     const idx = DB._cache['configuracion'].findIndex(c => c.id === 'dias_no_laborables');
     if (idx !== -1) DB._cache['configuracion'][idx] = nuevoDoc;
@@ -633,7 +636,7 @@ window.guardarFeriado = async function() {
     showToast('📅 Día bloqueado correctamente');
     render();
   } catch(e) {
-    alert('Error al guardar: ' + e.message);
+    console.log('ERROR:', e);
   }
 };
 window.eliminarFeriado = async function(fecha) {
