@@ -1,3 +1,5 @@
+let renderTimer;
+
 window.DB = {
   _isLoading: false,
   _cache: {
@@ -51,31 +53,52 @@ window.DB = {
     return await fbQuery(colName, field, value);
   },
 
-  // INICIALIZACIÓN EN TIEMPO REAL
- async init() {
-    console.log("🚀 Iniciando sincronización en tiempo real...");
+  // --- INICIALIZACIÓN EN TIEMPO REAL OPTIMIZADA ---
+  async init() {
+    console.log("🚀 Iniciando sincronización optimizada...");
     
     const colecciones = [
       'users', 'clientes', 'creditos', 'pagos', 
       'notas_cuadre', 'gastos', 'cajas', 'movimientos_cartera'
     ];
 
+    let cargadasInicialmente = 0;
+    const totalColecciones = colecciones.length;
+
     colecciones.forEach(col => {
       window.fbEscuchar(col, (datos) => {
+        // 1. Actualizamos el cache
         this._cache[col] = datos;
-        console.log(`📡 Datos de [${col}] sincronizados.`);
-        if (typeof render === 'function') render();
+        
+        // 2. Control de carga inicial
+        if (cargadasInicialmente < totalColecciones) {
+          cargadasInicialmente++;
+          if (cargadasInicialmente === totalColecciones) {
+            console.log("✅ Carga inicial completa. Renderizando...");
+            if (typeof render === 'function') render();
+          }
+        } else {
+          // 3. DEBOUNCE: Evita bucles infinitos y ahorra lecturas
+          clearTimeout(renderTimer);
+          renderTimer = setTimeout(() => {
+            console.log(`📡 Sincronización en tiempo real: [${col}]`);
+            if (typeof render === 'function') render();
+          }, 150);
+        }
       });
     });
 
-    // Mantenimiento automático a los 3 segundos de iniciar
-    setTimeout(() => {
-      this._corregirCreditosSaldados();
-      this._limpiarHuerfanos();
-    }, 3000);
+    console.log("💎 Sistema de ahorro de cuota (Spark) activado.");
   },
 
-  
+  // --- MANTENIMIENTO MANUAL (Para evitar cuotas excedidas) ---
+  async ejecutarMantenimientoManual() {
+     console.warn("⚠️ Ejecutando mantenimiento manual solicitado...");
+     await this._corregirCreditosSaldados();
+     await this._limpiarHuerfanos();
+     alert("Mantenimiento completado satisfactoriamente.");
+  },
+
   async _limpiarHuerfanos() {
     console.log("🧹 Limpiando datos huérfanos...");
     const users    = this._cache['users']    || [];
@@ -84,33 +107,26 @@ window.DB = {
     const pagos    = this._cache['pagos']    || [];
     const creditos = this._cache['creditos'] || [];
 
-    // Gastos sin cobrador válido
     gastos.forEach(g => {
       if (!users.find(u => u.id === g.cobradorId)) {
-        console.log('🗑️ Gasto huérfano eliminado:', g.id, g.descripcion);
         window.fbDelete('gastos', g.id).catch(e => console.error(e));
         this._cache['gastos'] = this._cache['gastos'].filter(x => x.id !== g.id);
       }
     });
 
-    // Pagos sin cliente válido
     pagos.forEach(p => {
       if (!clientes.find(c => c.id === p.clienteId)) {
-        console.log('🗑️ Pago huérfano eliminado:', p.id);
         window.fbDelete('pagos', p.id).catch(e => console.error(e));
         this._cache['pagos'] = this._cache['pagos'].filter(x => x.id !== p.id);
       }
     });
 
-    // Créditos sin cliente válido
     creditos.forEach(cr => {
       if (!clientes.find(c => c.id === cr.clienteId)) {
-        console.log('🗑️ Crédito huérfano eliminado:', cr.id);
         window.fbDelete('creditos', cr.id).catch(e => console.error(e));
         this._cache['creditos'] = this._cache['creditos'].filter(x => x.id !== cr.id);
       }
     });
-
     console.log("✅ Limpieza completada.");
   },
 
@@ -118,15 +134,13 @@ window.DB = {
     const creditos = this._cache['creditos'] || [];
     const pagos = this._cache['pagos'] || [];
 
-    console.log("🛠️ Iniciando mantenimiento de integridad de datos...");
+    console.log("🛠️ Mantenimiento de integridad...");
 
     creditos.forEach(cr => {
       if (cr.activo && (!cr.fechaFin || cr.fechaFin === 'undefined')) {
         const fInicio = new Date(cr.fechaInicio + 'T00:00:00');
         fInicio.setDate(fInicio.getDate() + Number(cr.diasTotal || 0));
         const nuevaFechaFin = fInicio.toISOString().split('T')[0];
-        console.log(`🔧 Reparando fechaFin para: ${cr.id} (${nuevaFechaFin})`);
-        cr.fechaFin = nuevaFechaFin;
         window.fbUpdate('creditos', cr.id, { fechaFin: nuevaFechaFin }).catch(e => console.error(e));
       }
 
@@ -135,8 +149,6 @@ window.DB = {
         const totalPagado = pagosCr.reduce((s, p) => s + (Number(p.monto) || 0), 0);
         const totalDeberia = Number(cr.total || 0);
         if (totalPagado >= totalDeberia && totalDeberia > 0) {
-          console.log('✅ Cerrando crédito completado:', cr.id);
-          cr.activo = false;
           window.fbUpdate('creditos', cr.id, { activo: false }).catch(e => console.error(e));
         }
       }

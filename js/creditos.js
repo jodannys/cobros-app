@@ -16,7 +16,59 @@ window.registrarPagoSeguro = function (btn, creditoId) {
   }, 2000);
 };
 
+window.renderSeccionCreditosCliente = function(clienteId) {
+  const todos = (DB._cache['creditos'] || [])
+    .filter(c => c.clienteId === clienteId)
+    .sort((a, b) => new Date(b.creadoEn || 0) - new Date(a.creadoEn || 0));
+
+  const activo = todos.find(c => c.activo === true);
+  const antiguos = todos.filter(c => c.activo !== true);
+
+  return `
+    <div class="contenedor-creditos">
+      ${activo ? renderCreditoCard(activo) : `
+        <div style="text-align:center; padding:20px; color:var(--muted); font-size:13px; background:var(--bg); border-radius:10px">
+          No hay un crédito activo actualmente.
+        </div>
+      `}
+
+      ${antiguos.length > 0 ? `
+        <div style="margin-top:15px">
+          <button onclick="toggleHistorial()" 
+            style="width:100%; padding:12px; background:var(--bg); border:1.5px solid var(--border); 
+                   border-radius:10px; color:var(--text); font-weight:700; font-size:12px; 
+                   display:flex; justify-content:space-between; align-items:center; cursor:pointer">
+            <span>📁 Ver créditos Cerrados (${antiguos.length})</span>
+            <span id="flecha-hist">▼</span>
+          </button>
+          
+          <div id="cajon-historial" style="display:none; margin-top:10px">
+            ${antiguos.map(ant => renderCreditoCard(ant)).join('')}
+          </div>
+        </div>
+      ` : ''}
+    </div>
+  `;
+};
+
+window.toggleHistorial = function() {
+  const cajon = document.getElementById('cajon-historial');
+  const flecha = document.getElementById('flecha-hist');
+  if (!cajon) return;
+  
+  const isHidden = cajon.style.display === 'none';
+  cajon.style.display = isHidden ? 'block' : 'none';
+  flecha.innerText = isHidden ? '▲' : '▼';
+};
+
+
+
+
 window.renderCreditoCard = function (cr) {
+  const esAntiguo = !cr.activo;
+  const estiloCard = esAntiguo 
+    ? `background: #f8fafc; opacity: 0.85; border: 1.5px dashed var(--border);` 
+    : `background: white; border: 1px solid transparent;`;
   const pagos = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id);
   const totalPagado = pagos.reduce((s, p) => s + p.monto, 0);
   const saldo = Math.max(0, cr.total - totalPagado);

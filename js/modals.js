@@ -48,7 +48,9 @@ window.previewFoto = function previewFoto(input, previewId) {
 
 window.renderModal = function renderModal() {
   const m = state.modal;
+  if (!m) return '';
   let content = '';
+
   if      (m === 'nuevo-cliente')        content = renderModalNuevoCliente();
   else if (m === 'editar-cliente')       content = renderModalEditarCliente();
   else if (m === 'editar-monto-gasto')   content = renderModalEditarMontoGasto ? renderModalEditarMontoGasto() : '';
@@ -67,6 +69,50 @@ window.renderModal = function renderModal() {
   else if (m === 'editar-gasto')         content = renderModalEditarGasto();
   else if (m === 'movimiento-cartera')   content = renderModalMovimientoCartera();  // ← NUEVO
   else if (m === 'deposito-cobrador')    content = renderModalDepositoCobrador();   // ← NUEVO
+ window.renderSeccionCreditosCliente = function(clienteId) {
+  const todos = (DB._cache['creditos'] || [])
+    .filter(c => c.clienteId === clienteId)
+    .sort((a, b) => new Date(b.creadoEn || 0) - new Date(a.creadoEn || 0));
+
+  const activo = todos.find(c => c.activo === true);
+  const antiguos = todos.filter(c => c.activo !== true);
+
+  return `
+    <div class="contenedor-creditos">
+      ${activo ? renderCreditoCard(activo) : `
+        <div style="text-align:center; padding:20px; color:var(--muted); font-size:13px; background:var(--bg); border-radius:10px">
+          No hay un crédito activo actualmente.
+        </div>
+      `}
+
+      ${antiguos.length > 0 ? `
+        <div style="margin-top:15px">
+          <button onclick="toggleHistorial()" 
+            style="width:100%; padding:12px; background:var(--bg); border:1.5px solid var(--border); 
+                   border-radius:10px; color:var(--text); font-weight:700; font-size:12px; 
+                   display:flex; justify-content:space-between; align-items:center; cursor:pointer">
+            <span>📁 Ver créditos Cerrados (${antiguos.length})</span>
+            <span id="flecha-hist">▼</span>
+          </button>
+          
+          <div id="cajon-historial" style="display:none; margin-top:10px">
+            ${antiguos.map(ant => renderCreditoCard(ant)).join('')}
+          </div>
+        </div>
+      ` : ''}
+    </div>
+  `;
+};
+
+window.toggleHistorial = function() {
+  const cajon = document.getElementById('cajon-historial');
+  const flecha = document.getElementById('flecha-hist');
+  if (!cajon) return;
+  
+  const isHidden = cajon.style.display === 'none';
+  cajon.style.display = isHidden ? 'block' : 'none';
+  flecha.innerText = isHidden ? '▲' : '▼';
+};
 
   return `
   <div class="modal-overlay" onclick="closeModal(event)">

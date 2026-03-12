@@ -114,9 +114,9 @@ window.getAlertasCreditos = function() {
   const todosLosPagos = DB._cache['pagos'] || [];
   const alertas = [];
   const hoy = hoyPeru();
-  const hoyStr = hoy.toISOString().split('T')[0];
+  const hoyStr = today();
 
- creditos.forEach(cr => {
+  creditos.forEach(cr => {
     try {
       const cliente = clientes.find(c => c.id === cr.clienteId);
       if (!cliente) return;
@@ -124,40 +124,50 @@ window.getAlertasCreditos = function() {
       const cobrador = users.find(u => u.id === cliente.cobradorId) || { nombre: 'Sin Cobrador', id: 'n/a' };
       const pagosCr = todosLosPagos.filter(p => p.creditoId === cr.id);
       const totalPagado = pagosCr.reduce((s, p) => s + (Number(p.monto) || 0), 0);
-      const saldo = Number(cr.total || 0) - totalPagado;
+      const saldoTotal = Number(cr.total || 0) - totalPagado;
 
-      if (saldo < 1) return;
+      // 1. Si el saldo es 0 o negativo, el crédito terminó. No hay alerta.
+      if (saldoTotal <= 0.1) return;
 
-      // Fecha fin
-      let fFin;
-      if (cr.fechaFin && cr.fechaFin !== 'undefined') {
-        fFin = new Date(cr.fechaFin + 'T00:00:00');
-      } else {
-        const finStr = sumarDiasHabiles(cr.fechaInicio, Number(cr.diasTotal || 0));
-        fFin = new Date(finStr + 'T00:00:00');
-      }
-      fFin.setHours(0, 0, 0, 0);
-      const finStr = fFin.toISOString().split('T')[0];
+      // 2. Revisar si está VENCIDO (Ya pasó la fecha fin)
+      const finStr = cr.fechaFin && cr.fechaFin !== 'undefined' 
+                     ? cr.fechaFin 
+                     : sumarDiasHabiles(cr.fechaInicio, Number(cr.diasTotal || 0));
+      const fFin = new Date(finStr + 'T00:00:00');
 
       if (hoy > fFin) {
-        // VENCIDO
         const diasVencido = contarDiasHabiles(finStr, hoyStr);
-        alertas.push({ tipo: 'vencido', cr, cliente, cobrador, saldo, dias: diasVencido || 0 });
-      } else {
-        // ATRASADO — misma lógica que clienteEstaAtrasado
+        alertas.push({ tipo: 'vencido', cr, cliente, cobrador, saldo: saldoTotal, dias: diasVencido });
+      } 
+      // 3. Si no está vencido, revisar si está ATRASADO (Realmente Atrasado)
+      else {
+        // Usamos la misma lógica del filtro:
         const diasTranscurridos = Math.max(0, contarDiasHabiles(cr.fechaInicio, hoyStr) - 1);
-        if (diasTranscurridos <= 0) return;
-        const cuotasDebidas = Math.min(diasTranscurridos, cr.diasTotal);
-        const cuotasCubiertas = Math.floor(totalPagado / (cr.cuotaDiaria || 1));
-        if (cuotasCubiertas < cuotasDebidas) {
-          const dias = cuotasDebidas - cuotasCubiertas;
-          alertas.push({ tipo: 'moroso', cr, cliente, cobrador, saldo, dias });
+        if (diasTranscurridos > 0) {
+          const cuotasDebidas = Math.min(diasTranscurridos, cr.diasTotal);
+          const montoDeberiaTener = cuotasDebidas * (Number(cr.cuotaDiaria) || 0);
+
+          if (totalPagado < (montoDeberiaTener - 0.1)) {
+            const deudaDinero = montoDeberiaTener - totalPagado;
+            // Calculamos cuántas cuotas representa ese dinero faltante
+            const diasAtraso = Math.ceil(deudaDinero / (cr.cuotaDiaria || 1));
+            
+            alertas.push({ 
+              tipo: 'moroso', 
+              cr, 
+              cliente, 
+              cobrador, 
+              saldo: saldoTotal, 
+              dias: diasAtraso 
+            });
+          }
         }
       }
     } catch (e) {
-      console.error("Error en crédito individual:", e);
+      console.error("Error en alerta individual:", e);
     }
   });
+
   return alertas;
 };
 
@@ -210,7 +220,26 @@ window.calcularMora = function (cr) {
     const info = obtenerDatosMora(cr);
     return info.total || 0;
 };
+window.estaRealmenteAtrasado = function(clienteId) {
+    const cr = DB._cache['creditos'].find(c => c.clienteId === clienteId && c.activo);
+    if (!cr) return false;
 
+    const pagosCr = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id);
+    const totalPagado = pagosCr.reduce((s, p) => s + (Number(p.monto) || 0), 0);
+    const hoyStr = today();
+
+    // 1. Días que debería haber pagado (restando el día de cortesía)
+    const diasTranscurridos = Math.max(0, contarDiasHabiles(cr.fechaInicio, hoyStr) - 1);
+    if (diasTranscurridos <= 0) return false;
+
+    // 2. ¿Cuánto DINERO debería haber pagado hasta hoy?
+    const cuotasDebidas = Math.min(diasTranscurridos, cr.diasTotal);
+    const montoQueDeberiaTener = cuotasDebidas * (cr.cuotaDiaria || 0);
+
+    // 3. COMPARACIÓN REAL:
+    // Si lo que pagó es menor a lo que debería tener (con un margen de 1 sol por si acaso)
+    return totalPagado < (montoQueDeberiaTener - 1);
+};
 window.mostrarPagoExitoso = function (titulo, subtitulo, esCierre) {
     if (document.querySelector('[data-overlay="pago"]')) return;
 

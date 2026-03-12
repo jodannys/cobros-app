@@ -392,12 +392,11 @@ window._renderListaClientes = function () {
       const crs = creditos.filter(cr => cr.clienteId === c.id);
       return crs.length === 0 || !crs.some(cr => cr.activo);
     });
-  } else if (filtro === 'atrasados') {
-    lista = lista.filter(c => {
-      const cr = creditos.find(cr => cr.clienteId === c.id && cr.activo);
-      if (!cr) return false;
-      return clienteEstaAtrasado(cr, pagos);
-    });
+ // DENTRO DE TU FILTRO EN clientes.js
+// En clientes.js -> window.setFiltroClientes
+} else if (filtro === 'atrasados') {
+   state.listaFiltrada = DB._cache['clientes'].filter(c => estaRealmenteAtrasado(c.id));
+
   } else if (filtro === 'cerrados' && isAdmin) {
     lista = lista.filter(c => {
       const crs = creditos.filter(cr => cr.clienteId === c.id);
@@ -491,30 +490,22 @@ window.renderClientDetail = function () {
           <span>Enviar estado de cuenta</span>
         </button>` : ''}
 
-      <div class="flex-between mb-2">
-        <div class="card-title" style="margin:0">💳 Créditos</div>
-        ${!creditoActivo
-      ? `<button class="btn btn-primary btn-sm" onclick="openModal('nuevo-credito')">+ Nuevo crédito</button>`
-      : `<span style="font-size:11.5px; color:var(--muted); font-style:italic">Crédito activo en curso</span>`}
+      <div class="flex-between mb-2" style="margin-top:20px">
+        <div class="card-title" style="margin:0">💳 Gestión de Créditos</div>
+        ${!creditoActivo 
+          ? `<button class="btn btn-primary btn-sm" onclick="openModal('nuevo-credito')">+ Nuevo crédito</button>` 
+          : `<span style="font-size:11.5px; color:var(--muted); font-style:italic">Crédito activo en curso</span>`}
       </div>
 
-      ${todosLosCreditos.length === 0
-      ? `<div class="empty-state"><div class="icon">💳</div><p>Sin créditos registrados</p></div>`
-      : todosLosCreditos
-        .sort((a, b) => (b.activo ? 1 : 0) - (a.activo ? 1 : 0))
-        .map(cr => renderCreditoCard(cr)).join('')}
+      <div class="seccion-creditos-container">
+         ${renderSeccionCreditosCliente(c.id)}
+      </div>
 
     </div>
 
     <nav class="bottom-nav">
-      <div class="nav-item" onclick="backFromClient()"
-        style="width:100%; text-align:center; font-size:13.5px; font-weight:600;
-               display:flex; align-items:center; justify-content:center; gap:8px;
-               color:var(--text); padding:10px 0">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M19 12H5M12 19l-7-7 7-7"/>
-        </svg>
+      <div class="nav-item" onclick="backFromClient()" style="width:100%; text-align:center; font-weight:600; display:flex; align-items:center; justify-content:center; gap:8px;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
         Volver
       </div>
     </nav>
