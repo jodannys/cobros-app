@@ -164,7 +164,7 @@ window._renderClienteItem = function (c, creditos, users, pagos, isAdmin) {
       </div>
       <div style="font-size:11.5px; color:var(--muted); display:flex; flex-direction:column; gap:1px; margin-top:2px">
         <span>DNI: ${c.dni}</span>
-        ${isAdmin ? `<span style="color:var(--primary); font-weight:600; font-size:10px">🎙️ ${cob.nombre}</span>` : ''}
+        ${isAdmin ? `<span style="color:var(--primary); font-weight:600; font-size:8px">${cob.nombre}</span>` : ''}
       </div>
     </div>
 
