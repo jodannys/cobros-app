@@ -30,10 +30,10 @@ window.getSaldoMochilaHasta = function (cobradorId, fechaExclusiva) {
 };
 
 function _calcularMochila(cobradorId, fechaLimite) {
-  const movs      = DB._cache['movimientos_cartera'] || [];
-  const pagos     = DB._cache['pagos']    || [];
-  const creditos  = DB._cache['creditos'] || [];
-  const gastos    = DB._cache['gastos']   || [];
+  const movs = DB._cache['movimientos_cartera'] || [];
+  const pagos = DB._cache['pagos'] || [];
+  const creditos = DB._cache['creditos'] || [];
+  const gastos = DB._cache['gastos'] || [];
   const clientesIds = _clientesDelCobrador(cobradorId);
 
   // Filtro de fecha
@@ -72,14 +72,14 @@ function _calcularMochila(cobradorId, fechaLimite) {
       const esAntes = antes(m.fecha);
       // Solo baja si tú presionaste OK (confirmado es true)
       const estaConfirmado = m.confirmado === true || m.tipo === 'confirmar_yape';
-      
+
       return esMio && esAntes && estaConfirmado;
     })
     .reduce((s, m) => s + Number(m.monto || 0), 0);
 
   // Operación final
- const resultado = enviado + cobros + seguros - prestamos - totalGastos - devuelto;
-return resultado;
+  const resultado = enviado + cobros + seguros - prestamos - totalGastos - devuelto;
+  return resultado;
 }
 
 // ── CARTERA: Saldo del admin ──────────────────────────────────
@@ -88,12 +88,12 @@ window.getSaldoCartera = function () {
   return movs.reduce((s, m) => {
     const monto = Number(m.monto) || 0;
     switch (m.tipo) {
-      case 'inyeccion':      return s + monto;
+      case 'inyeccion': return s + monto;
       case 'confirmar_yape': return s + monto;
       case 'envio_cobrador': return s - monto;
-      case 'gasto_admin':    return s - monto;
-      case 'retiro':         return s - monto;
-      default:               return s;
+      case 'gasto_admin': return s - monto;
+      case 'retiro': return s - monto;
+      default: return s;
     }
   }, 0);
 };
@@ -112,7 +112,7 @@ window.getTotalEnMochilas = function () {
 
 window.getTotalEnLaCalle = function () {
   const creditos = DB._cache['creditos'] || [];
-  const pagos    = DB._cache['pagos']    || [];
+  const pagos = DB._cache['pagos'] || [];
   return creditos
     .filter(cr => cr.activo)
     .reduce((s, cr) => {
@@ -129,18 +129,18 @@ window.getDepositosPendientes = function () {
 };
 
 window.renderPanelCartera = function () {
-  const saldo      = getSaldoCartera();
+  const saldo = getSaldoCartera();
   const capitalInv = getCapitalInvertido();
-  const enLaCalle  = getTotalEnLaCalle();
+  const enLaCalle = getTotalEnLaCalle();
   const enMochilas = getTotalEnMochilas();
   const pendientes = getDepositosPendientes();
   const cobradores = (DB._cache['users'] || []).filter(u => u.role === 'cobrador');
-  const movs       = (DB._cache['movimientos_cartera'] || [])
+  const movs = (DB._cache['movimientos_cartera'] || [])
     .slice().sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 5);
-  const saldoOk    = saldo >= 0;
+  const saldoOk = saldo >= 0;
   const menuAbierto = state._menuCarteraAbierto || false;
   const mostrarMovs = state._verMovsCartera || false;
-  
+
   // Datos del cuadre (admin)
   const isAdmin = state.currentUser?.role === 'admin';
   let totalRecaudado = 0, totalObjetivo = 0, totalSeguros = 0;
@@ -152,18 +152,18 @@ window.renderPanelCartera = function () {
   let cobradores_admin = [];
   let porcentaje = 0;
 
- if (isAdmin) {
+  if (isAdmin) {
     cobradores_admin = usuarios.filter(u => u.role === 'cobrador');
     const cuadresCobradores = cobradores_admin.map(u => getCuadreDelDia(u.id, hoy));
-    
+
     totalYape = cuadresCobradores.reduce((s, c) => s + c.yape, 0);
     totalEfectivo = cuadresCobradores.reduce((s, c) => s + c.efectivo, 0);
     totalTransferencia = cuadresCobradores.reduce((s, c) => s + c.transferencia, 0);
     totalRecaudado = totalYape + totalEfectivo + totalTransferencia;
-    
+
     totalObjetivo = cobradores_admin.reduce((s, u) => s + calcularMetaReal(u.id, hoy).metaTotal, 0);
     porcentaje = totalObjetivo > 0 ? Math.round((totalRecaudado / totalObjetivo) * 100) : 0;
-    
+
     totalSeguros = creditos
       .filter(cr => cr.fechaInicio === hoy)
       .reduce((s, cr) => s + Number(cr.montoSeguro || 0), 0);
@@ -171,7 +171,7 @@ window.renderPanelCartera = function () {
     // --- CORRECCIÓN AQUÍ ---
     // 1. Gastos de ruta de los cobradores
     const gastosRuta = cobradores_admin.reduce((s, u) => s + getCajaChicaDelDia(u.id, hoy).totalGastos, 0);
-    
+
     // 2. Gastos Admin y Retiros Personales hechos por ti (u otros admin)
     const gastosMovsCartera = (DB._cache['movimientos_cartera'] || [])
       .filter(m => m.fecha === hoy && (m.tipo === 'gasto_admin' || m.tipo === 'retiro'))
@@ -182,7 +182,7 @@ window.renderPanelCartera = function () {
 
     totalPrestado = cobradores_admin.reduce((s, u) => s + getCajaChicaDelDia(u.id, hoy).totalPrestadoHoy, 0);
   }
- return `
+  return `
 <!-- PANEL PRINCIPAL -->
 <div style="background:#0f172a; background-image:
               radial-gradient(circle at 15% 50%, rgba(37,99,235,0.2) 0%, transparent 55%),
@@ -263,22 +263,22 @@ window.renderPanelCartera = function () {
     <div style="background:rgba(255,255,255,0.06); border-radius:8px; padding:12px">
       <div style="font-size:10px; color:rgba(255,255,255,0.4); font-weight:700;
                   text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px">Capital invertido</div>
-      <div style="font-size:16px; font-weight:800; color:white">${formatMoney(capitalInv)}</div>
+      <div style="font-size:clamp(12px, 3.5vw, 16px); font-weight:800; color:white; white-space:nowrap">${formatMoney(capitalInv)}</div>
     </div>
     <div style="background:rgba(251,191,36,0.12); border-radius:8px; padding:12px">
       <div style="font-size:10px; color:rgba(251,191,36,0.7); font-weight:700;
                   text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px">En la calle</div>
-      <div style="font-size:16px; font-weight:800; color:#fbbf24">${formatMoney(enLaCalle)}</div>
+      <div style="font-size:clamp(12px, 3.5vw, 16px); font-weight:800; color:#fbbf24; white-space:nowrap">${formatMoney(enLaCalle)}</div>
     </div>
     <div style="background:rgba(96,165,250,0.12); border-radius:8px; padding:12px">
       <div style="font-size:10px; color:rgba(147,197,253,0.7); font-weight:700;
                   text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px">En mochilas</div>
- <div style="font-size:16px; font-weight:800; color:#93c5fd">${formatMoney(enMochilas)}</div>
+      <div style="font-size:clamp(12px, 3.5vw, 16px); font-weight:800; color:#93c5fd; white-space:nowrap">${formatMoney(enMochilas)}</div>
     </div>
     <div style="background:rgba(34,197,94,0.12); border-radius:8px; padding:12px">
       <div style="font-size:10px; color:rgba(74,222,128,0.7); font-weight:700;
                   text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px">Total negocio</div>
-      <div style="font-size:16px; font-weight:800; color:#4ade80">
+      <div style="font-size:clamp(12px, 3.5vw, 16px); font-weight:800; color:#4ade80; white-space:nowrap">
         ${formatMoney(saldo + enMochilas + enLaCalle)}
       </div>
     </div>
@@ -376,8 +376,8 @@ window.renderPanelCartera = function () {
       ⏳ ${pendientes.length} depósito${pendientes.length > 1 ? 's' : ''} pendiente${pendientes.length > 1 ? 's' : ''} de confirmar
     </div>
     ${pendientes.map(m => {
-      const cob = (DB._cache['users'] || []).find(u => u.id === m.cobradorId);
-      return `
+    const cob = (DB._cache['users'] || []).find(u => u.id === m.cobradorId);
+    return `
       <div style="display:flex; justify-content:space-between; align-items:center;
                   padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.06)">
         <div>
@@ -397,7 +397,7 @@ window.renderPanelCartera = function () {
           </button>
         </div>
       </div>`;
-    }).join('')}
+  }).join('')}
   </div>` : ''}
 
 </div>
@@ -406,10 +406,10 @@ window.renderPanelCartera = function () {
 <div class="card" style="margin-bottom:12px">
   <div class="card-title">Dinero en caja de cobradores</div>
   ${cobradores.length === 0
-    ? `<div style="text-align:center; color:var(--muted); font-size:13px; padding:16px 0">
+      ? `<div style="text-align:center; color:var(--muted); font-size:13px; padding:16px 0">
          Sin cobradores registrados
        </div>`
-    : cobradores.map(u => {
+      : cobradores.map(u => {
         const sm = getSaldoMochila(u.id);
         const ok = sm >= 0;
         return `
@@ -428,9 +428,9 @@ window.renderPanelCartera = function () {
             </div>
           </div>
           <div style="display:flex; align-items:center; gap:10px">
-            <div style="font-size:17px; font-weight:900; color:${ok ? '#16a34a' : 'var(--danger)'}">
-              ${formatMoney(Math.abs(sm))} ${!ok ? '⚠️' : ''}
-            </div>
+           <div style="font-size:clamp(12px, 3.5vw, 17px); font-weight:900; color:${ok ? '#16a34a' : 'var(--danger)'}; white-space:nowrap">
+  ${formatMoney(Math.abs(sm))} ${!ok ? '⚠️' : ''}
+</div>
             <button onclick="abrirEnviarCobrador('${u.id}')"
               style="padding:6px 12px; border-radius:8px; border:none;
                      background:#eff6ff; color:var(--primary); font-size:11px;
@@ -453,21 +453,21 @@ window.renderPanelCartera = function () {
     </button>
   </div>
   ${movs.length === 0
-    ? `<div style="text-align:center; color:var(--muted); font-size:13px; padding:16px 0">
+      ? `<div style="text-align:center; color:var(--muted); font-size:13px; padding:16px 0">
          Sin movimientos aún
        </div>`
-    : (mostrarMovs
+      : (mostrarMovs
         ? (DB._cache['movimientos_cartera'] || []).slice().sort((a, b) => b.fecha.localeCompare(a.fecha))
         : movs
       ).map(m => {
         const cob = m.cobradorId ? (DB._cache['users'] || []).find(u => u.id === m.cobradorId) : null;
         const cfg = {
-          inyeccion:         { icon: '➕', color: '#16a34a', signo: '+', label: 'Inyección de capital' },
-          envio_cobrador:    { icon: '💰', color: '#1a56db', signo: '-', label: 'Enviado a ' + (cob?.nombre || 'cobrador') },
-          gasto_admin:       { icon: '💸', color: '#dc2626', signo: '-', label: 'Gasto administrativo' },
-          retiro:            { icon: '🏠', color: '#d97706', signo: '-', label: 'Retiro personal' },
-          confirmar_yape:    { icon: '✅', color: '#16a34a', signo: '+', label: 'Confirmado de ' + (cob?.nombre || 'cobrador') },
-          deposito_cobrador: { icon: '⏳', color: '#d97706', signo: '',  label: 'Pendiente de ' + (cob?.nombre || 'cobrador') },
+          inyeccion: { icon: '➕', color: '#16a34a', signo: '+', label: 'Inyección de capital' },
+          envio_cobrador: { icon: '💰', color: '#1a56db', signo: '-', label: 'Enviado a ' + (cob?.nombre || 'cobrador') },
+          gasto_admin: { icon: '💸', color: '#dc2626', signo: '-', label: 'Gasto administrativo' },
+          retiro: { icon: '🏠', color: '#d97706', signo: '-', label: 'Retiro personal' },
+          confirmar_yape: { icon: '✅', color: '#16a34a', signo: '+', label: 'Confirmado de ' + (cob?.nombre || 'cobrador') },
+          deposito_cobrador: { icon: '⏳', color: '#d97706', signo: '', label: 'Pendiente de ' + (cob?.nombre || 'cobrador') },
         }[m.tipo] || { icon: '•', color: 'var(--muted)', signo: '', label: m.tipo };
         return `
         <div style="display:flex; justify-content:space-between; align-items:center;
@@ -499,17 +499,17 @@ ${isAdmin ? `
 </div>
 
 ${cobradores_admin.map(u => {
-  const c         = getCuadreDelDia(u.id, hoy);
-  const meta      = calcularMetaReal(u.id, hoy);
-  const caja      = getCajaChicaDelDia(u.id, hoy);
-  const expandido = state._expandCobrador === u.id;
-  const pct       = meta.metaTotal > 0 ? Math.min(100, Math.round((meta.pagadoHoy / meta.metaTotal) * 100)) : 0;
-  const saldoOk   = caja.saldo >= 0;
-  const segCob    = creditos
-    .filter(cr => cr.fechaInicio === hoy && cr.cobradorId === u.id)
-    .reduce((s, cr) => s + Number(cr.montoSeguro || 0), 0);
+        const c = getCuadreDelDia(u.id, hoy);
+        const meta = calcularMetaReal(u.id, hoy);
+        const caja = getCajaChicaDelDia(u.id, hoy);
+        const expandido = state._expandCobrador === u.id;
+        const pct = meta.metaTotal > 0 ? Math.min(100, Math.round((meta.pagadoHoy / meta.metaTotal) * 100)) : 0;
+        const saldoOk = caja.saldo >= 0;
+        const segCob = creditos
+          .filter(cr => cr.fechaInicio === hoy && cr.cobradorId === u.id)
+          .reduce((s, cr) => s + Number(cr.montoSeguro || 0), 0);
 
-  return `
+        return `
   <div style="background:white; border-radius:10px; margin-bottom:10px; overflow:hidden;
             box-shadow:var(--shadow)">
 
@@ -615,14 +615,14 @@ ${cobradores_admin.map(u => {
       </div>
     </div>` : ''}
   </div>`;
-}).join('')}
+      }).join('')}
 ` : ''}`;
 };
 
 window.abrirMovimientoCartera = function (tipo, cobradorIdPreseleccionado) {
-  state._movCarteraTipo     = tipo;
+  state._movCarteraTipo = tipo;
   state._movCarteraCobrador = cobradorIdPreseleccionado || null;
-  state.modal               = 'movimiento-cartera';
+  state.modal = 'movimiento-cartera';
   render();
 };
 
@@ -631,9 +631,9 @@ window.abrirEnviarCobrador = function (cobradorId) {
 };
 
 // Aliases por compatibilidad con cuadre.js
-window.abrirInyectarCapital  = () => abrirMovimientoCartera('inyeccion');
+window.abrirInyectarCapital = () => abrirMovimientoCartera('inyeccion');
 window.abrirGastoAdminPropio = () => abrirMovimientoCartera('gasto_admin');
-window.abrirRetiroHipoteca   = () => abrirMovimientoCartera('retiro');
+window.abrirRetiroHipoteca = () => abrirMovimientoCartera('retiro');
 
 window.abrirDepositoCobrador = function () {
   state.modal = 'deposito-cobrador';
@@ -647,14 +647,14 @@ window.confirmarDeposito = async function (movId) {
       confirmado: true,
       tipo: 'confirmar_yape'
     });
-    
+
     // ✅ Actualizar cache local inmediatamentea
     const idx = (DB._cache['movimientos_cartera'] || []).findIndex(m => m.id === movId);
     if (idx !== -1) {
       DB._cache['movimientos_cartera'][idx].confirmado = true;
       DB._cache['movimientos_cartera'][idx].tipo = 'confirmar_yape';
     }
-    
+
     showToast('✅ Depósito confirmado — sumado a tu cartera');
     render();
   } catch (e) {
@@ -663,35 +663,35 @@ window.confirmarDeposito = async function (movId) {
 };
 
 window.guardarMovimientoCartera = async function () {
-  const tipo        = state._movCarteraTipo;
-  const monto       = parseMonto(document.getElementById('mcMonto').value);
+  const tipo = state._movCarteraTipo;
+  const monto = parseMonto(document.getElementById('mcMonto').value);
   const descripcion = document.getElementById('mcDescripcion').value.trim();
-  const fecha       = document.getElementById('mcFecha').value;
-  const cobradorEl  = document.getElementById('mcCobrador');
-  const cobradorId  = tipo === 'envio_cobrador' ? cobradorEl?.value : null;
+  const fecha = document.getElementById('mcFecha').value;
+  const cobradorEl = document.getElementById('mcCobrador');
+  const cobradorId = tipo === 'envio_cobrador' ? cobradorEl?.value : null;
 
-  if (!monto || monto <= 0)                     { alert('Ingresa un monto válido'); return; }
-  if (!fecha)                                    { alert('Selecciona una fecha');    return; }
-  if (tipo === 'envio_cobrador' && !cobradorId) { alert('Selecciona el cobrador');  return; }
+  if (!monto || monto <= 0) { alert('Ingresa un monto válido'); return; }
+  if (!fecha) { alert('Selecciona una fecha'); return; }
+  if (tipo === 'envio_cobrador' && !cobradorId) { alert('Selecciona el cobrador'); return; }
 
-  const id    = genId();
+  const id = genId();
   const nuevo = {
     id, tipo, monto, descripcion, fecha,
-    cobradorId:    cobradorId || null,
+    cobradorId: cobradorId || null,
     registradoPor: state.currentUser.id
   };
 
   try {
     await DB.set('movimientos_cartera', id, nuevo);
-    state.modal               = null;
-    state._movCarteraTipo     = null;
+    state.modal = null;
+    state._movCarteraTipo = null;
     state._movCarteraCobrador = null;
 
     const labels = {
-     inyeccion:      `➕ ${formatMoney(monto)} inyectados`,
+      inyeccion: `➕ ${formatMoney(monto)} inyectados`,
       envio_cobrador: `💰 Caja asignada — ${formatMoney(monto)}`,
-      gasto_admin:    `💸 Gasto de ${formatMoney(monto)} registrado`,
-      retiro:         `🏦 Retiro de ${formatMoney(monto)} registrado`,
+      gasto_admin: `💸 Gasto de ${formatMoney(monto)} registrado`,
+      retiro: `🏦 Retiro de ${formatMoney(monto)} registrado`,
     };
     showToast(labels[tipo] || 'Movimiento registrado');
     render();
@@ -701,23 +701,23 @@ window.guardarMovimientoCartera = async function () {
 };
 
 window.guardarDepositoCobrador = async function () {
-  const monto       = parseMonto(document.getElementById('dcMonto').value);
+  const monto = parseMonto(document.getElementById('dcMonto').value);
   const descripcion = document.getElementById('dcDescripcion').value.trim();
-  const fecha       = document.getElementById('dcFecha').value;
+  const fecha = document.getElementById('dcFecha').value;
 
   if (!monto || monto <= 0) { alert('Ingresa un monto válido'); return; }
-  if (!fecha)               { alert('Selecciona una fecha');    return; }
+  if (!fecha) { alert('Selecciona una fecha'); return; }
 
   const id = genId();
   await DB.set('movimientos_cartera', id, {
     id,
-    tipo:          'deposito_cobrador',
+    tipo: 'deposito_cobrador',
     monto,
-    descripcion:   descripcion || 'Depósito al admin',
+    descripcion: descripcion || 'Depósito al admin',
     fecha,
-    cobradorId:    state.currentUser.id,
+    cobradorId: state.currentUser.id,
     registradoPor: state.currentUser.id,
-    confirmado:    false
+    confirmado: false
   });
 
   state.modal = null;
@@ -731,46 +731,46 @@ window.guardarDepositoCobrador = async function () {
 // ============================================================
 
 window.renderModalMovimientoCartera = function () {
-  const tipo       = state._movCarteraTipo;
+  const tipo = state._movCarteraTipo;
   const cobradores = (DB._cache['users'] || []).filter(u => u.role === 'cobrador');
-  const presel     = state._movCarteraCobrador || '';
+  const presel = state._movCarteraCobrador || '';
 
   const cfg = {
-  inyeccion: {
-    titulo:      'Inyectar Capital',
-    color:       'var(--success)',
-    bg:          '#f0fdf4',
-    border:      '#bbf7d0',
-    desc:        '💡 Dinero propio que destinas al negocio. Suma a tu cartera disponible.',
-    placeholder: 'Ej: Ahorros, quincena, venta de activo...',
-  },
-  envio_cobrador: {
-    titulo:      'Asignar Caja',
-    color:       'var(--primary)',
-    bg:          '#eff6ff',
-    border:      '#bfdbfe',
-    desc:        '💡 Sale de tu cartera y entra a la caja del cobrador seleccionado.',
-    placeholder: 'Ej: Caja inicial, refuerzo de ruta...',
-  },
-  gasto_admin: {
-    titulo:      'Gasto Administrativo',
-    color:       'var(--danger)',
-    bg:          '#fff1f2',
-    border:      '#fecdd3',
-    desc:        '💡 Gastos del negocio: internet, papelería, impuestos. Resta de tu cartera.',
-    placeholder: 'Ej: Internet, papelería, impuesto...',
-  },
-  retiro: {
-    titulo:      'Retiro de Utilidades',
-    color:       'var(--warning)',
-    bg:          '#fffbeb',
-    border:      '#fde68a',
-    desc:        '💡 Retiras ganancias del negocio para uso personal. Resta de tu cartera.',
-    placeholder: 'Ej: Retiro mensual, retiro de utilidades...',
-  },
-}[tipo] || { titulo: 'Movimiento', color: 'var(--muted)', bg: 'var(--bg)', border: 'var(--border)', desc: '', placeholder: '' };
+    inyeccion: {
+      titulo: 'Inyectar Capital',
+      color: 'var(--success)',
+      bg: '#f0fdf4',
+      border: '#bbf7d0',
+      desc: '💡 Dinero propio que destinas al negocio. Suma a tu cartera disponible.',
+      placeholder: 'Ej: Ahorros, quincena, venta de activo...',
+    },
+    envio_cobrador: {
+      titulo: 'Asignar Caja',
+      color: 'var(--primary)',
+      bg: '#eff6ff',
+      border: '#bfdbfe',
+      desc: '💡 Sale de tu cartera y entra a la caja del cobrador seleccionado.',
+      placeholder: 'Ej: Caja inicial, refuerzo de ruta...',
+    },
+    gasto_admin: {
+      titulo: 'Gasto Administrativo',
+      color: 'var(--danger)',
+      bg: '#fff1f2',
+      border: '#fecdd3',
+      desc: '💡 Gastos del negocio: internet, papelería, impuestos. Resta de tu cartera.',
+      placeholder: 'Ej: Internet, papelería, impuesto...',
+    },
+    retiro: {
+      titulo: 'Retiro de Utilidades',
+      color: 'var(--warning)',
+      bg: '#fffbeb',
+      border: '#fde68a',
+      desc: '💡 Retiras ganancias del negocio para uso personal. Resta de tu cartera.',
+      placeholder: 'Ej: Retiro mensual, retiro de utilidades...',
+    },
+  }[tipo] || { titulo: 'Movimiento', color: 'var(--muted)', bg: 'var(--bg)', border: 'var(--border)', desc: '', placeholder: '' };
 
-return `
+  return `
 <div class="modal-handle"></div>
 <div class="modal-title">${cfg.titulo}</div>
 

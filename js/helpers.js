@@ -47,8 +47,8 @@ window.contarDiasHabiles = function(fechaInicioStr, fechaFinStr) {
   return count;
 };
 
-window.parseMonto = function parseMonto(valor) {
-    return Math.round(parseFloat(valor) || 0);
+window.parseMonto = function(valor) {
+  return Math.round((parseFloat(valor) || 0) * 100) / 100;
 };
 
 window.formatDate = (d) => {

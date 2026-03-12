@@ -13,7 +13,6 @@ window.DB = {
     movimientos_cartera: []
   },
 
-  // --- MÉTODOS DE ESCRITURA ---
   async set(colName, id, data) {
     await fbSet(colName, id, { ...data, id });
     if (this._cache[colName]) {
@@ -40,7 +39,6 @@ window.DB = {
     }
   },
 
-  // --- MÉTODOS DE LECTURA ---
   async getAll(colName) {
     if (this._cache[colName] && this._cache[colName].length > 0) {
       return this._cache[colName];
@@ -53,51 +51,51 @@ window.DB = {
     return await fbQuery(colName, field, value);
   },
 
-  // --- INICIALIZACIÓN: CARGA ÚNICA SIN LISTENERS ---
   async init() {
-  console.log("🚀 Cargando datos...");
+    console.log("🚀 Cargando datos...");
 
-  // Colecciones estáticas — carga única (no cambian seguido)
-  const estaticas = ['users', 'clientes', 'creditos'];
-  
-  // Colecciones en tiempo real — usan listener
-  const dinamicas = ['pagos', 'movimientos_cartera', 'gastos', 'cajas', 'notas_cuadre'];
+    const estaticas = ['users', 'clientes', 'creditos'];
+    const dinamicas = ['pagos', 'movimientos_cartera', 'gastos', 'cajas', 'notas_cuadre'];
 
-  // 1. Cargar estáticas una sola vez
-  await Promise.all(estaticas.map(async col => {
-    try {
-      this._cache[col] = await fbGetAll(col);
-    } catch (e) {
-      console.error(`Error cargando ${col}:`, e);
-      this._cache[col] = [];
+    // 1. Cargar estáticas una sola vez
+    await Promise.all(estaticas.map(async col => {
+      try {
+        this._cache[col] = await fbGetAll(col);
+      } catch (e) {
+        console.error(`Error cargando ${col}:`, e);
+        this._cache[col] = [];
+      }
+    }));
+
+    // 2. Limpiar listeners anteriores antes de crear nuevos
+    if (window._unsubscribes) {
+      window._unsubscribes.forEach(unsub => unsub());
+      console.log("🧹 Listeners anteriores eliminados");
     }
-  }));
+    window._unsubscribes = [];
 
-  // 2. Cargar dinámicas con listener (tiempo real)
-  // El throttle evita el bucle: espera 1.5s antes de hacer render()
-  let _renderTimer = null;
+    let _renderTimer = null;
 
-  dinamicas.forEach(col => {
-    // Carga inicial desde cache primero para que no tarde
-    fbGetAll(col).then(datos => {
-      this._cache[col] = datos;
+    // 3. Crear listeners nuevos
+    dinamicas.forEach(col => {
+      fbGetAll(col).then(datos => {
+        this._cache[col] = datos;
+      });
+
+      const unsub = fbEscuchar(col, (datos) => {
+        this._cache[col] = datos;
+        if (_renderTimer) clearTimeout(_renderTimer);
+        _renderTimer = setTimeout(() => {
+          if (typeof render === 'function') render();
+        }, 1500);
+      });
+
+      window._unsubscribes.push(unsub);
     });
 
-    // Listener en tiempo real
-    fbEscuchar(col, (datos) => {
-      this._cache[col] = datos;
+    console.log("✅ Listo. Tiempo real activo en: " + dinamicas.join(', '));
+  },
 
-      // Throttle: solo hace render() si pasaron 1.5s desde el último cambio
-      if (_renderTimer) clearTimeout(_renderTimer);
-      _renderTimer = setTimeout(() => {
-        if (typeof render === 'function') render();
-      }, 1500);
-    });
-  });
-
-  console.log("✅ Listo. Tiempo real activo en: " + dinamicas.join(', '));
-},
-  // --- MANTENIMIENTO MANUAL ---
   async ejecutarMantenimientoManual() {
     console.warn("⚠️ Ejecutando mantenimiento manual solicitado...");
     await this._corregirCreditosSaldados();

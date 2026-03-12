@@ -287,7 +287,7 @@ window.renderCajaChicaAdmin = function (cobradorId, fecha) {
 // ── Acciones de Gasto ─────────────────────────────────────────────
 
 window.guardarGasto = async function () {
-  const monto = parseFloat(document.getElementById('gMonto').value);
+const monto = parseMonto(document.getElementById('gMonto').value);
   const descripcion = document.getElementById('gDescripcion').value.trim();
   const fecha = document.getElementById('gFecha').value;
 

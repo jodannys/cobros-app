@@ -52,34 +52,34 @@ window.calcularMetaReal = function (cobradorId, fecha) {
   const detalle = [];
 
   creditosActivos.forEach(cr => {
-  const cliente = clientes.find(c => c.id === cr.clienteId);
-  const cuota = Number(cr.cuotaDiaria) || 0;
+    const cliente = clientes.find(c => c.id === cr.clienteId);
+    const cuota = Number(cr.cuotaDiaria) || 0;
 
-  // Pagos de HOY para este crédito
-  const pagosHoy = pagos.filter(p => p.creditoId === cr.id && p.fecha === fecha);
-  const montoPagadoHoy = pagosHoy.reduce((s, p) => s + Number(p.monto), 0);
+    // Pagos de HOY para este crédito
+    const pagosHoy = pagos.filter(p => p.creditoId === cr.id && p.fecha === fecha);
+    const montoPagadoHoy = pagosHoy.reduce((s, p) => s + Number(p.monto), 0);
 
-  // Total pagado HISTÓRICO para saber si ya está al día
-  const totalPagado = pagos
-    .filter(p => p.creditoId === cr.id)
-    .reduce((s, p) => s + Number(p.monto), 0);
+    // Total pagado HISTÓRICO para saber si ya está al día
+    const totalPagado = pagos
+      .filter(p => p.creditoId === cr.id)
+      .reduce((s, p) => s + Number(p.monto), 0);
 
-  // Cuántas cuotas debería tener pagadas hasta hoy
-  const diasTranscurridos = Math.max(0, contarDiasHabiles(cr.fechaInicio, fecha));
-  const cuotasDebidas = Math.min(diasTranscurridos, cr.diasTotal);
-  const montoDebido = cuotasDebidas * cuota;
+    // Cuántas cuotas debería tener pagadas hasta hoy
+    const diasTranscurridos = Math.max(0, contarDiasHabiles(cr.fechaInicio, fecha));
+    const cuotasDebidas = Math.min(diasTranscurridos, cr.diasTotal);
+    const montoDebido = cuotasDebidas * cuota;
 
-  // Está al día si pagó lo que debería hasta hoy
-  const alDia = totalPagado >= (montoDebido - 0.5);
+    // Está al día si pagó lo que debería hasta hoy
+    const alDia = totalPagado >= (montoDebido - 0.5);
 
- metaTotal += cuota;
-pagadoHoy += Math.min(montoPagadoHoy, cuota);
+    metaTotal += cuota;
+    pagadoHoy += Math.min(montoPagadoHoy, cuota);
 
-  // Solo aparece como pendiente si NO está al día
-  if (!alDia) pendiente += Math.max(0, montoDebido - totalPagado);
+    // Solo aparece como pendiente si NO está al día
+    if (!alDia) pendiente += Math.max(0, montoDebido - totalPagado);
 
-  detalle.push({ cliente, cr, cuota, montoPagadoHoy, completo: alDia });
-});
+    detalle.push({ cliente, cr, cuota, montoPagadoHoy, completo: alDia });
+  });
 
   return { metaTotal, pagadoHoy, pendiente, detalle };
 };
@@ -229,7 +229,7 @@ window.renderCuadre = function () {
   // VISTA ADMIN
   // ════════════════════════════════════════════════════════
   if (isAdmin) {
-  return `
+    return `
   <div class="topbar">
     <h2>Cuadre General</h2>
     <div style="display:flex; align-items:center; gap:8px">
@@ -240,7 +240,7 @@ window.renderCuadre = function () {
   <div class="page">
     ${renderPanelCartera()}
   </div>`;
-}
+  }
 
   // ════════════════════════════════════════════════════════
   // VISTA COBRADOR
@@ -396,9 +396,13 @@ window.renderCuadre = function () {
                     <div style="font-weight:700; font-size:14px; color:var(--text)">
                       ${d.cliente?.nombre || 'Sin nombre'}
                     </div>
-                    <div style="font-size:11.5px; color:var(--muted); margin-top:2px">
-                      Cuota: ${formatMoney(d.cuota)}
-                    </div>
+                   <div style="font-size:11.5px; color:var(--muted); margin-top:2px; display:flex; gap:6px; align-items:center">
+  Cuota: ${formatMoney(d.cuota)}
+  <span style="background:#eff6ff; color:#1d4ed8; font-size:10px; font-weight:700;
+               padding:1px 6px; border-radius:4px">
+    📅 Hoy
+  </span>
+</div>
                   </div>
                   <button
                     onclick="if(this.getAttribute('data-loading')) return; this.setAttribute('data-loading','true'); this.style.opacity='0.5'; pagoRapido('${d.cr.id}');"
