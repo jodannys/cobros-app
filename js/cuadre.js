@@ -402,15 +402,14 @@ window.renderCuadre = function () {
               <div style="font-weight:700; font-size:14px; color:var(--text)">
                 ${d.cliente?.nombre || 'Sin nombre'}
               </div>
-              <div style="font-size:11.5px; color:var(--muted); margin-top:2px;
-                          display:flex; align-items:center; gap:6px; flex-wrap:wrap">
-                Cuota: ${formatMoney(d.cuota)}
-                ${d.deudaAcumulada > d.cuota + 0.5 ? `
-                  <span style="background:#fff1f2; color:#9f1239; font-size:10px; font-weight:700;
-                               padding:1px 6px; border-radius:4px; white-space:nowrap">
-                    ⚠️ Debe ${formatMoney(d.deudaAcumulada)}
-                  </span>` : ''}
-              </div>
+             <div style="font-size:11.5px; color:var(--muted); margin-top:2px;
+            display:flex; align-items:center; gap:6px; flex-wrap:wrap">
+  ${d.deudaAcumulada > d.cuota + 0.5 ? `
+    <span style="background:#fff1f2; color:#9f1239; font-size:10px; font-weight:700;
+                 padding:1px 6px; border-radius:4px; white-space:nowrap">
+      ⚠️ Debe ${formatMoney(d.deudaAcumulada)}
+    </span>` : ''}
+</div>
             </div>
             <button
               onclick="if(this.getAttribute('data-loading')) return; this.setAttribute('data-loading','true'); this.style.opacity='0.5'; pagoRapido('${d.cr.id}');"
