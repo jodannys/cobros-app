@@ -396,16 +396,15 @@ window.renderCuadre = function () {
                     <div style="font-weight:700; font-size:14px; color:var(--text)">
                       ${d.cliente?.nombre || 'Sin nombre'}
                     </div>
-                   <div style="font-size:11.5px; color:var(--muted); margin-top:2px; display:flex; gap:6px; align-items:center">
+                   <div style="font-size:11.5px; color:var(--muted); margin-top:2px">
   Cuota: ${formatMoney(d.cuota)}
-<span style="background:#eff6ff; color:#1d4ed8; font-size:10px; font-weight:700;
-             padding:1px 6px; border-radius:4px">
-  ${(() => {
-    const d = new Date();
-    const dias = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
-    return dias[d.getDay()] + ' ' + String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0');
-  })()}
-</span>
+  <span style="color:#cbd5e1; font-size:10px; font-weight:500; margin-left:4px">
+    ${(() => {
+      const dia = new Date();
+      const dias = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+      return dias[dia.getDay()] + ' ' + String(dia.getDate()).padStart(2,'0') + '/' + String(dia.getMonth()+1).padStart(2,'0');
+    })()}
+  </span>
 </div>
                   </div>
                   <button
