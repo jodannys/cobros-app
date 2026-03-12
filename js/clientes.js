@@ -1,5 +1,5 @@
 window.renderClientes = function () {
-  if (DB._isLoading) {
+  if (state._cargando) {
     return `
       <div class="page-loading">
         <div class="spinner"></div>
@@ -47,7 +47,6 @@ window.renderClientes = function () {
     );
   }
 
-
   const filtros = [
     { key: 'todos', label: 'Todos' },
     { key: 'activos', label: '✅ Activos' },
@@ -68,30 +67,20 @@ window.renderClientes = function () {
     <div class="page">
 
       <div style="position:relative; display:flex; align-items:center; margin-bottom:4px">
-       <span style="position:absolute; left:14px; pointer-events:none; display:flex; align-items:center">
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a0aec0" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="11" cy="11" r="8"/>
-    <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-  </svg>
-</span>
+        <span style="position:absolute; left:14px; pointer-events:none; display:flex; align-items:center">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a0aec0" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+        </span>
         <input id="search-clientes"
-  style="
-    width: 100%;
-    border: none;
-    background: #ffffff;
-    border-radius: 20px;
-    padding: 9px 36px 9px 40px;
-    font-size: 13.5px;
-    color: #2d3748;
-    font-weight: 500;
-    outline: none;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    transition: background 0.2s;
-  "
-  placeholder="Buscar por nombre, DNI o negocio..."
-  value="${state.search || ''}"
-  oninput="updateSearch(this.value)">
-
+          style="width:100%; border:none; background:#ffffff; border-radius:20px;
+            padding:9px 36px 9px 40px; font-size:13.5px; color:#2d3748;
+            font-weight:500; outline:none; box-shadow:0 2px 8px rgba(0,0,0,0.08);
+            transition:background 0.2s;"
+          placeholder="Buscar por nombre, DNI o negocio..."
+          value="${state.search || ''}"
+          oninput="updateSearch(this.value)">
         ${state.search ? `
           <span onclick="updateSearch(''); render()"
             style="position:absolute; right:14px; cursor:pointer; color:#a0aec0; font-size:13px; font-weight:700; line-height:1">
@@ -111,25 +100,21 @@ window.renderClientes = function () {
 
       <div id="lista-clientes">
         ${lista.length === 0
-      ? `<div class="empty-state"><div class="icon">👤</div><p>No se encontraron clientes</p></div>`
-      : lista.map(c => _renderClienteItem(c, creditos, users, pagos, isAdmin)).join('')}
+          ? `<div class="empty-state"><div class="icon">👤</div><p>No se encontraron clientes</p></div>`
+          : lista.map(c => _renderClienteItem(c, creditos, users, pagos, isAdmin)).join('')}
       </div>
     </div>
     <button class="fab" onclick="openModal('nuevo-cliente')">+</button>
   </div>`;
-}
+};
 
 window._renderClienteItem = function (c, creditos, users, pagos, isAdmin) {
   const crs = creditos.filter(cr => cr.clienteId === c.id);
   const creditoActivo = crs.find(cr => cr.activo);
-  
-  // AQUÍ: Ahora sí usaremos 'cob'
   const cob = users.find(u => u.id === c.cobradorId) || { nombre: 'Sin asignar' };
-  
   const atrasado = creditoActivo ? clienteEstaAtrasado(creditoActivo, pagos) : false;
   const numCuotaAtrasada = atrasado ? cuotaAtrasada(creditoActivo, pagos) : null;
 
-  // ... (tu lógica de badges se mantiene igual) ...
   let badge, badgeStyle;
   if (atrasado) {
     const vencido = creditoActivo.fechaFin && today() > creditoActivo.fechaFin;
@@ -192,6 +177,7 @@ window._renderClienteItem = function (c, creditos, users, pagos, isAdmin) {
         </span>
       </div>
     </div>
+
     <div onclick="event.stopPropagation(); ${tieneTelefono ? `abrirChatWhatsApp('${c.telefono}', '${c.nombre}')` : `alert('Sin teléfono')`}"
          style="position:absolute; right:0; top:0; bottom:0; width:44px;
                 display:flex; align-items:center; justify-content:center;
@@ -206,7 +192,8 @@ window._renderClienteItem = function (c, creditos, users, pagos, isAdmin) {
       </div>
     </div>
   </div>`;
-}
+};
+
 // ============================================================
 // HELPERS DE ESTADO DE CUOTAS
 // ============================================================
@@ -227,10 +214,11 @@ window.cuotaAtrasada = function (cr, pagos) {
   const cuotasCubiertas = Math.floor(totalPagado / cr.cuotaDiaria);
   const diasTranscurridos = Math.max(0, contarDiasHabiles(cr.fechaInicio, today()) - 1);
   const cuotasDebidas = Math.min(diasTranscurridos, cr.diasTotal);
-  return Math.max(0, cuotasDebidas - cuotasCubiertas); // cuántas están atrasadas
+  return Math.max(0, cuotasDebidas - cuotasCubiertas);
 };
+
 // ============================================================
-// ESQUEMA VISUAL DE CUOTAS — calendario Lun-Sáb sin domingos
+// ESQUEMA VISUAL DE CUOTAS
 // ============================================================
 window.renderEsquemaCuotas = function (cr) {
   const pagos = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id);
@@ -240,16 +228,13 @@ window.renderEsquemaCuotas = function (cr) {
   const hoyStr = today();
   const diasTranscurridos = Math.max(0, contarDiasHabiles(cr.fechaInicio, hoyStr) - 1);
 
-  // 1. Primer día hábil después del inicio
   const primerDia = new Date(cr.fechaInicio + 'T00:00:00');
   primerDia.setDate(primerDia.getDate() + 1);
   while (primerDia.getDay() === 0) primerDia.setDate(primerDia.getDate() + 1);
 
-  // 2. Lunes de esa semana (inicio de grilla)
   const inicioGrilla = new Date(primerDia);
   while (inicioGrilla.getDay() !== 1) inicioGrilla.setDate(inicioGrilla.getDate() - 1);
 
-  // 3. Celdas vacías desde el lunes hasta el primer día hábil (sin domingos)
   const celdas = [];
   const tempCursor = new Date(inicioGrilla);
   while (tempCursor < primerDia) {
@@ -257,7 +242,6 @@ window.renderEsquemaCuotas = function (cr) {
     tempCursor.setDate(tempCursor.getDate() + 1);
   }
 
-  // 4. Días de cuotas (sin domingos)
   const cursor = new Date(primerDia);
   let cuotaNum = 0;
   while (cuotaNum < cr.diasTotal) {
@@ -282,21 +266,20 @@ window.renderEsquemaCuotas = function (cr) {
   const bdr = { pagada: '#86efac', atrasada: '#fecdd3', pendiente: '#e2e8f0' };
   const txt = { pagada: '#166534', atrasada: '#9f1239', pendiente: '#94a3b8' };
 
-  // Renderiza TODAS las celdas con estructura idéntica para no descuadrar la grilla
   const renderCelda = d => {
     if (d.vacia) return `
-  <div>
-    <div style="width:100%; padding-top:100%; position:relative; border-radius:8px;
-                background:#f8fafc; border:1.5px dashed #e2e8f0;">
-      <span style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-                   font-size:11px; font-weight:700; color:#e2e8f0">—</span>
-    </div>
-    <div style="height:14px;"></div>
-  </div>`;
+      <div>
+        <div style="width:100%; padding-top:100%; position:relative; border-radius:8px;
+                    background:#f8fafc; border:1.5px dashed #e2e8f0;">
+          <span style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+                       font-size:11px; font-weight:700; color:#e2e8f0">—</span>
+        </div>
+        <div style="height:14px;"></div>
+      </div>`;
     return `
       <div>
-     <div style="width:100%; padding-top:85%; position:relative; border-radius:6px;
-            background:${bg[d.estado]}; border:1.2px solid ${bdr[d.estado]};">
+        <div style="width:100%; padding-top:85%; position:relative; border-radius:6px;
+               background:${bg[d.estado]}; border:1.2px solid ${bdr[d.estado]};">
           <span style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
                        font-size:11px; font-weight:800; color:${txt[d.estado]}">${d.num}</span>
         </div>
@@ -311,30 +294,26 @@ window.renderEsquemaCuotas = function (cr) {
   <div style="margin-top:14px">
     <div style="font-size:10.5px; font-weight:700; color:var(--muted); text-transform:uppercase;
                 letter-spacing:0.6px; margin-bottom:10px">Esquema de Cuotas</div>
-
     <div style="display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap">
       <span style="font-size:10.5px; background:#f0fdf4; color:#166534;
                    padding:3px 10px; border-radius:6px; font-weight:700">
         ✅ ${pagadas} pagadas
       </span>
       ${atrasadas > 0 ? `
-        <span style="font-size:10.5px; background:#fff7ed; color:#c2410c; ...">
-  ⚠️ ${atrasadas} atrasadas
-</span>` : ''}
+        <span style="font-size:10.5px; background:#fff7ed; color:#c2410c;
+                     padding:3px 10px; border-radius:6px; font-weight:700">
+          ⚠️ ${atrasadas} atrasadas
+        </span>` : ''}
       <span style="font-size:10.5px; background:var(--bg); color:var(--muted);
                    padding:3px 10px; border-radius:6px; font-weight:700">
         🔘 ${pendientes} pendientes
       </span>
     </div>
-
-    <!-- CABECERA Lun-Sáb -->
     <div style="display:grid; grid-template-columns:repeat(6, 1fr); gap:4px; margin-bottom:2px">
       ${['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map(d => `
         <div style="text-align:center; font-size:9px; font-weight:700;
                     color:var(--muted); padding:2px 0">${d}</div>`).join('')}
     </div>
-
-    <!-- GRILLA — cada celda tiene padding-top:100% para cuadrado perfecto -->
     <div style="display:grid; grid-template-columns:repeat(6, 1fr); gap:4px">
       ${celdas.map(renderCelda).join('')}
     </div>
@@ -346,9 +325,9 @@ window.renderEsquemaCuotas = function (cr) {
 // ============================================================
 window.setFiltroClientes = function (f) {
   state.filtroClientes = f;
- const searchInput = document.getElementById('search-clientes');
-if (searchInput) state.search = searchInput.value;
-render();
+  const searchInput = document.getElementById('search-clientes');
+  if (searchInput) state.search = searchInput.value;
+  render();
   const nuevoInput = document.getElementById('search-clientes');
   if (nuevoInput && state.search) {
     nuevoInput.focus();
@@ -392,11 +371,9 @@ window._renderListaClientes = function () {
       const crs = creditos.filter(cr => cr.clienteId === c.id);
       return crs.length === 0 || !crs.some(cr => cr.activo);
     });
- // DENTRO DE TU FILTRO EN clientes.js
-// En clientes.js -> window.setFiltroClientes
-} else if (filtro === 'atrasados') {
-   state.listaFiltrada = DB._cache['clientes'].filter(c => estaRealmenteAtrasado(c.id));
-
+  } else if (filtro === 'atrasados') {
+    // ✅ CORRECTO: filtrar lista directamente
+    lista = lista.filter(c => estaRealmenteAtrasado(c.id));
   } else if (filtro === 'cerrados' && isAdmin) {
     lista = lista.filter(c => {
       const crs = creditos.filter(cr => cr.clienteId === c.id);
@@ -457,7 +434,6 @@ window.renderClientDetail = function () {
     </div>
 
     <div class="page" style="padding-top:12px">
-
       <div class="card">
         <div class="card-title">📋 Datos Generales</div>
         <div class="info-grid">
@@ -492,15 +468,14 @@ window.renderClientDetail = function () {
 
       <div class="flex-between mb-2" style="margin-top:20px">
         <div class="card-title" style="margin:0">💳 Gestión de Créditos</div>
-        ${!creditoActivo 
-          ? `<button class="btn btn-primary btn-sm" onclick="openModal('nuevo-credito')">+ Nuevo crédito</button>` 
+        ${!creditoActivo
+          ? `<button class="btn btn-primary btn-sm" onclick="openModal('nuevo-credito')">+ Nuevo crédito</button>`
           : `<span style="font-size:11.5px; color:var(--muted); font-style:italic">Crédito activo en curso</span>`}
       </div>
 
       <div class="seccion-creditos-container">
-         ${renderSeccionCreditosCliente(c.id)}
+        ${renderSeccionCreditosCliente(c.id)}
       </div>
-
     </div>
 
     <nav class="bottom-nav">
@@ -606,17 +581,13 @@ window.guardarCliente = async function () {
 
     const id = genId();
     const nuevoCliente = {
-      id,
-      dni,
-      nombre,
+      id, dni, nombre,
       negocio: document.getElementById('nNegocio').value.trim(),
       telefono: document.getElementById('nTelefono').value.trim(),
       direccion: document.getElementById('nDireccion').value.trim(),
       lat: _coordsSeleccionadas?.lat || null,
       lng: _coordsSeleccionadas?.lng || null,
-      cobradorId,
-      foto,
-      creado: today()
+      cobradorId, foto, creado: today()
     };
 
     await DB.set('clientes', id, nuevoCliente);
@@ -677,20 +648,5 @@ window.eliminarCliente = async function () {
   state.selectedClient = null;
   state.modal = null;
   showToast('Cliente eliminado');
-  render();
-};
-
-window.eliminarCobrador = async function (id) {
-  const users = DB._cache['users'] || [];
-  const u = users.find(x => x.id === id);
-  if (!u || u.role === 'admin') {
-    alert('No se puede eliminar un administrador desde esta opción.');
-    return;
-  }
-  if (!confirm('¿Eliminar este cobrador? Sus clientes quedarán sin cobrador asignado. Esta acción no se puede deshacer.')) return;
-  await eliminarCobradorCascade(id);
-  state.selectedCobrador = null;
-  state.modal = null;
-  showToast('Cobrador eliminado');
   render();
 };

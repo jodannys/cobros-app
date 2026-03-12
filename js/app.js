@@ -1,3 +1,6 @@
+// ============================================================
+// APP.JS — Render principal e inicialización
+// ============================================================
 window.abrirChatWhatsApp = function (telefono, nombre) {
   if (!telefono) return alert("El cliente no tiene teléfono");
 
@@ -19,7 +22,13 @@ window.abrirChatWhatsApp = function (telefono, nombre) {
 window.render = function render() {
   const root = document.getElementById('root');
 
-  // 1. PRIORIDAD ABSOLUTA: Mostrar pantalla de carga si los datos se están obteniendo
+  if (!state.currentUser && state.screen !== 'login') {
+    state.screen = 'login';
+  }
+
+  if (state.screen === 'login') { root.innerHTML = renderLogin(); bindLogin(); return; }
+
+  // Spinner mientras carga Firebase
   if (state._cargando) {
     root.innerHTML = `
       <div style="display:flex;align-items:center;justify-content:center;
@@ -31,21 +40,9 @@ window.render = function render() {
           animation:spin 0.8s linear infinite"></div>
         <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
       </div>`;
-    return; // Detenemos el render aquí hasta que cargue
+    return;
   }
 
-  // 2. CONTROL DE SESIÓN: Solo se evalúa si ya terminó de cargar
-  if (!state.currentUser && state.screen !== 'login') {
-    state.screen = 'login';
-  }
-  
-  if (state.screen === 'login') { 
-    root.innerHTML = renderLogin(); 
-    bindLogin(); 
-    return; 
-  }
-
-  // 3. RENDER DE LA APP (si ya cargó y hay usuario)
   const isAdmin = state.currentUser.role === 'admin';
   root.innerHTML = `
   <div class="app">
@@ -55,15 +52,12 @@ window.render = function render() {
       color:white;padding:12px 20px;border-radius:10px;z-index:9999;
       font-weight:600;font-size:14px;max-width:300px;text-align:center;
       box-shadow:0 4px 12px rgba(0,0,0,0.2)">${state.toast.msg}</div>` : ''}
-    
     ${state.modal ? renderModal() : ''}
-    
     ${state.selectedClient ? renderClientDetail() :
       state.nav === 'clientes' ? renderClientes() :
         state.nav === 'cuadre' ? renderCuadre() :
           state.nav === 'admin' && isAdmin ? renderAdmin() :
             state.nav === 'historial' && isAdmin ? renderHistorial() : renderClientes()}
-            
     ${!state.selectedClient ? `
     <nav class="bottom-nav">
       <div class="nav-item ${state.nav === 'clientes' ? 'active' : ''}" onclick="navigate('clientes')">
@@ -75,7 +69,7 @@ window.render = function render() {
         </svg>
         <span>Clientes</span>
       </div>
- 
+
       <div class="nav-item ${state.nav === 'cuadre' ? 'active' : ''}" onclick="navigate('cuadre')">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <line x1="18" y1="20" x2="18" y2="10"/>
@@ -116,7 +110,7 @@ window.render = function render() {
 };
 
 // ── CONFIRMAR SALIDA (overlay custom) ────────────────────────
-window.confirmarSalida = function () {
+window.confirmarSalida = function() {
   if (document.querySelector('[data-overlay="salida"]')) return;
 
   const overlay = document.createElement('div');
@@ -153,18 +147,6 @@ window.confirmarSalida = function () {
   overlay.setAttribute('data-overlay', 'salida');
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
   document.body.appendChild(overlay);
-};
-
-// ── LOGOUT ────────────────────────────────────────────────────
-window.logout = function () {
-  localStorage.removeItem('sessionUser');
-  state.screen = 'login';
-  state.currentUser = null;
-  state.loginPassField = '';
-  state.nav = 'clientes';
-  state.selectedClient = null;
-  state.modal = null;
-  render();
 };
 
 // ── HISTORIAL ─────────────────────────────────────────────────
@@ -213,7 +195,6 @@ window.renderHistorial = function renderHistorial() {
   </div>
   <div class="page">
 
-    <!-- BÚSQUEDA POR CLIENTE -->
     <div style="position:relative; display:flex; align-items:center; margin-bottom:14px">
       <span style="position:absolute; left:14px; pointer-events:none; display:flex; align-items:center">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a0aec0" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -235,7 +216,6 @@ window.renderHistorial = function renderHistorial() {
     </div>
     <div id="busquedaResultados" style="margin-bottom:${filtroBusqueda ? '14px' : '0'}"></div>
 
-    <!-- FILTROS -->
     <div class="card" style="padding:14px; margin-bottom:14px">
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px">
         <div>
@@ -255,7 +235,6 @@ window.renderHistorial = function renderHistorial() {
           </select>
         </div>
       </div>
-
       <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px">
         ${[['pagos', '💰 Pagos'], ['gastos', '💸 Gastos'], ['creditos', '📋 Créditos']].map(([v, l]) => `
           <button onclick="state._hVista='${v}'; render()"
@@ -268,7 +247,6 @@ window.renderHistorial = function renderHistorial() {
       </div>
     </div>
 
-    <!-- VISTA: PAGOS -->
     ${filtroVista === 'pagos' ? `
     <div class="card" style="padding:14px; border-left:4px solid var(--success)">
       <div class="flex-between" style="margin-bottom:12px">
@@ -295,7 +273,6 @@ window.renderHistorial = function renderHistorial() {
         }).join('')}
     </div>` : ''}
 
-    <!-- VISTA: GASTOS -->
     ${filtroVista === 'gastos' ? `
     <div class="card" style="padding:14px; border-left:4px solid var(--danger)">
       <div class="flex-between" style="margin-bottom:12px">
@@ -320,7 +297,6 @@ window.renderHistorial = function renderHistorial() {
         }).join('')}
     </div>` : ''}
 
-    <!-- VISTA: CRÉDITOS -->
     ${filtroVista === 'creditos' ? `
     <div class="card" style="padding:14px; border-left:4px solid var(--primary)">
       <div style="font-weight:700; font-size:14px; margin-bottom:12px">
@@ -489,10 +465,10 @@ window.addEventListener('popstate', () => {
     render();
     return;
   }
-  // Nunca salir de la app con el botón atrás — solo mantener posición
   history.pushState({ nav: state.nav }, '', '#' + state.nav);
 });
 
+// ── INIT ASYNC ────────────────────────────────────────────────
 (async () => {
   try {
     // Restaurar sesión PRIMERO, antes de init
@@ -506,29 +482,31 @@ window.addEventListener('popstate', () => {
     } catch (_) {
       localStorage.removeItem('sessionUser');
     }
+
     state._cargando = true;
-    await DB.init(); // ← ahora cuando DB llame render(), ya hay sesión
+    await DB.init();
+
+    // Verificar que el usuario aún existe en DB
     if (state.currentUser) {
       const users = DB._cache['users'] || [];
       if (users.length > 0) {
-        // Solo verificar si el cache ya cargó
         const userActual = users.find(u => u.id === state.currentUser.id);
         if (!userActual) {
           localStorage.removeItem('sessionUser');
           state.currentUser = null;
           state.screen = 'login';
         } else {
-          state.currentUser = userActual;
+          state.currentUser = userActual; // datos frescos de DB
         }
       }
-      // Si users está vacío, mantener sesión guardada sin verificar
     }
+
     state._cargando = false;
     history.replaceState({ nav: 'clientes' }, '', '#clientes');
     render();
   } catch (e) {
-
     console.error('Error iniciando app:', e);
+    state._cargando = false;
     document.getElementById('root').innerHTML = `
       <div style="display:flex;align-items:center;justify-content:center;height:100vh;
         flex-direction:column;gap:12px;padding:20px;text-align:center">
