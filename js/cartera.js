@@ -453,44 +453,48 @@ window.renderPanelCartera = function () {
     </button>
   </div>
   ${movs.length === 0
-      ? `<div style="text-align:center; color:var(--muted); font-size:13px; padding:16px 0">
+    ? `<div style="text-align:center; color:var(--muted); font-size:13px; padding:16px 0">
          Sin movimientos aún
        </div>`
-      : (mostrarMovs
+    : (mostrarMovs
         ? (DB._cache['movimientos_cartera'] || []).slice().sort((a, b) => b.fecha.localeCompare(a.fecha))
         : movs
       ).map(m => {
         const cob = m.cobradorId ? (DB._cache['users'] || []).find(u => u.id === m.cobradorId) : null;
         const cfg = {
-          inyeccion: { icon: '➕', color: '#16a34a', signo: '+', label: 'Inyección de capital' },
-          envio_cobrador: { icon: '💰', color: '#1a56db', signo: '-', label: 'Enviado a ' + (cob?.nombre || 'cobrador') },
-          gasto_admin: { icon: '💸', color: '#dc2626', signo: '-', label: 'Gasto administrativo' },
-          retiro: { icon: '🏠', color: '#d97706', signo: '-', label: 'Retiro personal' },
-          confirmar_yape: { icon: '✅', color: '#16a34a', signo: '+', label: 'Confirmado de ' + (cob?.nombre || 'cobrador') },
-          deposito_cobrador: { icon: '⏳', color: '#d97706', signo: '', label: 'Pendiente de ' + (cob?.nombre || 'cobrador') },
+          inyeccion:         { icon: '➕', color: '#16a34a', signo: '+', label: 'Inyección de capital' },
+          envio_cobrador:    { icon: '💰', color: '#1a56db', signo: '-', label: 'Enviado a ' + (cob?.nombre || 'cobrador') },
+          gasto_admin:       { icon: '💸', color: '#dc2626', signo: '-', label: 'Gasto administrativo' },
+          retiro:            { icon: '🏠', color: '#d97706', signo: '-', label: 'Retiro personal' },
+          confirmar_yape:    { icon: '✅', color: '#16a34a', signo: '+', label: 'Confirmado de ' + (cob?.nombre || 'cobrador') },
+          deposito_cobrador: { icon: '⏳', color: '#d97706', signo: '',  label: 'Pendiente de ' + (cob?.nombre || 'cobrador') },
         }[m.tipo] || { icon: '•', color: 'var(--muted)', signo: '', label: m.tipo };
+
         return `
         <div style="display:flex; justify-content:space-between; align-items:center;
-                    padding:10px 0; border-bottom:1px solid var(--border)">
-          <div style="display:flex; align-items:center; gap:10px">
+                    padding:10px 0; border-bottom:1px solid var(--border); gap:8px">
+          <div style="display:flex; align-items:center; gap:10px; flex:1; min-width:0">
             <div style="width:32px; height:32px; border-radius:8px; background:var(--bg);
                         display:flex; align-items:center; justify-content:center;
                         font-size:15px; flex-shrink:0">${cfg.icon}</div>
-            <div>
-              <div style="font-size:13px; font-weight:700; color:var(--text)">${cfg.label}</div>
-              <div style="font-size:11px; color:var(--muted); margin-top:2px">
+            <div style="min-width:0; flex:1">
+              <div style="font-size:13px; font-weight:700; color:var(--text);
+                          white-space:nowrap; overflow:hidden; text-overflow:ellipsis">
+                ${cfg.label}
+              </div>
+              <div style="font-size:11px; color:var(--muted); margin-top:2px;
+                          white-space:nowrap; overflow:hidden; text-overflow:ellipsis">
                 ${m.descripcion || '—'} · ${m.fecha.split('-').reverse().join('/')}
               </div>
             </div>
           </div>
-          <div style="font-size:14px; font-weight:900; flex-shrink:0;
+          <div style="font-size:clamp(12px, 3vw, 14px); font-weight:900; flex-shrink:0; white-space:nowrap;
                       color:${cfg.signo === '+' ? '#16a34a' : cfg.signo === '-' ? 'var(--danger)' : 'var(--muted)'}">
             ${cfg.signo}${formatMoney(Number(m.monto))}
           </div>
         </div>`;
       }).join('')}
 </div>
-
 <!-- RENDIMIENTO POR COBRADOR -->
 ${isAdmin ? `
 <div style="font-size:11px; color:var(--muted); font-weight:700; text-transform:uppercase;
