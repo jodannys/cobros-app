@@ -53,50 +53,33 @@ window.DB = {
     return await fbQuery(colName, field, value);
   },
 
-  // --- INICIALIZACIÓN EN TIEMPO REAL OPTIMIZADA ---
+  // --- INICIALIZACIÓN: CARGA ÚNICA SIN LISTENERS ---
   async init() {
-    console.log("🚀 Iniciando sincronización optimizada...");
-    
+    console.log("🚀 Iniciando carga única de datos...");
+
     const colecciones = [
-      'users', 'clientes', 'creditos', 'pagos', 
+      'users', 'clientes', 'creditos', 'pagos',
       'notas_cuadre', 'gastos', 'cajas', 'movimientos_cartera'
     ];
 
-    let cargadasInicialmente = 0;
-    const totalColecciones = colecciones.length;
+    await Promise.all(colecciones.map(async col => {
+      try {
+        this._cache[col] = await fbGetAll(col);
+      } catch (e) {
+        console.error(`Error cargando ${col}:`, e);
+        this._cache[col] = [];
+      }
+    }));
 
-    colecciones.forEach(col => {
-      window.fbEscuchar(col, (datos) => {
-        // 1. Actualizamos el cache
-        this._cache[col] = datos;
-        
-        // 2. Control de carga inicial
-        if (cargadasInicialmente < totalColecciones) {
-          cargadasInicialmente++;
-          if (cargadasInicialmente === totalColecciones) {
-            console.log("✅ Carga inicial completa. Renderizando...");
-            if (typeof render === 'function') render();
-          }
-        } else {
-          // 3. DEBOUNCE: Evita bucles infinitos y ahorra lecturas
-          clearTimeout(renderTimer);
-          renderTimer = setTimeout(() => {
-            console.log(`📡 Sincronización en tiempo real: [${col}]`);
-            if (typeof render === 'function') render();
-          }, 150);
-        }
-      });
-    });
-
-    console.log("💎 Sistema de ahorro de cuota (Spark) activado.");
+    console.log("✅ Carga completa. Sin listeners activos.");
   },
 
-  // --- MANTENIMIENTO MANUAL (Para evitar cuotas excedidas) ---
+  // --- MANTENIMIENTO MANUAL ---
   async ejecutarMantenimientoManual() {
-     console.warn("⚠️ Ejecutando mantenimiento manual solicitado...");
-     await this._corregirCreditosSaldados();
-     await this._limpiarHuerfanos();
-     alert("Mantenimiento completado satisfactoriamente.");
+    console.warn("⚠️ Ejecutando mantenimiento manual solicitado...");
+    await this._corregirCreditosSaldados();
+    await this._limpiarHuerfanos();
+    alert("Mantenimiento completado satisfactoriamente.");
   },
 
   async _limpiarHuerfanos() {
@@ -127,6 +110,7 @@ window.DB = {
         this._cache['creditos'] = this._cache['creditos'].filter(x => x.id !== cr.id);
       }
     });
+
     console.log("✅ Limpieza completada.");
   },
 
