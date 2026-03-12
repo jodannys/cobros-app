@@ -12,9 +12,9 @@ window.hoyPeru = () => {
 };
 
 window.today = () => {
-  const ahora = new Date();
-  ahora.setMinutes(ahora.getMinutes() - (ahora.getTimezoneOffset() + 300));
-  return ahora.toISOString().split('T')[0];
+  return new Date().toLocaleDateString('en-CA', {
+    timeZone: 'America/Lima'
+  });
 };
 
 // ── DÍAS HÁBILES (sin domingos) ──────────────────────────────

@@ -395,17 +395,7 @@ window.guardarCredito = async function () {
     creadoEn: new Date().toISOString()
   };
 
-  try {
-    console.log("Intentando guardar nuevo crédito...", nuevoCredito);
-    await DB.set('creditos', id, nuevoCredito);
-    state.modal = null;
-    showToast(`✅ Crédito creado con éxito`);
-    render();
-  } catch (error) {
-    console.error("Error al guardar:", error);
-    alert("Hubo un error al guardar el crédito.");
-  }
-};
+  v
 
 window.cerrarCredito = async function (crId) {
   const cr = (DB._cache['creditos'] || []).find(c => c.id === crId);
@@ -423,6 +413,7 @@ window.cerrarCredito = async function (crId) {
   if (idx !== -1) DB._cache['creditos'][idx].activo = false;
   showToast('Crédito cerrado');
   render();
+}
 };
 
 window.extenderCredito = async function () {
