@@ -164,7 +164,34 @@ ${alertasVisible.map(a => `
     </div>
     <button class="btn btn-sm btn-outline" onclick="abrirEditarAdmin('${u.id}')">✏️</button>
   </div>`).join('')}
+<!-- DÍAS NO LABORABLES -->
+<div class="card" style="margin-top:20px">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px">
+    <div class="card-title" style="margin:0; display:flex; align-items:center; gap:6px">
+      📅 Días no laborables
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="abrirAgregarFeriado()">+ Agregar</button>
+  </div>
 
+  ${(() => {
+      const fechas = getDiasNoLaborables().sort();
+      if (fechas.length === 0) return `
+      <div style="text-align:center; color:var(--muted); font-size:13px; padding:16px 0">
+        Sin fechas bloqueadas
+      </div>`;
+      return fechas.map(f => `
+      <div style="display:flex; justify-content:space-between; align-items:center;
+                  padding:10px 0; border-bottom:1px solid var(--border)">
+        <div style="font-weight:700; font-size:14px; color:var(--text)">${formatDate(f)}</div>
+        <button onclick="eliminarFeriado('${f}')"
+          style="padding:4px 10px; border-radius:6px; border:1px solid #fecdd3;
+                 background:#fff1f2; color:#9f1239; font-size:11px;
+                 font-weight:700; cursor:pointer">
+          Eliminar
+        </button>
+      </div>`).join('');
+    })()}
+</div>
 </div>
 </div>`;
 };
@@ -554,4 +581,72 @@ window.guardarCreditoEditado = async function guardarCreditoEditado() {
   } catch (e) {
     alert('Error al guardar: ' + e.message);
   }
+};
+
+window.abrirAgregarFeriado = function() {
+  state.modal = 'agregar-feriado';
+  render();
+};
+
+window.renderModalAgregarFeriado = function() {
+  return `
+  <div class="modal-handle"></div>
+  <div class="modal-title">📅 Agregar Día No Laborable</div>
+  <div style="background:#fffbeb; border-radius:8px; padding:10px 14px; margin-bottom:14px;
+              font-size:12.5px; color:#92400e; font-weight:500; line-height:1.5">
+    💡 En este día los cobradores no verán clientes por cobrar y no se acumulará deuda.
+  </div>
+  <div class="form-group">
+    <label>Fecha *</label>
+    <input class="form-control" id="feriadoFecha" type="date" value="${today()}">
+  </div>
+  <div class="form-group">
+    <label>Descripción (opcional)</label>
+    <input class="form-control" id="feriadoDesc" placeholder="Ej: Fiestas Patrias, Navidad...">
+  </div>
+  <button class="btn btn-primary" onclick="guardarFeriado()">Guardar</button>`;
+};
+
+window.guardarFeriado = async function() {
+  const fecha = document.getElementById('feriadoFecha').value;
+  if (!fecha) { alert('Selecciona una fecha'); return; }
+
+  const cfg = DB._cache['configuracion'] || [];
+  const doc = cfg.find(c => c.id === 'dias_no_laborables');
+  const fechas = doc?.fechas || [];
+
+  if (fechas.includes(fecha)) { alert('Esa fecha ya está bloqueada'); return; }
+
+  const nuevasFechas = [...fechas, fecha].sort();
+  await DB.set('configuracion', 'dias_no_laborables', {
+    id: 'dias_no_laborables',
+    fechas: nuevasFechas
+  });
+
+  const idx = cfg.findIndex(c => c.id === 'dias_no_laborables');
+  if (idx !== -1) cfg[idx].fechas = nuevasFechas;
+  else DB._cache['configuracion'] = [...cfg, { id: 'dias_no_laborables', fechas: nuevasFechas }];
+
+  state.modal = null;
+  showToast('📅 Día bloqueado correctamente');
+  render();
+};
+
+window.eliminarFeriado = async function(fecha) {
+  if (!confirm(`¿Eliminar el bloqueo del ${formatDate(fecha)}?`)) return;
+
+  const cfg = DB._cache['configuracion'] || [];
+  const doc = cfg.find(c => c.id === 'dias_no_laborables');
+  const nuevasFechas = (doc?.fechas || []).filter(f => f !== fecha);
+
+  await DB.set('configuracion', 'dias_no_laborables', {
+    id: 'dias_no_laborables',
+    fechas: nuevasFechas
+  });
+
+  const idx = cfg.findIndex(c => c.id === 'dias_no_laborables');
+  if (idx !== -1) cfg[idx].fechas = nuevasFechas;
+
+  showToast('✅ Fecha desbloqueada');
+  render();
 };

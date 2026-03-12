@@ -54,7 +54,7 @@ window.DB = {
   async init() {
     console.log("🚀 Cargando datos...");
 
-    const estaticas = ['users', 'clientes', 'creditos'];
+    const estaticas = ['users', 'clientes', 'creditos', 'configuracion'];
     const dinamicas = ['pagos', 'movimientos_cartera', 'gastos', 'cajas', 'notas_cuadre'];
 
     // 1. Cargar estáticas una sola vez

@@ -16,7 +16,18 @@ window.today = () => {
     timeZone: 'America/Lima'
   });
 };
+// ── DÍAS NO LABORABLES ───────────────────────────────────────
+window.getDiasNoLaborables = function() {
+  const cfg = DB._cache['configuracion'] || [];
+  const doc = cfg.find(c => c.id === 'dias_no_laborables');
+  return doc?.fechas || [];
+};
 
+window.esDiaLaboral = function(fechaStr) {
+  const fecha = new Date(fechaStr + 'T00:00:00');
+  if (fecha.getDay() === 0) return false; // domingo siempre bloqueado
+  return !getDiasNoLaborables().includes(fechaStr);
+};
 // ── DÍAS HÁBILES (sin domingos) ──────────────────────────────
 window.sumarDiasHabiles = function(fechaStr, dias) {
   const parts = fechaStr.split('-');
@@ -24,7 +35,10 @@ window.sumarDiasHabiles = function(fechaStr, dias) {
   let contados = 0;
   while (contados < dias) {
     fecha.setDate(fecha.getDate() + 1);
-    if (fecha.getDay() !== 0) contados++;
+    const y = fecha.getFullYear();
+    const m = String(fecha.getMonth() + 1).padStart(2, '0');
+    const d = String(fecha.getDate()).padStart(2, '0');
+    if (esDiaLaboral(`${y}-${m}-${d}`)) contados++;
   }
   const y = fecha.getFullYear();
   const m = String(fecha.getMonth() + 1).padStart(2, '0');
@@ -36,17 +50,19 @@ window.contarDiasHabiles = function(fechaInicioStr, fechaFinStr) {
   const p1 = fechaInicioStr.split('-');
   const p2 = fechaFinStr.split('-');
   const inicio = new Date(parseInt(p1[0]), parseInt(p1[1]) - 1, parseInt(p1[2]));
-  const fin = new Date(parseInt(p2[0]), parseInt(p2[1]) - 1, parseInt(p2[2]));
+  const fin    = new Date(parseInt(p2[0]), parseInt(p2[1]) - 1, parseInt(p2[2]));
   let count = 0;
   const cursor = new Date(inicio);
   cursor.setDate(cursor.getDate() + 1);
   while (cursor <= fin) {
-    if (cursor.getDay() !== 0) count++;
+    const y = cursor.getFullYear();
+    const m = String(cursor.getMonth() + 1).padStart(2, '0');
+    const d = String(cursor.getDate()).padStart(2, '0');
+    if (esDiaLaboral(`${y}-${m}-${d}`)) count++;
     cursor.setDate(cursor.getDate() + 1);
   }
   return count;
 };
-
 window.parseMonto = function(valor) {
   return Math.round((parseFloat(valor) || 0) * 100) / 100;
 };
@@ -407,3 +423,4 @@ window.debugCaja = function() {
 
   alert('✅ Debug completo — revisá la consola del navegador (F12 → Console)');
 };
+

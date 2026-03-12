@@ -44,8 +44,10 @@ window.calcularMetaReal = function (cobradorId, fecha) {
 
   const creditosActivos = creditos.filter(cr =>
     misClientesIds.includes(cr.clienteId) &&
+
     cr.activo === true &&
-    cr.fechaInicio <= fecha
+    cr.fechaInicio <= fecha &&
+    esDiaLaboral(fecha)
   );
 
   let metaTotal = 0, pagadoHoy = 0, pendiente = 0;
@@ -72,13 +74,17 @@ window.calcularMetaReal = function (cobradorId, fecha) {
     // Está al día si pagó lo que debería hasta hoy
     const alDia = totalPagado >= (montoDebido - 0.5);
 
-    metaTotal += cuota;
-    pagadoHoy += Math.min(montoPagadoHoy, cuota);
+    // Solo suma a la meta si el cliente NO está al día
+    if (!alDia) {
+      metaTotal += cuota;
+      pagadoHoy += Math.min(montoPagadoHoy, cuota);
+    }
 
     // Solo aparece como pendiente si NO está al día
     if (!alDia) pendiente += Math.max(0, montoDebido - totalPagado);
 
-    detalle.push({ cliente, cr, cuota, montoPagadoHoy, completo: alDia });
+    const deudaAcumulada = Math.max(0, montoDebido - totalPagado);
+    detalle.push({ cliente, cr, cuota, montoPagadoHoy, completo: alDia, deudaAcumulada });
   });
 
   return { metaTotal, pagadoHoy, pendiente, detalle };
@@ -396,15 +402,20 @@ window.renderCuadre = function () {
                     <div style="font-weight:700; font-size:14px; color:var(--text)">
                       ${d.cliente?.nombre || 'Sin nombre'}
                     </div>
-                   <div style="font-size:11.5px; color:var(--muted); margin-top:2px">
+                   <div style="font-size:11.5px; color:var(--muted); margin-top:2px; display:flex; align-items:center; gap:6px; flex-wrap:wrap">
   Cuota: ${formatMoney(d.cuota)}
-  <span style="color:#cbd5e1; font-size:10px; font-weight:500; margin-left:4px">
+  <span style="color:#cbd5e1; font-size:10px; font-weight:500">
     ${(() => {
-      const dia = new Date();
-      const dias = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
-      return dias[dia.getDay()] + ' ' + String(dia.getDate()).padStart(2,'0') + '/' + String(dia.getMonth()+1).padStart(2,'0');
-    })()}
+            const dia = new Date();
+            const dias = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+            return dias[dia.getDay()] + ' ' + String(dia.getDate()).padStart(2, '0') + '/' + String(dia.getMonth() + 1).padStart(2, '0');
+          })()}
   </span>
+  ${d.deudaAcumulada > d.cuota + 0.5 ? `
+    <span style="background:#fff1f2; color:#9f1239; font-size:10px; font-weight:700;
+                 padding:1px 6px; border-radius:4px; white-space:nowrap">
+      ⚠️ Debe ${formatMoney(d.deudaAcumulada)}
+    </span>` : ''}
 </div>
                   </div>
                   <button
