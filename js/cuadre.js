@@ -377,70 +377,52 @@ window.renderCuadre = function () {
     </div>
 
     <!-- CLIENTES POR COBRAR -->
-    <div class="card" style="margin-bottom:12px; padding:0; overflow:hidden">
-      <div style="padding:14px 16px; border-bottom:1px solid var(--border);
-                  display:flex; justify-content:space-between; align-items:center">
-        <div class="card-title" style="margin:0">Clientes por Cobrar</div>
-        <span style="font-size:10.5px; background:var(--bg); padding:3px 10px;
-                     border-radius:20px; color:var(--muted); font-weight:700">
-          ${meta.detalle.filter(d => !d.completo).length} restantes
-        </span>
-      </div>
-
-      <div style="padding:0 16px 8px">
-        ${meta.detalle.filter(d => !d.completo).length === 0
-      ? `<div style="text-align:center; padding:28px 0">
-                 <div style="font-size:28px; margin-bottom:8px">✅</div>
-                 <p style="color:#16a34a; font-weight:700; margin:0; font-size:13.5px">¡Ruta completada!</p>
-               </div>`
-      : meta.detalle.filter(d => !d.completo)
-        .sort((a, b) => (a.cliente?.nombre || '').localeCompare(b.cliente?.nombre || ''))
-        .map(d => `
-                <div style="display:flex; justify-content:space-between; align-items:center;
-                            padding:11px 0; border-bottom:1px solid var(--border)">
-                  <div>
-                    <div style="font-weight:700; font-size:14px; color:var(--text)">
-                      ${d.cliente?.nombre || 'Sin nombre'}
-                    </div>
-                   <div style="font-size:11.5px; color:var(--muted); margin-top:2px; display:flex; align-items:center; gap:6px; flex-wrap:wrap">
-  Cuota: ${formatMoney(d.cuota)}
-  <span style="color:#cbd5e1; font-size:10px; font-weight:500">
-    ${(() => {
-            const dia = new Date();
-            const dias = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-            return dias[dia.getDay()] + ' ' + String(dia.getDate()).padStart(2, '0') + '/' + String(dia.getMonth() + 1).padStart(2, '0');
-          })()}
-  </span>
-  ${d.deudaAcumulada > d.cuota + 0.5 ? `
-    <span style="background:#fff1f2; color:#9f1239; font-size:10px; font-weight:700;
-                 padding:1px 6px; border-radius:4px; white-space:nowrap">
-      ⚠️ Debe ${formatMoney(d.deudaAcumulada)}
-    </span>` : ''}
-</div>
-                  </div>
-                  <button
-  onclick="if(this.getAttribute('data-loading')) return; this.setAttribute('data-loading','true'); this.style.opacity='0.5'; pagoRapido('${d.cr.id}');"
-  style="cursor:pointer; border:none; padding:0; background:none; outline:none; text-align:right">
-  <div style="display:flex; flex-direction:column; align-items:flex-end; gap:3px">
-    <span style="font-size:13px; font-weight:800; color:#9f1239">
-      ${formatMoney(d.cuota)}
-    </span>
-    <span style="font-size:10px; font-weight:600; color:#cbd5e1">
-      ${(() => {
-            const dia = new Date();
-            const dias = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-            return dias[dia.getDay()] + ' ' + String(dia.getDate()).padStart(2, '0') + '/' + String(dia.getMonth() + 1).padStart(2, '0');
-          })()}
-    </span>
-    <span style="font-size:9.5px; font-weight:700; padding:2px 8px; border-radius:4px;
-                 background:#fff1f2; color:#9f1239; white-space:nowrap">
-      ⏳ Pendiente
+<div class="card" style="margin-bottom:12px; padding:0; overflow:hidden">
+  <div style="padding:14px 16px; border-bottom:1px solid var(--border);
+              display:flex; justify-content:space-between; align-items:center">
+    <div class="card-title" style="margin:0">Clientes por Cobrar</div>
+    <span style="font-size:10.5px; background:var(--bg); padding:3px 10px;
+                 border-radius:20px; color:var(--muted); font-weight:700">
+      ${meta.detalle.filter(d => !d.completo).length} restantes
     </span>
   </div>
-</button>
-                </div>`).join('')}
-      </div>
-    </div>
+
+  <div style="padding:0 16px 8px">
+    ${meta.detalle.filter(d => !d.completo).length === 0
+    ? `<div style="text-align:center; padding:28px 0">
+           <div style="font-size:28px; margin-bottom:8px">✅</div>
+           <p style="color:#16a34a; font-weight:700; margin:0; font-size:13.5px">¡Ruta completada!</p>
+         </div>`
+    : meta.detalle.filter(d => !d.completo)
+      .sort((a, b) => (a.cliente?.nombre || '').localeCompare(b.cliente?.nombre || ''))
+      .map(d => `
+          <div style="display:flex; justify-content:space-between; align-items:center;
+                      padding:11px 0; border-bottom:1px solid var(--border)">
+            <div>
+              <div style="font-weight:700; font-size:14px; color:var(--text)">
+                ${d.cliente?.nombre || 'Sin nombre'}
+              </div>
+              <div style="font-size:11.5px; color:var(--muted); margin-top:2px;
+                          display:flex; align-items:center; gap:6px; flex-wrap:wrap">
+                Cuota: ${formatMoney(d.cuota)}
+                ${d.deudaAcumulada > d.cuota + 0.5 ? `
+                  <span style="background:#fff1f2; color:#9f1239; font-size:10px; font-weight:700;
+                               padding:1px 6px; border-radius:4px; white-space:nowrap">
+                    ⚠️ Debe ${formatMoney(d.deudaAcumulada)}
+                  </span>` : ''}
+              </div>
+            </div>
+            <button
+              onclick="if(this.getAttribute('data-loading')) return; this.setAttribute('data-loading','true'); this.style.opacity='0.5'; pagoRapido('${d.cr.id}');"
+              style="cursor:pointer; border:none; padding:0; background:none; outline:none">
+              <span style="font-size:10.5px; font-weight:700; padding:5px 12px; border-radius:6px;
+                           background:#fff1f2; color:#9f1239; display:inline-block; white-space:nowrap">
+                ⏳ ${formatMoney(d.cuota)}
+              </span>
+            </button>
+          </div>`).join('')}
+  </div>
+</div>
 
     <!-- NOTA DEL DÍA -->
     <div style="background:#fefce8; border-radius:10px; padding:16px; margin-bottom:12px;
