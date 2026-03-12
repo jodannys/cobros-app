@@ -81,7 +81,7 @@ window.calcularMetaReal = function (cobradorId, fecha) {
     }
 
     // Solo aparece como pendiente si NO está al día
-    if (!alDia) pendiente += Math.max(0, montoDebido - totalPagado);
+    if (!alDia) pendiente += cuota;
 
     const deudaAcumulada = Math.max(0, montoDebido - totalPagado);
     detalle.push({ cliente, cr, cuota, montoPagadoHoy, completo: alDia, deudaAcumulada });

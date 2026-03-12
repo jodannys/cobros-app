@@ -20,7 +20,7 @@ window.today = () => {
 window.getDiasNoLaborables = function() {
   const cfg = DB._cache['configuracion'] || [];
   const doc = cfg.find(c => c.id === 'dias_no_laborables');
-  return doc?.fechas || [];
+  return Array.isArray(doc?.fechas) ? doc.fechas : [];
 };
 
 window.esDiaLaboral = function(fechaStr) {

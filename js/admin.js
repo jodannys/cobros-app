@@ -618,35 +618,41 @@ window.guardarFeriado = async function() {
   if (fechas.includes(fecha)) { alert('Esa fecha ya está bloqueada'); return; }
 
   const nuevasFechas = [...fechas, fecha].sort();
-  await DB.set('configuracion', 'dias_no_laborables', {
-    id: 'dias_no_laborables',
-    fechas: nuevasFechas
-  });
+  const nuevoDoc = { id: 'dias_no_laborables', fechas: nuevasFechas };
 
-  const idx = cfg.findIndex(c => c.id === 'dias_no_laborables');
-  if (idx !== -1) cfg[idx].fechas = nuevasFechas;
-  else DB._cache['configuracion'] = [...cfg, { id: 'dias_no_laborables', fechas: nuevasFechas }];
+  try {
+    await DB.set('configuracion', 'dias_no_laborables', nuevoDoc);
 
-  state.modal = null;
-  showToast('📅 Día bloqueado correctamente');
-  render();
+    // Actualizar cache local
+    if (!DB._cache['configuracion']) DB._cache['configuracion'] = [];
+    const idx = DB._cache['configuracion'].findIndex(c => c.id === 'dias_no_laborables');
+    if (idx !== -1) DB._cache['configuracion'][idx] = nuevoDoc;
+    else DB._cache['configuracion'].push(nuevoDoc);
+
+    state.modal = null;
+    showToast('📅 Día bloqueado correctamente');
+    render();
+  } catch(e) {
+    alert('Error al guardar: ' + e.message);
+  }
 };
-
 window.eliminarFeriado = async function(fecha) {
   if (!confirm(`¿Eliminar el bloqueo del ${formatDate(fecha)}?`)) return;
 
   const cfg = DB._cache['configuracion'] || [];
   const doc = cfg.find(c => c.id === 'dias_no_laborables');
   const nuevasFechas = (doc?.fechas || []).filter(f => f !== fecha);
+  const nuevoDoc = { id: 'dias_no_laborables', fechas: nuevasFechas };
 
-  await DB.set('configuracion', 'dias_no_laborables', {
-    id: 'dias_no_laborables',
-    fechas: nuevasFechas
-  });
+  try {
+    await DB.set('configuracion', 'dias_no_laborables', nuevoDoc);
 
-  const idx = cfg.findIndex(c => c.id === 'dias_no_laborables');
-  if (idx !== -1) cfg[idx].fechas = nuevasFechas;
+    const idx = (DB._cache['configuracion'] || []).findIndex(c => c.id === 'dias_no_laborables');
+    if (idx !== -1) DB._cache['configuracion'][idx] = nuevoDoc;
 
-  showToast('✅ Fecha desbloqueada');
-  render();
+    showToast('✅ Fecha desbloqueada');
+    render();
+  } catch(e) {
+    alert('Error al eliminar: ' + e.message);
+  }
 };
