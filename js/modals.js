@@ -65,7 +65,8 @@ window.renderModal = function renderModal() {
   else if (m === 'historial-cliente')    content = renderModalHistorialCliente();
   else if (m === 'editar-gasto')         content = renderModalEditarGasto();
   else if (m === 'movimiento-cartera')   content = renderModalMovimientoCartera();  // ← NUEVO
-  else if (m === 'deposito-cobrador')    content = renderModalDepositoCobrador();   // ← NUEVO
+  else if (m === 'deposito-cobrador')    content = renderModalDepositoCobrador();  
+  else if (m === 'agregar-feriado')      content = renderModalAgregarFeriado(); 
  window.renderSeccionCreditosCliente = function(clienteId) {
   const todos = (DB._cache['creditos'] || [])
     .filter(c => c.clienteId === clienteId)

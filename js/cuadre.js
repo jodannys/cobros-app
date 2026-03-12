@@ -419,13 +419,25 @@ window.renderCuadre = function () {
 </div>
                   </div>
                   <button
-                    onclick="if(this.getAttribute('data-loading')) return; this.setAttribute('data-loading','true'); this.style.opacity='0.5'; pagoRapido('${d.cr.id}');"
-                    style="cursor:pointer; border:none; padding:0; background:none; outline:none;">
-                    <span style="font-size:10.5px; font-weight:700; padding:5px 12px; border-radius:6px;
-                                 background:#fff1f2; color:#9f1239; display:inline-block">
-                      ⏳ Pendiente
-                    </span>
-                  </button>
+  onclick="if(this.getAttribute('data-loading')) return; this.setAttribute('data-loading','true'); this.style.opacity='0.5'; pagoRapido('${d.cr.id}');"
+  style="cursor:pointer; border:none; padding:0; background:none; outline:none; text-align:right">
+  <div style="display:flex; flex-direction:column; align-items:flex-end; gap:3px">
+    <span style="font-size:13px; font-weight:800; color:#9f1239">
+      ${formatMoney(d.cuota)}
+    </span>
+    <span style="font-size:10px; font-weight:600; color:#cbd5e1">
+      ${(() => {
+            const dia = new Date();
+            const dias = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+            return dias[dia.getDay()] + ' ' + String(dia.getDate()).padStart(2, '0') + '/' + String(dia.getMonth() + 1).padStart(2, '0');
+          })()}
+    </span>
+    <span style="font-size:9.5px; font-weight:700; padding:2px 8px; border-radius:4px;
+                 background:#fff1f2; color:#9f1239; white-space:nowrap">
+      ⏳ Pendiente
+    </span>
+  </div>
+</button>
                 </div>`).join('')}
       </div>
     </div>
