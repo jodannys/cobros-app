@@ -24,9 +24,7 @@ window.getSaldoMochila = function (cobradorId) {
   return _calcularMochila(cobradorId, null);
 };
 
-// ── MOCHILA hasta fecha (exclusive) — para calcular arrastre ─
-// Devuelve el saldo acumulado con todo lo ocurrido ANTES de fechaExclusiva
-// Se usa como "cajaInicial" del día en cajachica.js
+
 window.getSaldoMochilaHasta = function (cobradorId, fechaExclusiva) {
   return _calcularMochila(cobradorId, fechaExclusiva);
 };
@@ -80,9 +78,8 @@ function _calcularMochila(cobradorId, fechaLimite) {
     .reduce((s, m) => s + Number(m.monto || 0), 0);
 
   // Operación final
-  const resultado = enviado + cobros + seguros - prestamos - totalGastos - devuelto;
-  
-  return resultado;
+ const resultado = enviado + cobros + seguros - prestamos - totalGastos - devuelto;
+return resultado;
 }
 
 // ── CARTERA: Saldo del admin ──────────────────────────────────

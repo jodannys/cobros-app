@@ -55,25 +55,48 @@ window.DB = {
 
   // --- INICIALIZACIÓN: CARGA ÚNICA SIN LISTENERS ---
   async init() {
-    console.log("🚀 Iniciando carga única de datos...");
+  console.log("🚀 Cargando datos...");
 
-    const colecciones = [
-      'users', 'clientes', 'creditos', 'pagos',
-      'notas_cuadre', 'gastos', 'cajas', 'movimientos_cartera'
-    ];
+  // Colecciones estáticas — carga única (no cambian seguido)
+  const estaticas = ['users', 'clientes', 'creditos'];
+  
+  // Colecciones en tiempo real — usan listener
+  const dinamicas = ['pagos', 'movimientos_cartera', 'gastos', 'cajas', 'notas_cuadre'];
 
-    await Promise.all(colecciones.map(async col => {
-      try {
-        this._cache[col] = await fbGetAll(col);
-      } catch (e) {
-        console.error(`Error cargando ${col}:`, e);
-        this._cache[col] = [];
-      }
-    }));
+  // 1. Cargar estáticas una sola vez
+  await Promise.all(estaticas.map(async col => {
+    try {
+      this._cache[col] = await fbGetAll(col);
+    } catch (e) {
+      console.error(`Error cargando ${col}:`, e);
+      this._cache[col] = [];
+    }
+  }));
 
-    console.log("✅ Carga completa. Sin listeners activos.");
-  },
+  // 2. Cargar dinámicas con listener (tiempo real)
+  // El throttle evita el bucle: espera 1.5s antes de hacer render()
+  let _renderTimer = null;
 
+  dinamicas.forEach(col => {
+    // Carga inicial desde cache primero para que no tarde
+    fbGetAll(col).then(datos => {
+      this._cache[col] = datos;
+    });
+
+    // Listener en tiempo real
+    fbEscuchar(col, (datos) => {
+      this._cache[col] = datos;
+
+      // Throttle: solo hace render() si pasaron 1.5s desde el último cambio
+      if (_renderTimer) clearTimeout(_renderTimer);
+      _renderTimer = setTimeout(() => {
+        if (typeof render === 'function') render();
+      }, 1500);
+    });
+  });
+
+  console.log("✅ Listo. Tiempo real activo en: " + dinamicas.join(', '));
+},
   // --- MANTENIMIENTO MANUAL ---
   async ejecutarMantenimientoManual() {
     console.warn("⚠️ Ejecutando mantenimiento manual solicitado...");
@@ -140,4 +163,30 @@ window.DB = {
 
     if (typeof render === 'function') render();
   }
+};
+
+window.renderIndicadorVivo = function() {
+  return `
+  <div id="indicador-vivo" style="
+    display:flex; align-items:center; gap:6px;
+    background:rgba(34,197,94,0.1); 
+    border:1px solid rgba(34,197,94,0.3);
+    border-radius:20px; padding:4px 10px;
+    font-size:11px; font-weight:700; color:#16a34a">
+    <span style="
+      width:7px; height:7px; border-radius:50%; 
+      background:#22c55e;
+      box-shadow:0 0 0 0 rgba(34,197,94,0.4);
+      animation:pulso-vivo 1.5s infinite">
+    </span>
+    En vivo
+  </div>
+
+  <style>
+    @keyframes pulso-vivo {
+      0%   { box-shadow: 0 0 0 0 rgba(34,197,94,0.4); }
+      70%  { box-shadow: 0 0 0 6px rgba(34,197,94,0); }
+      100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+    }
+  </style>`;
 };

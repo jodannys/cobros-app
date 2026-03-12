@@ -1,6 +1,3 @@
-// ============================================================
-// MODALS.JS — Todos los modales y helpers relacionados
-// ============================================================
 
 window.comprimirImagen = function comprimirImagen(base64, maxWidth = 600, calidad = 0.6) {
   return new Promise((resolve) => {

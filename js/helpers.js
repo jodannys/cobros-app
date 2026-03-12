@@ -293,3 +293,117 @@ window.mostrarPagoExitoso = function (titulo, subtitulo, esCierre) {
         }
     }, 3000);
 };
+
+window.debugCaja = function() {
+  const cobradorId = state.currentUser.id;
+  const fecha = today();
+  
+  const pagos = DB._cache['pagos'] || [];
+  const creditos = DB._cache['creditos'] || [];
+  const clientes = DB._cache['clientes'] || [];
+  const movimientos = DB._cache['movimientos_cartera'] || [];
+  const cajas = DB._cache['cajas'] || [];
+  const gastos = DB._cache['gastos'] || [];
+
+  const misClientesIds = clientes
+    .filter(c => c.cobradorId === cobradorId)
+    .map(c => c.id);
+
+  const creditosActivos = creditos.filter(cr =>
+    misClientesIds.includes(cr.clienteId) &&
+    cr.activo === true &&
+    cr.fechaInicio <= fecha
+  );
+
+  const pagosDia = pagos.filter(p => p.cobradorId === cobradorId && p.fecha === fecha);
+
+  console.group('🔍 DEBUG CAJA — ' + fecha);
+
+  console.group('👤 Cobrador');
+  console.log('ID:', cobradorId);
+  console.log('Nombre:', state.currentUser.nombre);
+  console.groupEnd();
+
+  console.group('💼 Caja Chica');
+  const caja = getCajaChicaDelDia(cobradorId, fecha);
+  console.log('Arrastre anterior:', caja.arrastreAnterior);
+  console.log('Enviado hoy:', caja.enviadoHoy);
+  console.log('Caja inicial:', caja.cajaInicial);
+  console.log('Cobros del día:', caja.cobrosDelDia);
+  console.log('Préstamos hoy:', caja.totalPrestadoHoy);
+  console.log('Gastos hoy:', caja.totalGastos);
+  console.log('Entregado al admin:', caja.entregadoHoy);
+  console.log('SALDO FINAL:', caja.saldo);
+  console.groupEnd();
+
+  console.group('🎯 Meta de Cobranza');
+  const meta = calcularMetaReal(cobradorId, fecha);
+  console.log('Meta total:', meta.metaTotal);
+  console.log('Pagado hoy:', meta.pagadoHoy);
+  console.log('Pendiente:', meta.pendiente);
+  console.log('Créditos activos encontrados:', creditosActivos.length);
+  console.table(meta.detalle.map(d => ({
+    cliente: d.cliente?.nombre || '—',
+    cuota: d.cuota,
+    pagadoHoy: d.montoPagadoHoy,
+    alDia: d.completo
+  })));
+  console.groupEnd();
+
+  console.group('💰 Pagos de hoy (' + pagosDia.length + ')');
+  console.table(pagosDia.map(p => ({
+    cliente: (clientes.find(c => c.id === p.clienteId))?.nombre || p.clienteId,
+    monto: p.monto,
+    tipo: p.tipo,
+    creditoId: p.creditoId
+  })));
+  console.groupEnd();
+
+  console.group('📦 Movimientos cartera');
+  const movsDelCobrador = movimientos.filter(m => m.cobradorId === cobradorId);
+  console.table(movsDelCobrador.map(m => ({
+    fecha: m.fecha,
+    tipo: m.tipo,
+    monto: m.monto,
+    confirmado: m.confirmado
+  })));
+  console.groupEnd();
+
+  console.group('🏦 Cajas asignadas');
+  const cajasDelCobrador = cajas.filter(c => c.cobradorId === cobradorId);
+  console.table(cajasDelCobrador.map(c => ({
+    fecha: c.fecha,
+    monto: c.monto
+  })));
+  console.groupEnd();
+
+  console.group('🧾 Gastos');
+  const gastosDelCobrador = gastos.filter(g => g.cobradorId === cobradorId);
+  console.table(gastosDelCobrador.map(g => ({
+    fecha: g.fecha,
+    descripcion: g.descripcion,
+    monto: g.monto
+  })));
+  console.groupEnd();
+
+  console.group('📋 Créditos activos (' + creditosActivos.length + ')');
+  console.table(creditosActivos.map(cr => {
+    const totalPagado = pagos
+      .filter(p => p.creditoId === cr.id)
+      .reduce((s, p) => s + Number(p.monto), 0);
+    const cliente = clientes.find(c => c.id === cr.clienteId);
+    return {
+      cliente: cliente?.nombre || '—',
+      fechaInicio: cr.fechaInicio,
+      cuota: cr.cuotaDiaria,
+      totalCredito: cr.total,
+      totalPagado,
+      saldoRestante: cr.total - totalPagado
+    };
+  }));
+  console.groupEnd();
+
+  console.groupEnd();
+
+  alert('✅ Debug completo — revisá la consola del navegador (F12 → Console)');
+};

@@ -1,15 +1,14 @@
 window.getCajaChicaDelDia = function (cobradorId, fecha) {
-  const gastos      = DB._cache['gastos']   || [];
-  const creditos    = DB._cache['creditos'] || [];
-  const clientes    = DB._cache['clientes'] || [];
+  const gastos = DB._cache['gastos'] || [];
+  const creditos = DB._cache['creditos'] || [];
+  const clientes = DB._cache['clientes'] || [];
   const movimientos = DB._cache['movimientos_cartera'] || [];
-  const cajas       = DB._cache['cajas'] || [];
+  const cajas = DB._cache['cajas'] || [];
 
   // 1. ARRASTRE ANTERIOR
-  let arrastreAnterior = typeof getSaldoMochilaHasta === 'function'
-    ? getSaldoMochilaHasta(cobradorId, fecha)
-    : 0;
-
+ let arrastreAnterior = typeof getSaldoMochilaHasta === 'function'
+  ? Math.max(0, getSaldoMochilaHasta(cobradorId, fecha))
+  : 0;
   // 2. ENVÍOS (Dinero que el Admin le da al Cobrador)
   const enviadoHoyMov = movimientos
     .filter(m => m.tipo === 'envio_cobrador' && m.cobradorId === cobradorId && m.fecha === fecha)
@@ -23,16 +22,16 @@ window.getCajaChicaDelDia = function (cobradorId, fecha) {
   const cajaInicial = arrastreAnterior + enviadoHoy;
 
   // 3. INGRESOS (Cobros de cuotas)
-  const cuadreDelDia = typeof getCuadreDelDia === 'function' 
-    ? getCuadreDelDia(cobradorId, fecha) 
+  const cuadreDelDia = typeof getCuadreDelDia === 'function'
+    ? getCuadreDelDia(cobradorId, fecha)
     : { total: 0 };
-  
-  const cobrosDelDia = cuadreDelDia.total; 
+
+  const cobrosDelDia = cuadreDelDia.total;
 
   // 4. EGRESOS (Gastos y Préstamos)
   const gastosDelDia = gastos.filter(g => g.cobradorId === cobradorId && g.fecha === fecha);
-  const totalGastos  = gastosDelDia.reduce((s, g) => s + Number(g.monto), 0);
-  
+  const totalGastos = gastosDelDia.reduce((s, g) => s + Number(g.monto), 0);
+
   const prestamosHoy = creditos.filter(cr => {
     const cliente = clientes.find(c => c.id === cr.clienteId);
     return cr.fechaInicio === fecha && cliente?.cobradorId === cobradorId;
@@ -42,9 +41,13 @@ window.getCajaChicaDelDia = function (cobradorId, fecha) {
   // 5. 🔥 EL CAMBIO CLAVE: Restar lo que el cobrador DEVOLVIÓ al Admin hoy
   // Solo restamos si ya le diste al botón de "Confirmar" (confirmado: true)
   const entregadoHoy = movimientos
-    .filter(m => m.cobradorId === cobradorId && m.fecha === fecha && 
-                (m.tipo === 'confirmar_yape' || m.confirmado === true))
+    .filter(m =>
+      m.cobradorId === cobradorId &&
+      m.fecha === fecha &&
+      m.tipo === 'confirmar_yape'
+    )
     .reduce((s, m) => s + (Number(m.monto) || 0), 0);
+
 
   // 6. SALDO FINAL (Ahora restando entregadoHoy)
   const saldo = cajaInicial + cobrosDelDia - totalPrestadoHoy - totalGastos - entregadoHoy;
@@ -53,28 +56,28 @@ window.getCajaChicaDelDia = function (cobradorId, fecha) {
     cajaInicial,
     arrastreAnterior,
     enviadoHoy,
-    cobrosDelDia, 
-    totalGastos, 
+    cobrosDelDia,
+    totalGastos,
     totalPrestadoHoy,
     entregadoHoy, // Añadido para que puedas verlo en el objeto si quieres
-    saldo, 
+    saldo,
     gastos: gastosDelDia
   };
 };
 // ── Render panel caja chica (cobrador) ────────────────────────────
 
 window.renderPanelCajaChica = function () {
-  const hoy        = today();
+  const hoy = today();
   const cobradorId = state.currentUser.id;
-  const caja       = getCajaChicaDelDia(cobradorId, hoy);
-  const cuadre     = typeof getCuadreDelDia === 'function'
+  const caja = getCajaChicaDelDia(cobradorId, hoy);
+  const cuadre = typeof getCuadreDelDia === 'function'
     ? getCuadreDelDia(cobradorId, hoy)
     : { yape: 0, efectivo: 0, transferencia: 0 };
 
-  const gastos            = caja.gastos;
-  const mostrarTodos      = state._verTodosGastos || false;
-  const gastosVisibles    = mostrarTodos ? gastos : gastos.slice(0, 3);
-  const hayMas            = gastos.length > 3;
+  const gastos = caja.gastos;
+  const mostrarTodos = state._verTodosGastos || false;
+  const gastosVisibles = mostrarTodos ? gastos : gastos.slice(0, 3);
+  const hayMas = gastos.length > 3;
 
   return `
   <div class="card" style="margin-bottom:12px;padding:0;overflow:hidden">
@@ -139,8 +142,8 @@ window.renderPanelCajaChica = function () {
       </div>
 
       ${gastos.length === 0
-        ? '<div style="text-align:center;color:var(--muted);font-size:13px;padding:10px 0">Sin gastos registrados hoy</div>'
-        : `
+      ? '<div style="text-align:center;color:var(--muted);font-size:13px;padding:10px 0">Sin gastos registrados hoy</div>'
+      : `
         ${gastosVisibles.map(g => `
           <div style="display:flex;justify-content:space-between;align-items:center;
             padding:8px 0;border-bottom:1px solid #f1f5f9">
@@ -175,8 +178,8 @@ window.renderPanelCajaChica = function () {
           🛡️ Seguros del día (${caja.segurosDelDia.length})
         </div>
         ${caja.segurosDelDia.map(cr => {
-          const cl = (DB._cache['clientes'] || []).find(c => c.id === cr.clienteId);
-          return `
+        const cl = (DB._cache['clientes'] || []).find(c => c.id === cr.clienteId);
+        return `
           <div style="display:flex;justify-content:space-between;align-items:center;
             padding:6px 0;border-bottom:1px solid #f8fafc">
             <div>
@@ -185,7 +188,7 @@ window.renderPanelCajaChica = function () {
             </div>
             <div style="font-size:13px;font-weight:800;color:#ea580c">+${formatMoney(cr.montoSeguro)}</div>
           </div>`;
-        }).join('')}
+      }).join('')}
         <div style="display:flex;justify-content:space-between;align-items:center;
           padding:8px 0;margin-top:4px">
           <div style="font-size:12px;font-weight:700;color:#ea580c">Total seguros</div>
@@ -199,10 +202,10 @@ window.renderPanelCajaChica = function () {
 // ── Render caja chica para admin (expandido por cobrador) ─────────
 
 window.renderCajaChicaAdmin = function (cobradorId, fecha) {
-  const caja          = getCajaChicaDelDia(cobradorId, fecha);
-  const mostrarTodos  = state[`_verGastos_${cobradorId}`] || false;
+  const caja = getCajaChicaDelDia(cobradorId, fecha);
+  const mostrarTodos = state[`_verGastos_${cobradorId}`] || false;
   const gastosVisible = mostrarTodos ? caja.gastos : caja.gastos.slice(0, 3);
-  const hayMas        = caja.gastos.length > 3;
+  const hayMas = caja.gastos.length > 3;
 
   return `
   <div style="background:#f8fafc;border-radius:10px;padding:12px;margin-top:8px">
@@ -270,13 +273,13 @@ window.renderCajaChicaAdmin = function (cobradorId, fecha) {
         🛡️ Seguros (${caja.segurosDelDia.length})
       </div>
       ${caja.segurosDelDia.map(cr => {
-        const cl = (DB._cache['clientes'] || []).find(c => c.id === cr.clienteId);
-        return `
+    const cl = (DB._cache['clientes'] || []).find(c => c.id === cr.clienteId);
+    return `
         <div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0">
           <span style="color:var(--muted)">${cl?.nombre || '—'} (${cr.porcentajeSeguro}%)</span>
           <span style="color:#ea580c;font-weight:700">+${formatMoney(cr.montoSeguro)}</span>
         </div>`;
-      }).join('')}
+  }).join('')}
     </div>` : ''}
   </div>`;
 };
@@ -284,24 +287,24 @@ window.renderCajaChicaAdmin = function (cobradorId, fecha) {
 // ── Acciones de Gasto ─────────────────────────────────────────────
 
 window.guardarGasto = async function () {
-  const monto       = parseFloat(document.getElementById('gMonto').value);
+  const monto = parseFloat(document.getElementById('gMonto').value);
   const descripcion = document.getElementById('gDescripcion').value.trim();
-  const fecha       = document.getElementById('gFecha').value;
+  const fecha = document.getElementById('gFecha').value;
 
   if (!monto || monto <= 0) { alert('Ingresa un monto válido'); return; }
-  if (!descripcion)          { alert('Ingresa una descripción'); return; }
-  if (!fecha)                { alert('Selecciona una fecha'); return; }
+  if (!descripcion) { alert('Ingresa una descripción'); return; }
+  if (!fecha) { alert('Selecciona una fecha'); return; }
 
   const cobradorId = state.currentUser.role === 'admin' && state._gastoCobradorId
     ? state._gastoCobradorId
     : state.currentUser.id;
 
-  const id         = genId();
+  const id = genId();
   const nuevoGasto = { id, cobradorId, monto, descripcion, fecha, registradoPor: state.currentUser.id };
 
   try {
     await DB.set('gastos', id, nuevoGasto);
-    state.modal            = null;
+    state.modal = null;
     state._gastoCobradorId = null;
     showToast('Gasto registrado');
     render();
@@ -312,22 +315,22 @@ window.guardarGasto = async function () {
 
 window.abrirEditarGasto = function (gastoId) {
   state._editGastoId = gastoId;
-  state.modal        = 'editar-gasto';
+  state.modal = 'editar-gasto';
   render();
 };
 
 window.guardarEdicionGasto = async function () {
-  const monto       = parseFloat(document.getElementById('gMontoEdit').value);
+  const monto = parseFloat(document.getElementById('gMontoEdit').value);
   const descripcion = document.getElementById('gDescripcionEdit').value.trim();
-  const fecha       = document.getElementById('gFechaEdit').value;
+  const fecha = document.getElementById('gFechaEdit').value;
 
   if (!monto || monto <= 0) { alert('Ingresa un monto válido'); return; }
-  if (!descripcion)          { alert('Ingresa una descripción'); return; }
-  if (!fecha)                { alert('Selecciona una fecha'); return; }
+  if (!descripcion) { alert('Ingresa una descripción'); return; }
+  if (!fecha) { alert('Selecciona una fecha'); return; }
 
   try {
     await DB.update('gastos', state._editGastoId, { monto, descripcion, fecha });
-    state.modal        = null;
+    state.modal = null;
     state._editGastoId = null;
     showToast('Gasto actualizado');
     render();
@@ -340,7 +343,7 @@ window.eliminarGasto = async function () {
   if (!confirm('¿Eliminar este gasto?')) return;
   try {
     await DB.delete('gastos', state._editGastoId);
-    state.modal        = null;
+    state.modal = null;
     state._editGastoId = null;
     showToast('Gasto eliminado');
     render();
@@ -383,7 +386,7 @@ window.renderModalEditarGasto = function () {
   </div>`;
 };
 window.renderModalNuevoGasto = function () {
-  const isAdmin    = state.currentUser.role === 'admin';
+  const isAdmin = state.currentUser.role === 'admin';
   const cobradores = (DB._cache['users'] || []).filter(u => u.role === 'cobrador');
 
   return `
@@ -426,8 +429,8 @@ window.renderModalNuevoGasto = function () {
 window.renderModalAsignarCaja = function () {
   const u = state._cajaCobrador;
   if (!u) return '';
-  const fechaModal    = state._fechaCobrador || today();
-  const cajas         = DB._cache['cajas'] || [];
+  const fechaModal = state._fechaCobrador || today();
+  const cajas = DB._cache['cajas'] || [];
   const cajaExistente = cajas.find(c => c.cobradorId === u.id && c.fecha === fechaModal);
   return `
   <div class="modal-handle"></div>
@@ -458,24 +461,24 @@ window.renderModalAsignarCaja = function () {
 };
 
 window.guardarCajaChica = async function () {
-  const u          = state._cajaCobrador;
-  const monto      = parseFloat(document.getElementById('cajaMonto').value);
-  const fecha      = document.getElementById('cajaFecha').value;
+  const u = state._cajaCobrador;
+  const monto = parseFloat(document.getElementById('cajaMonto').value);
+  const fecha = document.getElementById('cajaFecha').value;
   if (!u || isNaN(monto) || monto < 0) { alert('Ingresa un monto válido'); return; }
-  const cajas     = DB._cache['cajas'] || [];
+  const cajas = DB._cache['cajas'] || [];
   const existente = cajas.find(c => c.cobradorId === u.id && c.fecha === fecha);
   try {
     if (existente) {
       await DB.update('cajas', existente.id, { monto });
       existente.monto = monto;
     } else {
-      const id        = genId();
+      const id = genId();
       const nuevaCaja = { id, cobradorId: u.id, monto, fecha, asignadoPor: state.currentUser.id };
       await DB.set('cajas', id, nuevaCaja);
       if (!DB._cache['cajas']) DB._cache['cajas'] = [];
       DB._cache['cajas'].push(nuevaCaja);
     }
-    state.modal         = null;
+    state.modal = null;
     state._cajaCobrador = null;
     showToast('Caja chica actualizada');
     render();
@@ -486,14 +489,14 @@ window.guardarCajaChica = async function () {
 
 window.abrirAsignarCaja = function (cobradorId) {
   const u = (DB._cache['users'] || []).find(x => x.id === cobradorId);
-  state._cajaCobrador  = u;
+  state._cajaCobrador = u;
   state._fechaCobrador = today();
-  state.modal          = 'asignar-caja';
+  state.modal = 'asignar-caja';
   render();
 };
 
 window.abrirNuevoGastoAdmin = function (cobradorId) {
   state._gastoCobradorId = cobradorId;
-  state.modal            = 'nuevo-gasto';
+  state.modal = 'nuevo-gasto';
   render();
 };

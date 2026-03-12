@@ -45,24 +45,41 @@ window.calcularMetaReal = function (cobradorId, fecha) {
   const creditosActivos = creditos.filter(cr =>
     misClientesIds.includes(cr.clienteId) &&
     cr.activo === true &&
-    cr.fechaInicio < fecha
+    cr.fechaInicio <= fecha
   );
 
   let metaTotal = 0, pagadoHoy = 0, pendiente = 0;
   const detalle = [];
 
   creditosActivos.forEach(cr => {
-    const cliente = clientes.find(c => c.id === cr.clienteId);
-    const cuota = Number(cr.cuotaDiaria) || 0;
-    const pagosHoy = pagos.filter(p => p.creditoId === cr.id && p.fecha === fecha);
-    const montoPagadoHoy = pagosHoy.reduce((s, p) => s + Number(p.monto), 0);
-    const completo = montoPagadoHoy >= cuota;
+  const cliente = clientes.find(c => c.id === cr.clienteId);
+  const cuota = Number(cr.cuotaDiaria) || 0;
 
-    metaTotal += cuota;
-    pagadoHoy += montoPagadoHoy;
-    if (!completo) pendiente += (cuota - montoPagadoHoy);
-    detalle.push({ cliente, cr, cuota, montoPagadoHoy, completo });
-  });
+  // Pagos de HOY para este crédito
+  const pagosHoy = pagos.filter(p => p.creditoId === cr.id && p.fecha === fecha);
+  const montoPagadoHoy = pagosHoy.reduce((s, p) => s + Number(p.monto), 0);
+
+  // Total pagado HISTÓRICO para saber si ya está al día
+  const totalPagado = pagos
+    .filter(p => p.creditoId === cr.id)
+    .reduce((s, p) => s + Number(p.monto), 0);
+
+  // Cuántas cuotas debería tener pagadas hasta hoy
+  const diasTranscurridos = Math.max(0, contarDiasHabiles(cr.fechaInicio, fecha));
+  const cuotasDebidas = Math.min(diasTranscurridos, cr.diasTotal);
+  const montoDebido = cuotasDebidas * cuota;
+
+  // Está al día si pagó lo que debería hasta hoy
+  const alDia = totalPagado >= (montoDebido - 0.5);
+
+ metaTotal += cuota;
+pagadoHoy += Math.min(montoPagadoHoy, cuota);
+
+  // Solo aparece como pendiente si NO está al día
+  if (!alDia) pendiente += Math.max(0, montoDebido - totalPagado);
+
+  detalle.push({ cliente, cr, cuota, montoPagadoHoy, completo: alDia });
+});
 
   return { metaTotal, pagadoHoy, pendiente, detalle };
 };
@@ -133,8 +150,8 @@ function _renderCajaChicaPro(caja, cuadre) {
         ${caja.cajaInicial > 0 ? `
           <div style="height:100%; border-radius:4px;
                       background:${saldoPositivo
-                        ? 'linear-gradient(90deg, #2563eb, #4ade80)'
-                        : 'linear-gradient(90deg, #ef4444, #f87171)'};
+        ? 'linear-gradient(90deg, #2563eb, #4ade80)'
+        : 'linear-gradient(90deg, #ef4444, #f87171)'};
                       width:${Math.min(100, Math.max(0, Math.abs(caja.saldo / caja.cajaInicial * 100)))}%;
                       transition:width 0.5s cubic-bezier(0.4,0,0.2,1)"></div>` : ''}
       </div>
@@ -212,15 +229,18 @@ window.renderCuadre = function () {
   // VISTA ADMIN
   // ════════════════════════════════════════════════════════
   if (isAdmin) {
-    return `
-    <div class="topbar">
-      <h2>Cuadre General</h2>
+  return `
+  <div class="topbar">
+    <h2>Cuadre General</h2>
+    <div style="display:flex; align-items:center; gap:8px">
+      ${renderIndicadorVivo()}
       <div class="topbar-user"><strong>Admin</strong></div>
     </div>
-    <div class="page">
-      ${renderPanelCartera()}
-    </div>`;
-  }
+  </div>
+  <div class="page">
+    ${renderPanelCartera()}
+  </div>`;
+}
 
   // ════════════════════════════════════════════════════════
   // VISTA COBRADOR
@@ -296,10 +316,10 @@ window.renderCuadre = function () {
         <div style="font-size:11.5px; font-weight:700;
                     color:${metaAlcanzada ? '#16a34a' : 'var(--warning)'}">
           ${metaAlcanzada && meta.metaTotal > 0
-            ? '✅ Meta cumplida'
-            : meta.metaTotal === 0
-              ? '✨ Sin cobros pendientes'
-              : 'Faltan ' + formatMoney(meta.pendiente)}
+      ? '✅ Meta cumplida'
+      : meta.metaTotal === 0
+        ? '✨ Sin cobros pendientes'
+        : 'Faltan ' + formatMoney(meta.pendiente)}
         </div>
       </div>
     </div>
@@ -319,10 +339,10 @@ window.renderCuadre = function () {
       </div>
 
       ${gastos.length === 0
-        ? `<div style="font-size:13px; color:var(--muted); text-align:center; padding:16px 0">
+      ? `<div style="font-size:13px; color:var(--muted); text-align:center; padding:16px 0">
                No hay gastos hoy
              </div>`
-        : gastosVisible.map(g => `
+      : gastosVisible.map(g => `
             <div style="display:flex; justify-content:space-between; align-items:center;
                         padding:10px 0; border-bottom:1px solid var(--border)">
               <div style="flex:1; min-width:0">
@@ -363,13 +383,13 @@ window.renderCuadre = function () {
 
       <div style="padding:0 16px 8px">
         ${meta.detalle.filter(d => !d.completo).length === 0
-          ? `<div style="text-align:center; padding:28px 0">
+      ? `<div style="text-align:center; padding:28px 0">
                  <div style="font-size:28px; margin-bottom:8px">✅</div>
                  <p style="color:#16a34a; font-weight:700; margin:0; font-size:13.5px">¡Ruta completada!</p>
                </div>`
-          : meta.detalle.filter(d => !d.completo)
-              .sort((a, b) => (a.cliente?.nombre || '').localeCompare(b.cliente?.nombre || ''))
-              .map(d => `
+      : meta.detalle.filter(d => !d.completo)
+        .sort((a, b) => (a.cliente?.nombre || '').localeCompare(b.cliente?.nombre || ''))
+        .map(d => `
                 <div style="display:flex; justify-content:space-between; align-items:center;
                             padding:11px 0; border-bottom:1px solid var(--border)">
                   <div>

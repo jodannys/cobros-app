@@ -198,11 +198,14 @@ window.renderAdminCobrador = function renderAdminCobrador() {
 
   return `
   <div>
-    <div class="topbar">
-      <button class="back-btn" onclick="state.selectedCobrador=null;state._fechaCobrador=null;render()">←</button>
-      <h2>${cobrador.nombre}</h2>
+  <div class="topbar">
+    <button class="back-btn" onclick="state.selectedCobrador=null;state._fechaCobrador=null;render()">←</button>
+    <h2>${cobrador.nombre}</h2>
+    <div style="display:flex; align-items:center; gap:8px">
+      ${renderIndicadorVivo()}
       <button class="btn btn-sm btn-outline" onclick="openModal('editar-usuario')">✏️ Editar</button>
     </div>
+  </div>
     <div class="page">
 
       <div class="card">

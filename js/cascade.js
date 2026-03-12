@@ -22,9 +22,31 @@ async function _borrarLote(coleccion, docs) {
 // ============================================================
 // BORRAR CLIENTE (+ sus créditos + sus pagos)
 // ============================================================
-window.eliminarClienteCascade = async function(clienteId) {
+window.eliminarClienteCascade = async function (clienteId) {
   const creditos = (DB._cache['creditos'] || []).filter(x => x.clienteId === clienteId);
-  const pagos    = (DB._cache['pagos']    || []).filter(x => x.clienteId === clienteId);
+  const pagos = (DB._cache['pagos'] || []).filter(x => x.clienteId === clienteId);
+  const cliente = (DB._cache['clientes'] || []).find(x => x.id === clienteId);
+
+  // 🔥 AJUSTE CONTABLE: por cada crédito activo, registrar pérdida
+  for (const cr of creditos) {
+    const pagosCr = pagos.filter(p => p.creditoId === cr.id);
+    const totalPagado = pagosCr.reduce((s, p) => s + Number(p.monto), 0);
+    const saldoPendiente = Math.max(0, Number(cr.monto) - totalPagado);
+
+    // Si quedaba saldo sin cobrar, registrarlo como pérdida en cartera
+    if (saldoPendiente > 0) {
+      const id = genId();
+      await DB.set('movimientos_cartera', id, {
+        id,
+        tipo: 'gasto_admin',
+        monto: saldoPendiente,
+        descripcion: `Crédito cancelado — ${cliente?.nombre || clienteId}`,
+        fecha: today(),
+        cobradorId: cliente?.cobradorId || null,
+        registradoPor: state.currentUser.id
+      });
+    }
+  }
 
   // 1. Borrar pagos del cliente
   await _borrarLote('pagos', pagos);
@@ -36,17 +58,17 @@ window.eliminarClienteCascade = async function(clienteId) {
   await DB.delete('clientes', clienteId);
 
   // 4. Actualizar cache
-  DB._cache['pagos']    = (DB._cache['pagos']    || []).filter(x => x.clienteId !== clienteId);
+  DB._cache['pagos'] = (DB._cache['pagos'] || []).filter(x => x.clienteId !== clienteId);
   DB._cache['creditos'] = (DB._cache['creditos'] || []).filter(x => x.clienteId !== clienteId);
-  DB._cache['clientes'] = (DB._cache['clientes'] || []).filter(x => x.id        !== clienteId);
+  DB._cache['clientes'] = (DB._cache['clientes'] || []).filter(x => x.id !== clienteId);
 
-  console.log(`✅ Cliente ${clienteId} eliminado con ${creditos.length} créditos y ${pagos.length} pagos`);
+  console.log(`✅ Cliente ${clienteId} eliminado. Ajuste contable registrado.`);
 };
 
 // ============================================================
 // BORRAR CRÉDITO (+ sus pagos)
 // ============================================================
-window.eliminarCreditoCascade = async function(creditoId) {
+window.eliminarCreditoCascade = async function (creditoId) {
   const pagos = (DB._cache['pagos'] || []).filter(x => x.creditoId === creditoId);
 
   // 1. Borrar pagos del crédito
@@ -56,8 +78,8 @@ window.eliminarCreditoCascade = async function(creditoId) {
   await DB.delete('creditos', creditoId);
 
   // 3. Actualizar cache
-  DB._cache['pagos']    = (DB._cache['pagos']    || []).filter(x => x.creditoId !== creditoId);
-  DB._cache['creditos'] = (DB._cache['creditos'] || []).filter(x => x.id        !== creditoId);
+  DB._cache['pagos'] = (DB._cache['pagos'] || []).filter(x => x.creditoId !== creditoId);
+  DB._cache['creditos'] = (DB._cache['creditos'] || []).filter(x => x.id !== creditoId);
 
   console.log(`✅ Crédito ${creditoId} eliminado con ${pagos.length} pagos`);
 };
@@ -66,8 +88,8 @@ window.eliminarCreditoCascade = async function(creditoId) {
 // BORRAR COBRADOR (+ sus gastos + desasignar sus clientes)
 // No borra los clientes ni pagos, solo desvincula
 // ============================================================
-window.eliminarCobradorCascade = async function(cobradorId) {
-  const gastos   = (DB._cache['gastos']   || []).filter(x => x.cobradorId === cobradorId);
+window.eliminarCobradorCascade = async function (cobradorId) {
+  const gastos = (DB._cache['gastos'] || []).filter(x => x.cobradorId === cobradorId);
   const clientes = (DB._cache['clientes'] || []).filter(x => x.cobradorId === cobradorId);
 
   // 1. Borrar gastos del cobrador
@@ -84,7 +106,7 @@ window.eliminarCobradorCascade = async function(cobradorId) {
 
   // 4. Actualizar cache
   DB._cache['gastos'] = (DB._cache['gastos'] || []).filter(x => x.cobradorId !== cobradorId);
-  DB._cache['users']  = (DB._cache['users']  || []).filter(x => x.id         !== cobradorId);
+  DB._cache['users'] = (DB._cache['users'] || []).filter(x => x.id !== cobradorId);
 
   console.log(`✅ Cobrador ${cobradorId} eliminado. ${clientes.length} clientes desasignados, ${gastos.length} gastos borrados`);
 };
@@ -93,15 +115,15 @@ window.eliminarCobradorCascade = async function(cobradorId) {
 // LIMPIAR HUÉRFANOS (ejecutar 1 sola vez para sanar la DB)
 // Llama desde consola: await limpiarHuerfanos()
 // ============================================================
-window.limpiarHuerfanos = async function() {
+window.limpiarHuerfanos = async function () {
   const clientes = DB._cache['clientes'] || [];
   const creditos = DB._cache['creditos'] || [];
-  const pagos    = DB._cache['pagos']    || [];
-  const gastos   = DB._cache['gastos']   || [];
-  const users    = DB._cache['users']    || [];
+  const pagos = DB._cache['pagos'] || [];
+  const gastos = DB._cache['gastos'] || [];
+  const users = DB._cache['users'] || [];
 
-  const clienteIds  = new Set(clientes.map(x => x.id));
-  const creditoIds  = new Set(creditos.map(x => x.id));
+  const clienteIds = new Set(clientes.map(x => x.id));
+  const creditoIds = new Set(creditos.map(x => x.id));
   const cobradorIds = new Set(users.map(x => x.id));
 
   let borrados = 0;
@@ -135,9 +157,9 @@ window.limpiarHuerfanos = async function() {
   }
 
   // Refrescar cache
-  DB._cache['pagos']    = (await DB.getAll('pagos'));
+  DB._cache['pagos'] = (await DB.getAll('pagos'));
   DB._cache['creditos'] = (await DB.getAll('creditos'));
-  DB._cache['gastos']   = (await DB.getAll('gastos'));
+  DB._cache['gastos'] = (await DB.getAll('gastos'));
 
   console.log(`✅ Limpieza completada. ${borrados} documentos huérfanos eliminados.`);
   render();
