@@ -41,5 +41,10 @@
 <script type="module" src="js/mapa_patch.js"></script>
 <script type="module" src="js/cascade.js"></script> 
 <script type="module" src="js/app.js"></script>
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js');
+  }
+</script>
 </body>
 </html>
