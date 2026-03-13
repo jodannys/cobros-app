@@ -478,7 +478,7 @@ window.renderClientDetail = function () {
           <div class="info-value" style="font-size:14px; font-weight:500; line-height:1.4">${c.direccion || '—'}</div>
         </div>
         ${c.lat ? renderMapaCliente(c.lat, c.lng, c.nombre) : ''}
-        ${c.foto ? `<img src="${c.foto}" class="uploaded-img" style="margin-top:10px">` : ''}
+        ${c.foto ? `<img src="${c.foto}" class="uploaded-img" onclick="verImagen(this.src)" style="margin-top:10px; cursor:zoom-in">` : ''}
       </div>
 
       ${todosLosCreditos.length > 0 ? `
