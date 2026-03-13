@@ -34,14 +34,13 @@ window.renderSeccionCreditosCliente = function (clienteId) {
 
       ${antiguos.length > 0 ? `
         <div style="margin-top:15px">
-          <button onclick="toggleHistorial()" 
-            style="width:100%; padding:12px; background:var(--bg); border:1.5px solid var(--border); 
-                   border-radius:10px; color:var(--text); font-weight:700; font-size:12px; 
+          <button onclick="toggleHistorial()"
+            style="width:100%; padding:12px; background:var(--bg); border:1.5px solid var(--border);
+                   border-radius:10px; color:var(--text); font-weight:700; font-size:12px;
                    display:flex; justify-content:space-between; align-items:center; cursor:pointer">
             <span>📁 Ver créditos Cerrados (${antiguos.length})</span>
             <span id="flecha-hist">▼</span>
           </button>
-          
           <div id="cajon-historial" style="display:none; margin-top:10px">
             ${antiguos.map(ant => renderCreditoCard(ant)).join('')}
           </div>
@@ -55,20 +54,12 @@ window.toggleHistorial = function () {
   const cajon = document.getElementById('cajon-historial');
   const flecha = document.getElementById('flecha-hist');
   if (!cajon) return;
-
   const isHidden = cajon.style.display === 'none';
   cajon.style.display = isHidden ? 'block' : 'none';
   flecha.innerText = isHidden ? '▲' : '▼';
 };
 
-
-
-
 window.renderCreditoCard = function (cr) {
-  const esAntiguo = !cr.activo;
-  const estiloCard = esAntiguo
-    ? `background: #f8fafc; opacity: 0.85; border: 1.5px dashed var(--border);`
-    : `background: white; border: 1px solid transparent;`;
   const pagos = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id);
   const totalPagado = pagos.reduce((s, p) => s + p.monto, 0);
   const saldo = Math.max(0, cr.total - totalPagado);
@@ -194,29 +185,49 @@ window.renderCreditoCard = function (cr) {
     <!-- ACCIONES -->
     ${cr.activo ? `
     <div style="display:flex; flex-direction:column; gap:8px; margin-top:14px">
+
+      <!-- Botón registrar pago -->
       <button class="btn btn-success"
         id="btn-pago-${cr.id}"
-        style="height:46px; font-size:14px; font-weight:700; width:100%; display:flex; align-items:center; justify-content:center; gap:8px"
+        style="height:46px; font-size:14px; font-weight:700; width:100%;
+               display:flex; align-items:center; justify-content:center; gap:8px"
         onclick="ejecutarPagoProtegido(this, '${cr.id}')">
         <span id="icon-${cr.id}">💰</span>
         <span id="text-${cr.id}">Registrar pago</span>
       </button>
+
       ${isAdmin ? `
+        <!-- FILA 1: Cerrar + Eliminar -->
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px">
-          <button class="btn btn-outline btn-sm" onclick="cerrarCredito('${cr.id}')">
+          <button class="btn btn-outline btn-sm"
+            style="height:40px; font-size:12.5px; font-weight:700"
+            onclick="cerrarCredito('${cr.id}')">
             ✓ Cerrar crédito
           </button>
           <button class="btn btn-sm"
-            style="background:${cr.mora_activa ? '#fff1f2' : '#f0fdf4'};
+            style="height:40px; font-size:12.5px; font-weight:700;
+                   background:#fff1f2; color:#9f1239; border:1.5px solid #fecdd3"
+            onclick="eliminarCredito('${cr.id}')">
+            🚫 Eliminar crédito
+          </button>
+        </div>
+
+        <!-- FILA 2: Mora + Corregir monto -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px">
+          <button class="btn btn-sm"
+            style="height:40px; font-size:12.5px; font-weight:700;
+                   background:${cr.mora_activa ? '#fff1f2' : '#f0fdf4'};
                    color:${cr.mora_activa ? 'var(--danger)' : 'var(--success)'};
                    border:1.5px solid ${cr.mora_activa ? '#fecdd3' : '#bbf7d0'}"
             onclick="toggleMora('${cr.id}',${cr.mora_activa ? 'false' : 'true'})">
             ${cr.mora_activa ? '🔕 Sin mora' : '🔔 Activar mora'}
           </button>
-        </div>
-        <button class="btn btn-sm btn-outline" onclick="abrirEditarCredito('${cr.id}')">
-          ✏️ Corregir monto
-        </button>` :
+          <button class="btn btn-sm btn-outline"
+            style="height:40px; font-size:12.5px; font-weight:700"
+            onclick="abrirEditarCredito('${cr.id}')">
+            ✏️ Corregir monto
+          </button>
+        </div>` :
         vencido ? `
         <div style="text-align:center; font-size:12px; color:var(--danger); font-weight:600">
           ⚠️ Coordina con el administrador
@@ -317,21 +328,17 @@ window.calcularCredito = function () {
   const diasTotal = plan === 'B' ? 20 : 24;
   const elPlazo = document.getElementById('crPlazo');
   if (elPlazo) elPlazo.textContent = diasTotal + ' días';
-  const pctInteres = 0.20; // siempre 20%
+  const pctInteres = 0.20;
   const interes = monto * pctInteres;
   const total = monto + interes;
   const cuota = total / diasTotal;
 
   const preview = document.getElementById('crPreview');
   if (preview) preview.style.display = 'block';
-  const elInteres = document.getElementById('crInteres');
-  const elTotal = document.getElementById('crTotal');
-  const elCuota = document.getElementById('crCuota');
-  if (elInteres) elInteres.textContent = formatMoney(interes);
-  if (elTotal) elTotal.textContent = formatMoney(total);
-  if (elCuota) elCuota.textContent = formatMoney(cuota);
+  if (document.getElementById('crInteres')) document.getElementById('crInteres').textContent = formatMoney(interes);
+  if (document.getElementById('crTotal'))   document.getElementById('crTotal').textContent   = formatMoney(total);
+  if (document.getElementById('crCuota'))   document.getElementById('crCuota').textContent   = formatMoney(cuota);
 
-  // Seguro
   const seguroActivo = state._crSeguro !== false;
   const seguroPreview = document.getElementById('crSeguroPreview');
   if (seguroPreview) {
@@ -339,10 +346,8 @@ window.calcularCredito = function () {
       const pct = state._crPctSeguro ?? 5;
       const montoSeguro = Math.round(monto * (pct / 100) * 100) / 100;
       const entregaReal = monto - montoSeguro;
-      const elSeg = document.getElementById('crSeguroMonto');
-      const elEnt = document.getElementById('crEntregaReal');
-      if (elSeg) elSeg.textContent = formatMoney(montoSeguro);
-      if (elEnt) elEnt.textContent = formatMoney(entregaReal);
+      if (document.getElementById('crSeguroMonto')) document.getElementById('crSeguroMonto').textContent = formatMoney(montoSeguro);
+      if (document.getElementById('crEntregaReal')) document.getElementById('crEntregaReal').textContent = formatMoney(entregaReal);
       seguroPreview.style.display = 'block';
     } else {
       seguroPreview.style.display = 'none';
@@ -351,65 +356,149 @@ window.calcularCredito = function () {
 };
 
 // ── guardarCredito ────────────────────────────────────────────
-// ── guardarCredito ────────────────────────────────────────────
 window.guardarCredito = async function () {
-  const creditosExistentes = (DB._cache['creditos'] || [])
-    .filter(c => c.clienteId === state.selectedClient.id && c.activo);
+  if (window._guardandoCredito) return;
+  window._guardandoCredito = true;
 
-  if (creditosExistentes.length > 0) {
-    alert('Este cliente ya tiene un crédito activo.');
-    return;
-  }
-
-  const plan = document.getElementById('crPlan')?.value || 'A';
-  const diasTotal = plan === 'B' ? 20 : 24;
-  const pctInteres = 0.20; // siempre 20%
-
-  const monto = parseMonto(document.getElementById('crMonto').value);
-  const fechaInicio = document.getElementById('crFecha').value;
-  if (monto <= 0 || !fechaInicio) { alert('Datos incompletos'); return; }
-
-  const total = monto * (1 + pctInteres);
-  const cuotaDiaria = total / diasTotal;
-  const fechaFin = sumarDiasHabiles(fechaInicio, diasTotal);
-
-  const seguroActivo = state._crSeguro !== false;
-  const porcentajeSeguro = seguroActivo ? (state._crPctSeguro ?? 5) : 0;
-  const montoSeguro = seguroActivo ? Math.round(monto * (porcentajeSeguro / 100)) : 0;
-
-  const id = genId();
-  const nuevoCredito = {
-    id,
-    clienteId: state.selectedClient.id,
-    monto,
-    total,
-    cuotaDiaria,
-    diasTotal,
-    fechaInicio,
-    fechaFin,
-    activo: true,
-    metodoPago: document.getElementById('crMetodoPago')?.value || 'Efectivo',
-    seguro: seguroActivo,
-    porcentajeSeguro,
-    montoSeguro,
-    montoEntregado: monto - montoSeguro,
-    creadoEn: new Date().toISOString()
-  };
+  const btn = document.querySelector('[onclick="guardarCredito()"]');
+  if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
 
   try {
-    console.log("Intentando guardar nuevo crédito...", nuevoCredito);
-    await DB.set('creditos', id, nuevoCredito);
+    const creditosExistentes = (DB._cache['creditos'] || [])
+      .filter(c => c.clienteId === state.selectedClient.id && c.activo);
 
-    // 🔥 ACTUALIZAR CACHE LOCAL (Para que aparezca sin recargar)
+    if (creditosExistentes.length > 0) {
+      alert('Este cliente ya tiene un crédito activo.');
+      return;
+    }
+
+    const plan = document.getElementById('crPlan')?.value || 'A';
+    const diasTotal = plan === 'B' ? 20 : 24;
+    const pctInteres = 0.20;
+
+    const monto = parseMonto(document.getElementById('crMonto').value);
+    const fechaInicio = document.getElementById('crFecha').value;
+    if (monto <= 0 || !fechaInicio) { alert('Datos incompletos'); return; }
+
+    const total = monto * (1 + pctInteres);
+    const cuotaDiaria = total / diasTotal;
+    const fechaFin = sumarDiasHabiles(fechaInicio, diasTotal);
+
+    const seguroActivo = state._crSeguro !== false;
+    const porcentajeSeguro = seguroActivo ? (state._crPctSeguro ?? 5) : 0;
+    const montoSeguro = seguroActivo ? Math.round(monto * (porcentajeSeguro / 100)) : 0;
+
+    const id = genId();
+    const nuevoCredito = {
+      id,
+      clienteId: state.selectedClient.id,
+      monto, total, cuotaDiaria, diasTotal, fechaInicio, fechaFin,
+      activo: true,
+      metodoPago: document.getElementById('crMetodoPago')?.value || 'Efectivo',
+      seguro: seguroActivo, porcentajeSeguro, montoSeguro,
+      montoEntregado: monto - montoSeguro,
+      creadoEn: new Date().toISOString()
+    };
+
+    await DB.set('creditos', id, nuevoCredito);
     if (!DB._cache['creditos']) DB._cache['creditos'] = [];
     DB._cache['creditos'].push(nuevoCredito);
 
     state.modal = null;
-    showToast(`✅ Crédito creado con éxito`);
+    showToast('✅ Crédito creado con éxito');
     render();
   } catch (error) {
     console.error("Error al guardar:", error);
     alert("Hubo un error al guardar el crédito.");
+  } finally {
+    window._guardandoCredito = false;
+    if (btn) { btn.disabled = false; btn.textContent = 'Crear Crédito'; }
+  }
+};
+
+// ── eliminarCredito ───────────────────────────────────────────
+// Borra crédito + pagos y ajusta caja con la fecha original del
+// crédito para que el historial quede limpio.
+window.eliminarCredito = async function (crId) {
+  if (window._eliminandoCredito) return;
+
+  const cr = (DB._cache['creditos'] || []).find(c => c.id === crId);
+  if (!cr) return;
+
+  const pagos = (DB._cache['pagos'] || []).filter(p => p.creditoId === crId);
+  const totalPagado = pagos.reduce((s, p) => s + Number(p.monto), 0);
+  const montoSeguro = Number(cr.montoSeguro || 0);
+  const montoTotal  = Number(cr.monto) + montoSeguro;
+  const cliente     = (DB._cache['clientes'] || []).find(c => c.id === cr.clienteId);
+
+  const lineas = [
+    `Monto prestado: ${formatMoney(cr.monto)}`,
+    montoSeguro > 0 ? `Seguro: ${formatMoney(montoSeguro)}` : null,
+    `Cuotas cobradas: ${formatMoney(totalPagado)}`,
+    `Fecha del crédito: ${formatDate(cr.fechaInicio)}`,
+    ``,
+    `Se eliminarán ${pagos.length} pago(s) y se ajustará`,
+    `la caja con fecha ${formatDate(cr.fechaInicio)}.`,
+    `Esta acción no se puede deshacer.`
+  ].filter(l => l !== null).join('\n');
+
+  if (!confirm(`¿Eliminar este crédito completamente?\n\n${lineas}`)) return;
+
+  window._eliminandoCredito = true;
+
+  try {
+    // 1. Eliminar todos los pagos
+    for (const p of pagos) {
+      await DB.delete('pagos', p.id);
+    }
+    DB._cache['pagos'] = (DB._cache['pagos'] || []).filter(p => p.creditoId !== crId);
+
+    // 2. Eliminar el crédito
+    await DB.delete('creditos', crId);
+    DB._cache['creditos'] = (DB._cache['creditos'] || []).filter(c => c.id !== crId);
+
+    const cobradorId  = cliente?.cobradorId || null;
+    const fechaAjuste = cr.fechaInicio; // fecha original para no romper historial
+
+    // 3. Ajuste cartera admin: devolver monto prestado + seguro
+    if (montoTotal > 0) {
+      const idAdmin = genId();
+      const ajusteAdmin = {
+        id: idAdmin,
+        tipo: 'gasto_admin',
+        monto: montoTotal,
+        descripcion: `Eliminación crédito — ${cliente?.nombre || 'cliente'}`,
+        fecha: fechaAjuste,
+        cobradorId,
+        registradoPor: state.currentUser.id
+      };
+      await DB.set('movimientos_cartera', idAdmin, ajusteAdmin);
+      if (!DB._cache['movimientos_cartera']) DB._cache['movimientos_cartera'] = [];
+      DB._cache['movimientos_cartera'].push(ajusteAdmin);
+    }
+
+    // 4. Ajuste mochila cobrador: quitar cuotas cobradas
+    if (totalPagado > 0 && cobradorId) {
+      const idCobrador = genId();
+      const ajusteCobrador = {
+        id: idCobrador,
+        tipo: 'gasto_cobrador',
+        monto: totalPagado,
+        descripcion: `Eliminación crédito — ${cliente?.nombre || 'cliente'}`,
+        fecha: fechaAjuste,
+        cobradorId,
+        registradoPor: state.currentUser.id
+      };
+      await DB.set('movimientos_cartera', idCobrador, ajusteCobrador);
+      DB._cache['movimientos_cartera'].push(ajusteCobrador);
+    }
+
+    showToast('✅ Crédito eliminado y caja ajustada');
+    render();
+  } catch (e) {
+    alert('Error al eliminar: ' + e.message);
+  } finally {
+    window._eliminandoCredito = false;
   }
 };
 
@@ -431,7 +520,6 @@ window.cerrarCredito = async function (crId) {
     await DB.update('creditos', crId, { activo: false });
     const idx = (DB._cache['creditos'] || []).findIndex(c => c.id === crId);
     if (idx !== -1) DB._cache['creditos'][idx].activo = false;
-
     showToast('✅ Crédito cerrado');
     render();
   } catch (e) {
@@ -449,10 +537,7 @@ window.extenderCredito = async function () {
   const nuevaFechaFin = sumarDiasHabiles(cr.fechaInicio, nuevoTotalDias);
 
   try {
-    await DB.update('creditos', cr.id, {
-      diasTotal: nuevoTotalDias,
-      fechaFin: nuevaFechaFin
-    });
+    await DB.update('creditos', cr.id, { diasTotal: nuevoTotalDias, fechaFin: nuevaFechaFin });
     showToast(`✅ Plazo extendido hasta ${formatDate(nuevaFechaFin)}`);
     render();
   } catch (error) { console.error(error); }
@@ -465,8 +550,7 @@ window.guardarCompromiso = async function () {
 
   try {
     await DB.update('creditos', state.selectedCredito.id, {
-      fechaCompromiso: fecha,
-      estadoCompromiso: 'pendiente'
+      fechaCompromiso: fecha, estadoCompromiso: 'pendiente'
     });
     state.selectedCredito = { ...state.selectedCredito, fechaCompromiso: fecha };
     showToast(`📅 Compromiso: ${formatDate(fecha)}`);
@@ -493,8 +577,6 @@ window.guardarNotaCredito = async function () {
 };
 
 window.toggleMora = async function (crId, activar) {
-  console.log(`--- Intentando ${activar ? 'Activar' : 'Desactivar'} Mora para ID: ${crId} ---`);
-
   try {
     const creditosCache = DB._cache['creditos'] || [];
     await DB.update('creditos', crId, { mora_activa: activar });
@@ -553,33 +635,41 @@ window.renderModalEditarPago = function () {
     </select>
   </div>
 
-  <button class="btn btn-primary" onclick="guardarPagoEditado()">
-    Guardar cambios
-  </button>
+  <button class="btn btn-primary" onclick="guardarPagoEditado()">Guardar cambios</button>
 
   <div style="margin-top:10px; padding-top:10px; border-top:1px solid var(--border)">
-    <button class="btn btn-danger" onclick="eliminarPago('${p.id}')">
-      Eliminar pago
-    </button>
+    <button class="btn btn-danger" onclick="eliminarPago('${p.id}')">Eliminar pago</button>
   </div>`;
 };
 
 window.guardarPagoEditado = async function () {
-  const p = state._editandoPago;
-  const monto = parseMonto(document.getElementById('epMonto').value);
-  const tipo = document.getElementById('epTipo').value;
-  if (!monto || monto <= 0) { alert('Ingresa un monto válido'); return; }
-  const updates = { monto, tipo };
+  if (window._guardandoPagoEditado) return;
+  window._guardandoPagoEditado = true;
+
+  const btn = document.querySelector('[onclick="guardarPagoEditado()"]');
+  if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
+
   try {
+    const p = state._editandoPago;
+    const monto = parseMonto(document.getElementById('epMonto').value);
+    const tipo = document.getElementById('epTipo').value;
+    if (!monto || monto <= 0) { alert('Ingresa un monto válido'); return; }
+
+    const updates = { monto, tipo };
     await DB.update('pagos', p.id, updates);
+
     const idx = (DB._cache['pagos'] || []).findIndex(x => x.id === p.id);
     if (idx !== -1) DB._cache['pagos'][idx] = { ...DB._cache['pagos'][idx], ...updates };
+
     state._editandoPago = null;
     state.modal = null;
     showToast('✅ Pago actualizado');
     render();
   } catch (e) {
     alert('Error al guardar: ' + e.message);
+  } finally {
+    window._guardandoPagoEditado = false;
+    if (btn) { btn.disabled = false; btn.textContent = 'Guardar cambios'; }
   }
 };
 
@@ -615,21 +705,13 @@ window.nuevoCreditoRapido = function (clienteId) {
 };
 
 window.ejecutarPagoProtegido = function (btn, creditoId) {
-  console.log("%c [CLIC DETECTADO] ", "background: #222; color: #bada55", `Intentando pagar crédito: ${creditoId}`);
-
-  if (btn.disabled || btn.dataset.procesando === "true") {
-    console.warn("%c [BLOQUEADO] ", "background: red; color: white", "Se evitó un disparo doble.");
-    return;
-  }
-
-  console.log("%c [PROCESANDO...] ", "background: green; color: white", "Abriendo modal de pago...");
+  if (btn.disabled || btn.dataset.procesando === "true") return;
 
   btn.disabled = true;
   btn.dataset.procesando = "true";
 
   const icon = document.getElementById(`icon-${creditoId}`);
   const text = document.getElementById(`text-${creditoId}`);
-
   if (icon) icon.innerHTML = "⏳";
   if (text) text.innerText = "Procesando...";
   btn.style.opacity = "0.7";
@@ -641,7 +723,6 @@ window.ejecutarPagoProtegido = function (btn, creditoId) {
   }
 
   setTimeout(() => {
-    console.log("%c [BOTÓN LIBERADO] ", "background: blue; color: white", "El botón vuelve a estar activo.");
     btn.disabled = false;
     btn.dataset.procesando = "false";
     btn.style.opacity = "1";

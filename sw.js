@@ -1,4 +1,4 @@
-const CACHE = 'cobrosapp-v1';
+const CACHE = 'cobrosapp-v2';
 const ARCHIVOS = [
   '/',
   '/index.html',

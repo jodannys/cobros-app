@@ -589,6 +589,13 @@ window.backFromClient = function () {
 // GUARDAR CLIENTE
 // ============================================================
 window.guardarCliente = async function () {
+  // ── Protección contra doble tap ──
+  if (window._guardandoCliente) return;
+  window._guardandoCliente = true;
+
+  const btn = document.querySelector('[onclick="guardarCliente()"]');
+  if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
+
   try {
     const dni = document.getElementById('nDNI').value.trim();
     const nombre = document.getElementById('nNombre').value.trim();
@@ -632,6 +639,9 @@ window.guardarCliente = async function () {
   } catch (err) {
     console.error('❌ Error en guardarCliente:', err);
     alert('Ocurrió un error al guardar el cliente.');
+  } finally {
+    window._guardandoCliente = false;
+    if (btn) { btn.disabled = false; btn.textContent = 'Guardar Cliente'; }
   }
 };
 
@@ -639,35 +649,50 @@ window.guardarCliente = async function () {
 // ACTUALIZAR CLIENTE
 // ============================================================
 window.actualizarCliente = async function () {
-  const c = state.selectedClient;
-  const isAdmin = state.currentUser.role === 'admin';
-  const cobradorEl = document.getElementById('eCobrador');
-
-  const fotoEl = document.getElementById('previewEFoto');
-  let foto = c.foto;
-  if (fotoEl && fotoEl.style.display !== 'none' && fotoEl.src && fotoEl.src !== window.location.href) {
-    if (fotoEl.src !== c.foto) foto = await comprimirImagen(fotoEl.src, 600, 0.6);
+  if (window._actualizandoCliente) return;
+  window._actualizandoCliente = true;
+ 
+  const btn = document.querySelector('[onclick="actualizarCliente()"]');
+  if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
+ 
+  try {
+    const c = state.selectedClient;
+    const isAdmin = state.currentUser.role === 'admin';
+    const cobradorEl = document.getElementById('eCobrador');
+ 
+    const fotoEl = document.getElementById('previewEFoto');
+    let foto = c.foto;
+    if (fotoEl && fotoEl.style.display !== 'none' && fotoEl.src && fotoEl.src !== window.location.href) {
+      if (fotoEl.src !== c.foto) foto = await comprimirImagen(fotoEl.src, 600, 0.6);
+    }
+ 
+    const updated = {
+      ...c,
+      dni: document.getElementById('eDNI').value.trim(),
+      nombre: document.getElementById('eNombre').value.trim(),
+      negocio: document.getElementById('eNegocio').value.trim(),
+      telefono: document.getElementById('eTelefono').value.trim(),
+      direccion: document.getElementById('eDireccion').value.trim(),
+      lat: _coordsSeleccionadas?.lat ?? c.lat ?? null,
+      lng: _coordsSeleccionadas?.lng ?? c.lng ?? null,
+      cobradorId: isAdmin && cobradorEl ? cobradorEl.value : c.cobradorId,
+      foto
+    };
+ 
+    await DB.set('clientes', c.id, updated);
+    state.selectedClient = updated;
+    _coordsSeleccionadas = null;
+    state.modal = null;
+    showToast('Cliente actualizado');
+    render();
+  } catch (e) {
+    alert('Error al actualizar: ' + e.message);
+  } finally {
+    window._actualizandoCliente = false;
+    if (btn) { btn.disabled = false; btn.textContent = 'Actualizar Cliente'; }
   }
-
-  const updated = {
-    ...c,
-    dni: document.getElementById('eDNI').value.trim(),
-    nombre: document.getElementById('eNombre').value.trim(),
-    negocio: document.getElementById('eNegocio').value.trim(),
-    telefono: document.getElementById('eTelefono').value.trim(),
-    direccion: document.getElementById('eDireccion').value.trim(),
-    lat: _coordsSeleccionadas?.lat ?? c.lat ?? null,
-    lng: _coordsSeleccionadas?.lng ?? c.lng ?? null,
-    cobradorId: isAdmin && cobradorEl ? cobradorEl.value : c.cobradorId,
-    foto
-  };
-
-  await DB.set('clientes', c.id, updated);
-  state.selectedClient = updated;
-  state.modal = null;
-  showToast('Cliente actualizado');
 };
-
+ 
 window.eliminarCliente = async function () {
   if (!confirm('¿Eliminar este cliente? Se borrarán también sus créditos y pagos. Esta acción no se puede deshacer.')) return;
   const c = state.selectedClient;

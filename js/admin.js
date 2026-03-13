@@ -435,27 +435,32 @@ window.selectCobrador = function selectCobrador(id) {
 };
 
 window.guardarUsuario = async function guardarUsuario() {
-  const nombre = document.getElementById('uNombre').value.trim();
-  const user = document.getElementById('uUser').value.trim();
-  const pass = document.getElementById('uPass').value.trim();
-  const role = document.getElementById('uRol').value;
-  // Capturamos el teléfono y lo limpiamos de espacios/guiones
-  const telefono = document.getElementById('uTelefono').value.replace(/\D/g, '').trim();
+  // ── Protección contra doble tap ──
+  if (window._guardandoUsuario) return;
+  window._guardandoUsuario = true;
 
-  if (!nombre || !user || !pass) {
-    alert('Todos los campos son obligatorios');
-    return;
-  }
+  const btn = document.querySelector('[onclick="guardarUsuario()"]');
+  if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
 
-  const users = DB._cache['users'] || [];
-  if (users.find(u => u.user === user)) {
-    alert('Ese nombre de usuario ya existe');
-    return;
-  }
-
-  const id = genId();
   try {
-    // Incluimos telefono en el objeto
+    const nombre = document.getElementById('uNombre').value.trim();
+    const user = document.getElementById('uUser').value.trim();
+    const pass = document.getElementById('uPass').value.trim();
+    const role = document.getElementById('uRol').value;
+    const telefono = document.getElementById('uTelefono').value.replace(/\D/g, '').trim();
+
+    if (!nombre || !user || !pass) {
+      alert('Todos los campos son obligatorios');
+      return;
+    }
+
+    const users = DB._cache['users'] || [];
+    if (users.find(u => u.user === user)) {
+      alert('Ese nombre de usuario ya existe');
+      return;
+    }
+
+    const id = genId();
     const nuevoUser = { id, nombre, user, pass, role, telefono };
     await DB.set('users', id, nuevoUser);
 
@@ -464,50 +469,70 @@ window.guardarUsuario = async function guardarUsuario() {
     render();
   } catch (e) {
     alert('Error al guardar: ' + e.message);
+  } finally {
+    window._guardandoUsuario = false;
+    if (btn) { btn.disabled = false; btn.textContent = 'Crear Usuario'; }
   }
 };
+
+window.openRegistrarPago = function (crId) {
+  if (state.modal && state.modal !== 'registrar-pago') {
+    state.modal = null;
+  }
+
+  const cr = (DB._cache['creditos'] || []).find(x => x.id === crId);
+  if (!cr) {
+    console.error("❌ Crédito no encontrado");
+    state._pagoProcesando = false;
+    deshabilitarBotonesPago(false);
+    return;
+  }
+
+  state.selectedCredito = cr;
+  state.modal = 'registrar-pago';
+  render();
+};
+
 window.actualizarUsuario = async function actualizarUsuario() {
-  const users = DB._cache['users'] || [];
-  const u = users.find(x => x.id === state.selectedCobrador);
-  if (!u) return;
-
-  const nombre = document.getElementById('euNombre').value.trim();
-  const user = document.getElementById('euUser').value.trim();
-  const pass = document.getElementById('euPass').value.trim();
-  const role = document.getElementById('euRol').value;
-  // Capturamos el nuevo teléfono
-  const telefono = document.getElementById('euTelefono').value.replace(/\D/g, '').trim();
-
-  if (!nombre || !user) {
-    alert('Nombre y usuario son obligatorios');
-    return;
-  }
-
-  if (users.find(x => x.user === user && x.id !== u.id)) {
-    alert('Ese usuario ya existe');
-    return;
-  }
-
-  // Añadimos telefono a la lista de updates
-  const updates = { nombre, user, role, telefono };
-  if (pass) updates.pass = pass;
-
+  if (window._actualizandoUsuario) return;
+  window._actualizandoUsuario = true;
+ 
+  const btn = document.querySelector('[onclick="actualizarUsuario()"]');
+  if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
+ 
   try {
+    const users = DB._cache['users'] || [];
+    const u = users.find(x => x.id === state.selectedCobrador);
+    if (!u) return;
+ 
+    const nombre   = document.getElementById('euNombre').value.trim();
+    const user     = document.getElementById('euUser').value.trim();
+    const pass     = document.getElementById('euPass').value.trim();
+    const role     = document.getElementById('euRol').value;
+    const telefono = document.getElementById('euTelefono').value.replace(/\D/g, '').trim();
+ 
+    if (!nombre || !user) { alert('Nombre y usuario son obligatorios'); return; }
+    if (users.find(x => x.user === user && x.id !== u.id)) { alert('Ese usuario ya existe'); return; }
+ 
+    const updates = { nombre, user, role, telefono };
+    if (pass) updates.pass = pass;
+ 
     await DB.update('users', u.id, updates);
-
+ 
     const idx = (DB._cache['users'] || []).findIndex(x => x.id === u.id);
-    if (idx !== -1) {
-      DB._cache['users'][idx] = { ...DB._cache['users'][idx], ...updates };
-    }
-
+    if (idx !== -1) DB._cache['users'][idx] = { ...DB._cache['users'][idx], ...updates };
+ 
     state.modal = null;
     showToast('Usuario actualizado');
     render();
   } catch (e) {
     alert('Error al actualizar: ' + e.message);
+  } finally {
+    window._actualizandoUsuario = false;
+    if (btn) { btn.disabled = false; btn.textContent = 'Actualizar Datos'; }
   }
 };
-
+ 
 window.abrirEditarCredito = function abrirEditarCredito(crId) {
   const cr = (DB._cache['creditos'] || []).find(c => c.id === crId);
   if (!cr) return;
@@ -583,12 +608,12 @@ window.guardarCreditoEditado = async function guardarCreditoEditado() {
   }
 };
 
-window.abrirAgregarFeriado = function() {
+window.abrirAgregarFeriado = function () {
   state.modal = 'agregar-feriado';
   render();
 };
 
-window.renderModalAgregarFeriado = function() {
+window.renderModalAgregarFeriado = function () {
   return `
   <div class="modal-handle"></div>
   <div class="modal-title">📅 Agregar Día No Laborable</div>
@@ -607,7 +632,7 @@ window.renderModalAgregarFeriado = function() {
   <button class="btn btn-primary" onclick="guardarFeriado()">Guardar</button>`;
 };
 
-window.guardarFeriado = async function() {
+window.guardarFeriado = async function () {
   const fecha = document.getElementById('feriadoFecha').value;
   console.log('Fecha capturada:', fecha);
   if (!fecha) { alert('Selecciona una fecha'); return; }
@@ -635,11 +660,11 @@ window.guardarFeriado = async function() {
     state.modal = null;
     showToast('📅 Día bloqueado correctamente');
     render();
-  } catch(e) {
+  } catch (e) {
     console.log('ERROR:', e);
   }
 };
-window.eliminarFeriado = async function(fecha) {
+window.eliminarFeriado = async function (fecha) {
   if (!confirm(`¿Eliminar el bloqueo del ${formatDate(fecha)}?`)) return;
 
   const cfg = DB._cache['configuracion'] || [];
@@ -655,7 +680,7 @@ window.eliminarFeriado = async function(fecha) {
 
     showToast('✅ Fecha desbloqueada');
     render();
-  } catch(e) {
+  } catch (e) {
     alert('Error al eliminar: ' + e.message);
   }
 };
