@@ -1,4 +1,15 @@
-let renderTimer;
+// Modales con formulario — no re-renderizar mientras el usuario escribe
+const _MODALES_CON_FORMULARIO = [
+  'nuevo-cliente', 'editar-cliente', 'nuevo-credito',
+  'nuevo-usuario', 'editar-usuario', 'editar-admin',
+  'nuevo-gasto', 'editar-gasto', 'registrar-pago'
+];
+
+function _renderSeguro() {
+  if (typeof render !== 'function') return;
+  if (state.modal && _MODALES_CON_FORMULARIO.includes(state.modal)) return;
+  render();
+}
 
 window.DB = {
   _isLoading: false,
@@ -85,9 +96,7 @@ window.DB = {
       const unsub = fbEscuchar(col, (datos) => {
         this._cache[col] = datos;
         if (_renderTimer) clearTimeout(_renderTimer);
-        _renderTimer = setTimeout(() => {
-          if (typeof render === 'function') render();
-        }, 1500);
+        _renderTimer = setTimeout(() => _renderSeguro(), 1500);
       });
 
       window._unsubscribes.push(unsub);
@@ -110,7 +119,7 @@ window.DB = {
     console.log("▶️ Reanudando listeners...");
     const dinamicas = ['pagos', 'movimientos_cartera', 'gastos', 'cajas', 'notas_cuadre'];
 
-    // Refrescar datos estáticos que pudieron cambiar
+    // Refrescar estáticas que pudieron cambiar
     const estaticas = ['users', 'clientes', 'creditos'];
     await Promise.all(estaticas.map(async col => {
       try { this._cache[col] = await fbGetAll(col); } catch (e) {}
@@ -127,14 +136,12 @@ window.DB = {
       const unsub = fbEscuchar(col, (datos) => {
         this._cache[col] = datos;
         if (_renderTimer) clearTimeout(_renderTimer);
-        _renderTimer = setTimeout(() => {
-          if (typeof render === 'function') render();
-        }, 1500);
+        _renderTimer = setTimeout(() => _renderSeguro(), 1500);
       });
       window._unsubscribes.push(unsub);
     });
 
-    if (typeof render === 'function') render();
+    _renderSeguro();
     console.log("✅ Listeners reanudados");
   },
 
@@ -214,7 +221,7 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
-window.renderIndicadorVivo = function() {
+window.renderIndicadorVivo = function () {
   return `
   <div id="indicador-vivo" style="
     display:flex; align-items:center; gap:6px;
