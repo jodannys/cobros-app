@@ -1,4 +1,3 @@
-
 window.comprimirImagen = function comprimirImagen(base64, maxWidth = 600, calidad = 0.6) {
   return new Promise((resolve) => {
     const img = new Image();
@@ -15,6 +14,30 @@ window.comprimirImagen = function comprimirImagen(base64, maxWidth = 600, calida
   });
 };
 
+// ── Visor de imagen fullscreen ────────────────────────────────
+window.verImagen = function (src) {
+  if (!src || src === window.location.href) return;
+  const overlay = document.createElement('div');
+  overlay.style.cssText = `
+    position:fixed; inset:0; background:rgba(0,0,0,0.92);
+    z-index:99999; display:flex; align-items:center;
+    justify-content:center; padding:20px; cursor:zoom-out;
+    animation:fadeIn 0.2s ease`;
+  overlay.innerHTML = `
+    <img src="${src}" style="max-width:100%; max-height:100%;
+      border-radius:10px; object-fit:contain;
+      box-shadow:0 8px 40px rgba(0,0,0,0.5)">
+    <button onclick="this.parentElement.remove()"
+      style="position:absolute; top:16px; right:16px;
+             background:rgba(255,255,255,0.15); color:white; border:none;
+             width:36px; height:36px; border-radius:50%; font-size:20px;
+             cursor:pointer; display:flex; align-items:center; justify-content:center">
+      ×
+    </button>`;
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+};
+
 window.openModal = function openModal(m) { state.modal = m; render(); };
 window.closeModal = function closeModal(e) {
   state.modal = null;
@@ -24,8 +47,8 @@ window.closeModal = function closeModal(e) {
   state._crPctSeguro = undefined;
   state._movCarteraTipo = null;
   state._movCarteraCobrador = null;
-  state._pagoProcesando = false;    
-  deshabilitarBotonesPago(false);     
+  state._pagoProcesando = false;
+  deshabilitarBotonesPago(false);
   render();
 };
 window.togglePass = function togglePass(id) {
@@ -64,53 +87,9 @@ window.renderModal = function renderModal() {
   else if (m === 'editar-credito')       content = renderModalEditarCredito ? renderModalEditarCredito() : '';
   else if (m === 'historial-cliente')    content = renderModalHistorialCliente();
   else if (m === 'editar-gasto')         content = renderModalEditarGasto();
-  else if (m === 'movimiento-cartera')   content = renderModalMovimientoCartera();  // ← NUEVO
-  else if (m === 'deposito-cobrador')    content = renderModalDepositoCobrador();  
-  else if (m === 'agregar-feriado')      content = renderModalAgregarFeriado(); 
- window.renderSeccionCreditosCliente = function(clienteId) {
-  const todos = (DB._cache['creditos'] || [])
-    .filter(c => c.clienteId === clienteId)
-    .sort((a, b) => new Date(b.creadoEn || 0) - new Date(a.creadoEn || 0));
-
-  const activo = todos.find(c => c.activo === true);
-  const antiguos = todos.filter(c => c.activo !== true);
-
-  return `
-    <div class="contenedor-creditos">
-      ${activo ? renderCreditoCard(activo) : `
-        <div style="text-align:center; padding:20px; color:var(--muted); font-size:13px; background:var(--bg); border-radius:10px">
-          No hay un crédito activo actualmente.
-        </div>
-      `}
-
-      ${antiguos.length > 0 ? `
-        <div style="margin-top:15px">
-          <button onclick="toggleHistorial()" 
-            style="width:100%; padding:12px; background:var(--bg); border:1.5px solid var(--border); 
-                   border-radius:10px; color:var(--text); font-weight:700; font-size:12px; 
-                   display:flex; justify-content:space-between; align-items:center; cursor:pointer">
-            <span>📁 Ver créditos Cerrados (${antiguos.length})</span>
-            <span id="flecha-hist">▼</span>
-          </button>
-          
-          <div id="cajon-historial" style="display:none; margin-top:10px">
-            ${antiguos.map(ant => renderCreditoCard(ant)).join('')}
-          </div>
-        </div>
-      ` : ''}
-    </div>
-  `;
-};
-
-window.toggleHistorial = function() {
-  const cajon = document.getElementById('cajon-historial');
-  const flecha = document.getElementById('flecha-hist');
-  if (!cajon) return;
-  
-  const isHidden = cajon.style.display === 'none';
-  cajon.style.display = isHidden ? 'block' : 'none';
-  flecha.innerText = isHidden ? '▲' : '▼';
-};
+  else if (m === 'movimiento-cartera')   content = renderModalMovimientoCartera();
+  else if (m === 'deposito-cobrador')    content = renderModalDepositoCobrador();
+  else if (m === 'agregar-feriado')      content = renderModalAgregarFeriado();
 
   return `
   <div class="modal-overlay" onclick="closeModal(event)">
@@ -170,22 +149,20 @@ window.renderModalNuevoCliente = function renderModalNuevoCliente() {
   <div class="form-group">
     <label>Foto de casa / negocio</label>
     <label class="upload-btn" for="nFoto"
-  style="display:flex; align-items:center; justify-content:center; gap:8px">
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-       stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-       style="flex-shrink:0">
-    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-    <circle cx="12" cy="13" r="4"/>
-  </svg>
-  <span>Tomar o subir foto</span>
-</label>
+      style="display:flex; align-items:center; justify-content:center; gap:8px">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0">
+        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+        <circle cx="12" cy="13" r="4"/>
+      </svg>
+      <span>Tomar o subir foto</span>
+    </label>
     <input type="file" id="nFoto" accept="image/*" onchange="previewFoto(this,'previewNFoto')">
-    <img id="previewNFoto" style="display:none" class="uploaded-img">
+    <img id="previewNFoto" onclick="verImagen(this.src)"
+      style="display:none; cursor:zoom-in" class="uploaded-img">
   </div>
 
-  <!-- BOTONES -->
   <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:4px">
-
     <button id="btnCheckCredito"
       onclick="
         state.abrirCreditoAlGuardar = !state.abrirCreditoAlGuardar;
@@ -199,13 +176,10 @@ window.renderModalNuevoCliente = function renderModalNuevoCliente() {
              justify-content:center; gap:6px">
       <span>+ Con crédito</span>
     </button>
-
-    <button class="btn btn-primary" onclick="guardarCliente()">
-      Guardar Cliente
-    </button>
-
+    <button class="btn btn-primary" onclick="guardarCliente()">Guardar Cliente</button>
   </div>`;
 };
+
 // ── MODAL EDITAR CLIENTE ──────────────────────────────────────
 window.renderModalEditarCliente = function renderModalEditarCliente() {
   const c = state.selectedClient;
@@ -254,30 +228,28 @@ window.renderModalEditarCliente = function renderModalEditarCliente() {
   </div>` : ''}
 
   <div class="form-group" style="display:flex; flex-direction:column; align-items:center; gap:12px">
-  
-  <label style="align-self:flex-start; margin-bottom:4px">Foto</label>
-
-  <label class="upload-btn" for="eFoto"
-         style="display:flex; align-items:center; justify-content:center; gap:8px; width:100%">
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-         stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-         style="flex-shrink:0">
-      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-      <circle cx="12" cy="13" r="4"/>
-    </svg>
-    <span>Cambiar foto</span>
-  </label>
-
-  <input type="file" id="eFoto" accept="image/*" capture="environment" 
-         style="display:none" onchange="previewFoto(this,'previewEFoto')">
-
-  <div style="width:100%; display:flex; justify-content:center">
-    ${c.foto
-      ? `<img src="${c.foto}" class="uploaded-img" id="previewEFoto" style="margin:0; max-width:180px; height:auto">`
-      : `<img id="previewEFoto" style="display:none; margin:0; max-width:180px; height:auto" class="uploaded-img">`}
+    <label style="align-self:flex-start; margin-bottom:4px">Foto</label>
+    <label class="upload-btn" for="eFoto"
+           style="display:flex; align-items:center; justify-content:center; gap:8px; width:100%">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0">
+        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+        <circle cx="12" cy="13" r="4"/>
+      </svg>
+      <span>Cambiar foto</span>
+    </label>
+    <input type="file" id="eFoto" accept="image/*" capture="environment"
+           style="display:none" onchange="previewFoto(this,'previewEFoto')">
+    <div style="width:100%; display:flex; justify-content:center">
+      ${c.foto
+        ? `<img src="${c.foto}" class="uploaded-img" id="previewEFoto"
+               onclick="verImagen(this.src)"
+               style="margin:0; max-width:100%; height:auto; cursor:zoom-in">`
+        : `<img id="previewEFoto" onclick="verImagen(this.src)"
+               style="display:none; margin:0; max-width:100%; height:auto; cursor:zoom-in"
+               class="uploaded-img">`}
+    </div>
   </div>
-
-</div>
 
   <button class="btn btn-primary" onclick="actualizarCliente()">Actualizar Cliente</button>
 
@@ -296,7 +268,7 @@ window.renderModalNuevoCredito = function renderModalNuevoCredito() {
   <div class="modal-handle"></div>
   <div class="modal-title">Nuevo Crédito</div>
 
- <div class="form-group">
+  <div class="form-group">
     <label>Plan de crédito</label>
     <select class="form-control" id="crPlan" onchange="calcularCredito()">
       <option value="A">24 días — 20% interés</option>
@@ -308,11 +280,11 @@ window.renderModalNuevoCredito = function renderModalNuevoCredito() {
     <label>Monto a prestar (S/) *</label>
     <input class="form-control" id="crMonto" type="number" placeholder="1000" oninput="calcularCredito()">
   </div>
+
   <!-- MICRO SEGURO -->
   <div style="background:${seguroActivo ? '#eff6ff' : 'var(--bg)'}; border-radius:10px;
               padding:12px 14px; margin-bottom:12px;
               border:1.5px solid ${seguroActivo ? '#bfdbfe' : 'var(--border)'}">
-
     <div style="display:flex; justify-content:space-between; align-items:center;
                 margin-bottom:${seguroActivo ? '12px' : '0'}">
       <div>
@@ -332,7 +304,6 @@ window.renderModalNuevoCredito = function renderModalNuevoCredito() {
         </span>
       </label>
     </div>
-
     ${seguroActivo ? `
     <div style="display:flex; align-items:center; gap:8px">
       <label style="font-size:12px; color:var(--muted); white-space:nowrap">% Seguro:</label>
@@ -365,7 +336,6 @@ window.renderModalNuevoCredito = function renderModalNuevoCredito() {
         <div class="info-value" id="crPlazo">24 días</div>
       </div>
     </div>
-
     <div id="crSeguroPreview" style="display:none; margin-top:10px; padding-top:10px;
                                      border-top:1px solid var(--border)">
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px">
@@ -393,20 +363,21 @@ window.renderModalNuevoCredito = function renderModalNuevoCredito() {
   </div>
 
   <div class="form-group">
-  <label>¿Cómo entregas el dinero? *</label>
-  <select class="form-control" id="crMetodoPago"
-    style="font-weight:600; border:1.5px solid var(--primary); cursor:pointer">
-    <option value="Efectivo">💵 Efectivo</option>
-    <option value="Yape">📱 Yape / Plin</option>
-    <option value="Transferencia">🏦 Transferencia</option>
-  </select>
-</div>
+    <label>¿Cómo entregas el dinero? *</label>
+    <select class="form-control" id="crMetodoPago"
+      style="font-weight:600; border:1.5px solid var(--primary); cursor:pointer">
+      <option value="Efectivo">💵 Efectivo</option>
+      <option value="Yape">📱 Yape / Plin</option>
+      <option value="Transferencia">🏦 Transferencia</option>
+    </select>
+  </div>
 
   <button class="btn btn-primary" style="height:48px; font-size:15px; font-weight:700"
     onclick="guardarCredito()">
     Crear Crédito
   </button>`;
 };
+
 // ── MODAL NUEVO USUARIO ───────────────────────────────────────
 window.renderModalNuevoUsuario = function renderModalNuevoUsuario() {
   return `
@@ -436,13 +407,8 @@ window.renderModalNuevoUsuario = function renderModalNuevoUsuario() {
       <button type="button" onclick="
         const inp = document.getElementById('uPass');
         const btn = this;
-        if(inp.type === 'password') {
-          inp.type = 'text';
-          btn.style.color = 'var(--primary)';
-        } else {
-          inp.type = 'password';
-          btn.style.color = 'var(--muted)';
-        }"
+        if(inp.type === 'password') { inp.type = 'text'; btn.style.color = 'var(--primary)'; }
+        else { inp.type = 'password'; btn.style.color = 'var(--muted)'; }"
         style="position:absolute; right:12px; top:50%; transform:translateY(-50%);
                border:none; background:none; cursor:pointer;
                color:var(--muted); display:flex; align-items:center">
@@ -468,95 +434,93 @@ window.renderModalNuevoUsuario = function renderModalNuevoUsuario() {
 
 // ── MODAL GESTIONAR CRÉDITO ───────────────────────────────────
 window.renderModalGestionarCredito = function renderModalGestionarCredito() {
-    const cr = state.selectedCredito;
-    const c = state.selectedClient;
-    if (!cr || !c) return '';
+  const cr = state.selectedCredito;
+  const c = state.selectedClient;
+  if (!cr || !c) return '';
 
-    const pagos = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id);
-    const totalPagado = pagos.reduce((s, p) => s + (Number(p.monto) || 0), 0);
-    const saldoBase = Number(cr.total || 0) - totalPagado;
+  const pagos = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id);
+  const totalPagado = pagos.reduce((s, p) => s + (Number(p.monto) || 0), 0);
+  const saldoBase = Number(cr.total || 0) - totalPagado;
 
-    const infoMora = (typeof obtenerDatosMora === 'function') 
-        ? obtenerDatosMora(cr) 
-        : { total: 0, dias: 0, esVencido: false, diasInactivo: 0, diasVencido: 0 };
+  const infoMora = (typeof obtenerDatosMora === 'function')
+    ? obtenerDatosMora(cr)
+    : { total: 0, dias: 0, esVencido: false, diasInactivo: 0, diasVencido: 0 };
 
-    const mora = Number(infoMora?.total || 0);
-    const mostrarAlertaRoja = infoMora.esVencido || infoMora.diasInactivo >= 2;
-    
-    let textoBadge = "";
-    if (infoMora.esVencido) {
-        textoBadge = `🔴 Vencido (${infoMora.diasVencido} días)`;
-    } else if (infoMora.diasInactivo >= 2) {
-        textoBadge = `⚠️ Sin pagar (${infoMora.diasInactivo} días)`;
-    }
+  const mora = Number(infoMora?.total || 0);
+  const mostrarAlertaRoja = infoMora.esVencido || infoMora.diasInactivo >= 2;
 
-    return `
-    <div class="modal-handle"></div>
-    <div class="modal-title">⚙️ Gestionar Crédito</div>
-    <div style="border:2px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px">
+  let textoBadge = "";
+  if (infoMora.esVencido) {
+    textoBadge = `🔴 Vencido (${infoMora.diasVencido} días)`;
+  } else if (infoMora.diasInactivo >= 2) {
+    textoBadge = `⚠️ Sin pagar (${infoMora.diasInactivo} días)`;
+  }
+
+  return `
+  <div class="modal-handle"></div>
+  <div class="modal-title">⚙️ Gestionar Crédito</div>
+
+  <div style="border:2px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px">
     <div style="font-weight:700;margin-bottom:10px">⚖️ Penalidad por Atraso</div>
-    <button class="btn btn-sm" 
-      style="width:100%; height:40px; font-weight:700; 
-             background:${cr.mora_activa ? '#fff5f5' : '#f0fff4'}; 
-             color:${cr.mora_activa ? 'var(--danger)' : 'var(--success)'}; 
+    <button class="btn btn-sm"
+      style="width:100%; height:40px; font-weight:700;
+             background:${cr.mora_activa ? '#fff5f5' : '#f0fff4'};
+             color:${cr.mora_activa ? 'var(--danger)' : 'var(--success)'};
              border:2px solid ${cr.mora_activa ? '#fed7d7' : '#c6f6d5'}"
-      onclick="console.log('Click en Toggle Mora'); toggleMora('${cr.id}', ${!cr.mora_activa})">
+      onclick="toggleMora('${cr.id}', ${!cr.mora_activa})">
       ${cr.mora_activa ? '🔕 Desactivar Mora (S/ 5.00)' : '🔔 Activar Mora (S/ 5.00)'}
     </button>
     <p style="font-size:11px; color:var(--muted); margin-top:8px; text-align:center; line-height:1.2">
-        ${cr.mora_activa 
-          ? 'La mora está activa y sumando al "Total Pendiente".' 
-          : 'La mora está desactivada para este cliente.'}
+      ${cr.mora_activa
+        ? 'La mora está activa y sumando al "Total Pendiente".'
+        : 'La mora está desactivada para este cliente.'}
     </p>
   </div>
 
-
-    <div style="background:var(--bg);border-radius:12px;padding:14px;margin-bottom:16px">
-        <div style="font-weight:700;font-size:16px;margin-bottom:8px">${c.nombre}</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-            ${mostrarAlertaRoja ? 
-                `<span style="background:#fff5f5;color:var(--danger);padding:4px 10px;border-radius:20px;font-size:12px;font-weight:700;border:1px solid #fed7d7">${textoBadge}</span>` : 
-                `<span style="background:#f0f9ff;color:#0369a1;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:500;border:1px solid #bae6fd">🟢 Al día</span>`
-            }
-            <span style="background:#fef2f2;color:var(--danger);padding:4px 10px;border-radius:20px;font-size:12px;font-weight:500;border:1px solid #fee2e2">
-                Total Pendiente: ${formatMoney(saldoBase + mora)}
-            </span>
-        </div>
+  <div style="background:var(--bg);border-radius:12px;padding:14px;margin-bottom:16px">
+    <div style="font-weight:700;font-size:16px;margin-bottom:8px">${c.nombre}</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      ${mostrarAlertaRoja
+        ? `<span style="background:#fff5f5;color:var(--danger);padding:4px 10px;border-radius:20px;font-size:12px;font-weight:700;border:1px solid #fed7d7">${textoBadge}</span>`
+        : `<span style="background:#f0f9ff;color:#0369a1;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:500;border:1px solid #bae6fd">🟢 Al día</span>`}
+      <span style="background:#fef2f2;color:var(--danger);padding:4px 10px;border-radius:20px;font-size:12px;font-weight:500;border:1px solid #fee2e2">
+        Total Pendiente: ${formatMoney(saldoBase + mora)}
+      </span>
     </div>
+  </div>
 
-    <div style="border:2px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px">
-        <div style="font-weight:500;margin-bottom:10px">📅 Extender plazo</div>
-        <div class="form-group" style="margin-bottom:8px">
-            <label style="font-size:12px;color:var(--muted)">Días adicionales (actual: ${cr.diasTotal || 0} días)</label>
-            <input class="form-control" id="extDias" type="number" placeholder="Ej: 5" min="1">
-        </div>
-        <button class="btn btn-primary btn-sm" style="width:100%" onclick="extenderCredito()">Aplicar Extensión</button>
+  <div style="border:2px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px">
+    <div style="font-weight:500;margin-bottom:10px">📅 Extender plazo</div>
+    <div class="form-group" style="margin-bottom:8px">
+      <label style="font-size:12px;color:var(--muted)">Días adicionales (actual: ${cr.diasTotal || 0} días)</label>
+      <input class="form-control" id="extDias" type="number" placeholder="Ej: 5" min="1">
     </div>
+    <button class="btn btn-primary btn-sm" style="width:100%" onclick="extenderCredito()">Aplicar Extensión</button>
+  </div>
 
-    <div style="border:2px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px">
-        <div style="font-weight:500;margin-bottom:10px">🤝 Fecha de compromiso</div>
-        <div class="form-group" style="margin-bottom:8px">
-            <input class="form-control" id="fechaCompromiso" type="date" value="${cr.fechaCompromiso || ''}">
-        </div>
-        <button class="btn btn-primary btn-sm" style="width:100%" onclick="guardarCompromiso()">Guardar compromiso</button>
+  <div style="border:2px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px">
+    <div style="font-weight:500;margin-bottom:10px">🤝 Fecha de compromiso</div>
+    <div class="form-group" style="margin-bottom:8px">
+      <input class="form-control" id="fechaCompromiso" type="date" value="${cr.fechaCompromiso || ''}">
     </div>
+    <button class="btn btn-primary btn-sm" style="width:100%" onclick="guardarCompromiso()">Guardar compromiso</button>
+  </div>
 
-    <div style="border:2px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px">
-        <div style="font-weight:700;margin-bottom:10px">📝 Nota del crédito</div>
-        <textarea class="form-control" id="notaCredito" style="resize:none;height:80px"
-            placeholder="Escribe aquí observaciones sobre el cliente...">${cr.nota || ''}</textarea>
-        <button class="btn btn-primary btn-sm" style="width:100%;margin-top:8px" onclick="guardarNotaCredito()">Guardar nota</button>
-    </div>`;
+  <div style="border:2px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px">
+    <div style="font-weight:700;margin-bottom:10px">📝 Nota del crédito</div>
+    <textarea class="form-control" id="notaCredito" style="resize:none;height:80px"
+      placeholder="Escribe aquí observaciones sobre el cliente...">${cr.nota || ''}</textarea>
+    <button class="btn btn-primary btn-sm" style="width:100%;margin-top:8px" onclick="guardarNotaCredito()">Guardar nota</button>
+  </div>`;
 };
+
 // ── MODAL BANNER ALERTAS ──────────────────────────────────────
 window.renderModalBannerAlertas = function renderModalBannerAlertas() {
   const alertas = getAlertasCreditos();
-  const pagos = DB._cache['pagos'] || [];
 
   return `
   <div class="modal-handle"></div>
 
-  <!-- HEADER -->
   <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px;
               background:#fff1f2; padding:14px 16px; border-radius:10px;">
     <span style="font-size:28px; flex-shrink:0">🚨</span>
@@ -568,78 +532,65 @@ window.renderModalBannerAlertas = function renderModalBannerAlertas() {
     </div>
   </div>
 
-  <!-- LISTA -->
   <div style="max-height:400px; overflow-y:auto; scrollbar-width:thin;">
-    ${alertas.length === 0 ?
-      `<div style="text-align:center; padding:24px; color:var(--muted); font-size:13.5px">
-         ✅ No hay alertas pendientes
-       </div>` :
-      alertas.map(a => {
-        const colorAlerta = a.tipo === 'vencido' ? 'var(--danger)' : 'var(--warning)';
-        const bgAlerta   = a.tipo === 'vencido' ? '#fff1f2' : '#fffbeb';
-        const icon       = a.tipo === 'vencido' ? '🚩' : '⏳';
-        const statusText = a.tipo === 'vencido'
-          ? `Vencido hace ${a.dias || 0} días`
-          : `Sin abonar ${a.dias || 0} días`;
-
-        return `
-        <div style="background:white; border-radius:10px; padding:14px 14px 14px 18px;
-                    margin-bottom:10px; box-shadow:var(--shadow);
-                    position:relative; overflow:hidden;">
-
-          <!-- LÍNEA LATERAL -->
-          <div style="position:absolute; left:0; top:0; bottom:0; width:3px;
-                      background:${colorAlerta}; border-radius:3px 0 0 3px"></div>
-
-          <!-- FILA SUPERIOR -->
-          <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:12px">
-            <div style="flex:1; min-width:0">
-              <div style="font-weight:700; font-size:14.5px; color:var(--text);
-                          white-space:nowrap; overflow:hidden; text-overflow:ellipsis">
-                ${a.cliente?.nombre || 'Cliente sin nombre'}
+    ${alertas.length === 0
+      ? `<div style="text-align:center; padding:24px; color:var(--muted); font-size:13.5px">
+           ✅ No hay alertas pendientes
+         </div>`
+      : alertas.map(a => {
+          const colorAlerta = a.tipo === 'vencido' ? 'var(--danger)' : 'var(--warning)';
+          const bgAlerta    = a.tipo === 'vencido' ? '#fff1f2' : '#fffbeb';
+          const icon        = a.tipo === 'vencido' ? '🚩' : '⏳';
+          const statusText  = a.tipo === 'vencido'
+            ? `Vencido hace ${a.dias || 0} días`
+            : `Sin abonar ${a.dias || 0} días`;
+          return `
+          <div style="background:white; border-radius:10px; padding:14px 14px 14px 18px;
+                      margin-bottom:10px; box-shadow:var(--shadow); position:relative; overflow:hidden;">
+            <div style="position:absolute; left:0; top:0; bottom:0; width:3px;
+                        background:${colorAlerta}; border-radius:3px 0 0 3px"></div>
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:12px">
+              <div style="flex:1; min-width:0">
+                <div style="font-weight:700; font-size:14.5px; color:var(--text);
+                            white-space:nowrap; overflow:hidden; text-overflow:ellipsis">
+                  ${a.cliente?.nombre || 'Cliente sin nombre'}
+                </div>
+                <div style="font-size:11.5px; color:var(--muted); margin-top:3px">
+                  👤 ${a.cobrador?.nombre || 'Sin cobrador'}
+                </div>
               </div>
-              <div style="font-size:11.5px; color:var(--muted); margin-top:3px">
-                👤 ${a.cobrador?.nombre || 'Sin cobrador'}
-              </div>
-            </div>
-            <div style="text-align:right; flex-shrink:0">
-              <div style="font-size:10px; font-weight:700; color:var(--muted);
-                          text-transform:uppercase; letter-spacing:0.5px">Saldo</div>
-              <div style="font-size:16px; font-weight:800; color:${colorAlerta}; letter-spacing:-0.3px">
-                ${formatMoney(a.saldo)}
+              <div style="text-align:right; flex-shrink:0">
+                <div style="font-size:10px; font-weight:700; color:var(--muted);
+                            text-transform:uppercase; letter-spacing:0.5px">Saldo</div>
+                <div style="font-size:16px; font-weight:800; color:${colorAlerta}; letter-spacing:-0.3px">
+                  ${formatMoney(a.saldo)}
+                </div>
               </div>
             </div>
-          </div>
-
-          <!-- FILA INFERIOR -->
-          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;
-                      padding-top:10px; border-top:1px solid var(--border)">
-            <div style="background:${bgAlerta}; color:${colorAlerta};
-                        padding:4px 10px; border-radius:6px;
-                        font-size:10.5px; font-weight:700;
-                        display:flex; align-items:center; gap:5px">
-              ${icon} ${statusText}
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;
+                        padding-top:10px; border-top:1px solid var(--border)">
+              <div style="background:${bgAlerta}; color:${colorAlerta}; padding:4px 10px;
+                          border-radius:6px; font-size:10.5px; font-weight:700;
+                          display:flex; align-items:center; gap:5px">
+                ${icon} ${statusText}
+              </div>
+              <button onclick="closeModal(event); selectClient('${a.cliente?.id}')"
+                style="background:#0f172a; color:white; border:none; padding:7px 14px;
+                       border-radius:8px; font-size:12px; font-weight:600; cursor:pointer;
+                       display:flex; align-items:center; gap:5px; flex-shrink:0">
+                Gestionar <span>→</span>
+              </button>
             </div>
-            <button onclick="closeModal(event); selectClient('${a.cliente?.id}')"
-              style="background:#0f172a; color:white; border:none;
-                     padding:7px 14px; border-radius:8px;
-                     font-size:12px; font-weight:600; cursor:pointer;
-                     display:flex; align-items:center; gap:5px; flex-shrink:0">
-              Gestionar <span>→</span>
-            </button>
-          </div>
-
-        </div>`;
-      }).join('')
-    }
+          </div>`;
+        }).join('')}
   </div>
 
-  <!-- BOTONES -->
   <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:16px">
     <button class="btn btn-outline" onclick="closeModal(event)">Cerrar</button>
     <button class="btn btn-primary" onclick="closeModal(event); navigate('admin')">Panel Admin</button>
   </div>`;
 };
+
 // ── MODAL EDITAR USUARIO ──────────────────────────────────────
 window.renderModalEditarUsuario = function renderModalEditarUsuario() {
   const users = DB._cache['users'] || [];
@@ -670,27 +621,21 @@ window.renderModalEditarUsuario = function renderModalEditarUsuario() {
     <label>Nueva contraseña</label>
     <div style="position:relative">
       <input class="form-control" id="euPass" type="password"
-        placeholder="Dejar vacío para no cambiar"
-        style="padding-right:44px">
+        placeholder="Dejar vacío para no cambiar" style="padding-right:44px">
       <button type="button" onclick="
-  const inp = document.getElementById('euPass');
-  const btn = this;
-  if(inp.type === 'password') {
-    inp.type = 'text';
-    btn.style.color = 'var(--primary)';
-  } else {
-    inp.type = 'password';
-    btn.style.color = 'var(--muted)';
-  }"
-  style="position:absolute; right:12px; top:50%; transform:translateY(-50%);
-         border:none; background:none; cursor:pointer;
-         color:var(--muted); display:flex; align-items:center">
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-       stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-    <circle cx="12" cy="12" r="3"/>
-  </svg>
-</button>
+        const inp = document.getElementById('euPass');
+        const btn = this;
+        if(inp.type === 'password') { inp.type = 'text'; btn.style.color = 'var(--primary)'; }
+        else { inp.type = 'password'; btn.style.color = 'var(--muted)'; }"
+        style="position:absolute; right:12px; top:50%; transform:translateY(-50%);
+               border:none; background:none; cursor:pointer;
+               color:var(--muted); display:flex; align-items:center">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+          <circle cx="12" cy="12" r="3"/>
+        </svg>
+      </button>
     </div>
   </div>
 
@@ -711,6 +656,7 @@ window.renderModalEditarUsuario = function renderModalEditarUsuario() {
       </button>
     </div>` : ''}`;
 };
+
 // ── MODAL EDITAR / CREAR ADMIN ────────────────────────────────
 window.renderModalEditarAdmin = function renderModalEditarAdmin() {
   const u = state._editingAdmin;
@@ -723,16 +669,13 @@ window.renderModalEditarAdmin = function renderModalEditarAdmin() {
   <div class="form-group">
     <label>Nombre completo *</label>
     <input class="form-control" id="adNombre"
-      value="${u ? u.nombre : ''}"
-      placeholder="Nombre del admin">
+      value="${u ? u.nombre : ''}" placeholder="Nombre del admin">
   </div>
 
   <div class="form-group">
     <label>Usuario *</label>
     <input class="form-control" id="adUser"
-      value="${u ? u.user : ''}"
-      placeholder="usuario"
-      autocomplete="off">
+      value="${u ? u.user : ''}" placeholder="usuario" autocomplete="off">
   </div>
 
   <div class="form-group">
@@ -742,24 +685,19 @@ window.renderModalEditarAdmin = function renderModalEditarAdmin() {
         placeholder="${isNew ? '••••••••' : 'Dejar vacío para no cambiar'}"
         style="padding-right:44px">
       <button type="button" onclick="
-  const inp = document.getElementById('adPass');
-  const btn = this;
-  if(inp.type === 'password') {
-    inp.type = 'text';
-    btn.style.color = 'var(--primary)';
-  } else {
-    inp.type = 'password';
-    btn.style.color = 'var(--muted)';
-  }"
-  style="position:absolute; right:12px; top:50%; transform:translateY(-50%);
-         border:none; background:none; cursor:pointer;
-         color:var(--muted); display:flex; align-items:center">
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-       stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-    <circle cx="12" cy="12" r="3"/>
-  </svg>
-</button>
+        const inp = document.getElementById('adPass');
+        const btn = this;
+        if(inp.type === 'password') { inp.type = 'text'; btn.style.color = 'var(--primary)'; }
+        else { inp.type = 'password'; btn.style.color = 'var(--muted)'; }"
+        style="position:absolute; right:12px; top:50%; transform:translateY(-50%);
+               border:none; background:none; cursor:pointer;
+               color:var(--muted); display:flex; align-items:center">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+          <circle cx="12" cy="12" r="3"/>
+        </svg>
+      </button>
     </div>
   </div>
 
@@ -821,7 +759,7 @@ window.guardarAdmin = async function guardarAdmin(idExistente) {
 window.renderModalHistorialCliente = function renderModalHistorialCliente() {
   const { c, creditos, pagos, cobrador } = state._historialCliente;
   const totalPagado = pagos.reduce((s, p) => s + p.monto, 0);
-  
+
   return `
   <div class="modal-handle"></div>
   <div class="modal-title">📋 ${c.nombre}</div>
@@ -866,7 +804,9 @@ window.renderModalHistorialCliente = function renderModalHistorialCliente() {
         </div>
         <div style="background:${saldoCr > 0 ? '#fff5f5' : '#f0fff4'};border-radius:8px;padding:8px;font-size:12px">
           <div style="color:${saldoCr > 0 ? 'var(--danger)' : '#276749'}">Saldo</div>
-          <div style="font-weight:800;color:${saldoCr > 0 ? 'var(--danger)' : '#276749'}">${saldoCr > 0 ? formatMoney(saldoCr) : '✓ Saldado'}</div>
+          <div style="font-weight:800;color:${saldoCr > 0 ? 'var(--danger)' : '#276749'}">
+            ${saldoCr > 0 ? formatMoney(saldoCr) : '✓ Saldado'}
+          </div>
         </div>
       </div>
       <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px">PAGOS:</div>
@@ -900,25 +840,17 @@ window.compartirWhatsAppHistorial = function compartirWhatsAppHistorial() {
   enviarEstadoWhatsApp(state._historialCliente.c.id);
 };
 
-window.aplicarRestriccionMontos = function() {
-  // Buscamos todos los inputs que tengan la clase 'monto-control'
+window.aplicarRestriccionMontos = function () {
   const inputs = document.querySelectorAll('.monto-control');
-  
   inputs.forEach(input => {
-    // 1. Forzamos el teclado numérico en móviles
     input.setAttribute('inputmode', 'decimal');
-    
-    // 2. Evitamos que la rueda del ratón cambie el valor
-    input.addEventListener('wheel', function(e) {
+    input.addEventListener('wheel', function (e) {
       e.preventDefault();
     }, { passive: false });
-
-    // 3. Filtro de seguridad: Solo números y un punto
-    input.addEventListener('input', function() {
+    input.addEventListener('input', function () {
       this.value = this.value
-        .replace(/[^0-9.]/g, '') // Quita letras
-        .replace(/(\..*?)\..*/g, '$1'); // Evita dos puntos decimales
+        .replace(/[^0-9.]/g, '')
+        .replace(/(\..*?)\..*/g, '$1');
     });
   });
 };
-
