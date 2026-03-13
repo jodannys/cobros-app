@@ -67,7 +67,7 @@ window.DB = {
       }
     }));
 
-    // 2. Limpiar listeners anteriores antes de crear nuevos
+    // 2. Limpiar listeners anteriores
     if (window._unsubscribes) {
       window._unsubscribes.forEach(unsub => unsub());
       console.log("🧹 Listeners anteriores eliminados");
@@ -94,6 +94,48 @@ window.DB = {
     });
 
     console.log("✅ Listo. Tiempo real activo en: " + dinamicas.join(', '));
+  },
+
+  // ── Pausar listeners (ahorra lecturas en segundo plano) ──
+  pausarListeners() {
+    if (window._unsubscribes && window._unsubscribes.length > 0) {
+      window._unsubscribes.forEach(unsub => unsub());
+      window._unsubscribes = [];
+      console.log("⏸️ Listeners pausados (app en segundo plano)");
+    }
+  },
+
+  // ── Reanudar listeners y refrescar datos ──
+  async reanudarListeners() {
+    console.log("▶️ Reanudando listeners...");
+    const dinamicas = ['pagos', 'movimientos_cartera', 'gastos', 'cajas', 'notas_cuadre'];
+
+    // Refrescar datos estáticos que pudieron cambiar
+    const estaticas = ['users', 'clientes', 'creditos'];
+    await Promise.all(estaticas.map(async col => {
+      try { this._cache[col] = await fbGetAll(col); } catch (e) {}
+    }));
+
+    if (window._unsubscribes) {
+      window._unsubscribes.forEach(unsub => unsub());
+    }
+    window._unsubscribes = [];
+
+    let _renderTimer = null;
+
+    dinamicas.forEach(col => {
+      const unsub = fbEscuchar(col, (datos) => {
+        this._cache[col] = datos;
+        if (_renderTimer) clearTimeout(_renderTimer);
+        _renderTimer = setTimeout(() => {
+          if (typeof render === 'function') render();
+        }, 1500);
+      });
+      window._unsubscribes.push(unsub);
+    });
+
+    if (typeof render === 'function') render();
+    console.log("✅ Listeners reanudados");
   },
 
   async ejecutarMantenimientoManual() {
@@ -163,16 +205,25 @@ window.DB = {
   }
 };
 
+// ── Pausar/reanudar según visibilidad de la pestaña ──────────
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') {
+    DB.pausarListeners();
+  } else {
+    DB.reanudarListeners();
+  }
+});
+
 window.renderIndicadorVivo = function() {
   return `
   <div id="indicador-vivo" style="
     display:flex; align-items:center; gap:6px;
-    background:rgba(34,197,94,0.1); 
+    background:rgba(34,197,94,0.1);
     border:1px solid rgba(34,197,94,0.3);
     border-radius:20px; padding:4px 10px;
     font-size:11px; font-weight:700; color:#16a34a">
     <span style="
-      width:7px; height:7px; border-radius:50%; 
+      width:7px; height:7px; border-radius:50%;
       background:#22c55e;
       box-shadow:0 0 0 0 rgba(34,197,94,0.4);
       animation:pulso-vivo 1.5s infinite">
