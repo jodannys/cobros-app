@@ -48,7 +48,7 @@ window.calcularMetaReal = function (cobradorId, fecha) {
     .filter(c => c.cobradorId === cobradorId)
     .map(c => c.id);
 
-  const creditosActivos = creditos.filter(cr =>
+  const creditosTodos = creditos.filter(cr =>
     misClientesIds.includes(cr.clienteId) &&
     cr.activo === true &&
     cr.fechaInicio <= fecha &&
@@ -56,11 +56,13 @@ window.calcularMetaReal = function (cobradorId, fecha) {
   );
 
   let metaTotal = 0, pagadoHoy = 0, pendiente = 0;
+  let totalVencidos = 0, clientesVencidos = 0;
   const detalle = [];
 
-  creditosActivos.forEach(cr => {
+  creditosTodos.forEach(cr => {
     const cliente  = clientes.find(c => c.id === cr.clienteId);
     const cuota    = Number(cr.cuotaDiaria) || 0;
+    const vencido  = cr.fechaFin < fecha;
 
     const pagosNoEliminados = pagos.filter(p => p.creditoId === cr.id && !p.eliminado);
     const pagosHoy          = pagosNoEliminados.filter(p => p.fecha === fecha);
@@ -71,21 +73,25 @@ window.calcularMetaReal = function (cobradorId, fecha) {
     const cuotasDebidas     = Math.min(diasTranscurridos, cr.diasTotal);
     const montoDebido       = cuotasDebidas * cuota;
     const alDia             = totalPagado >= (montoDebido - 0.5);
+    const deudaAcumulada    = Math.max(0, montoDebido - totalPagado);
 
-    // ── SIEMPRE suma la cuota a la meta ──
-    metaTotal += cuota;
-    // ── SIEMPRE suma lo pagado hoy (aunque esté al día) ──
-    pagadoHoy += Math.min(montoPagadoHoy, cuota);
-
-    if (!alDia) {
-      pendiente += cuota;
+    if (vencido) {
+      // Vencido: no suma a meta diaria, solo al resumen de vencidos
+      if (deudaAcumulada > 0) {
+        totalVencidos += deudaAcumulada;
+        clientesVencidos++;
+      }
+    } else {
+      // Vigente: suma a meta diaria normal
+      metaTotal += cuota;
+      pagadoHoy += Math.min(montoPagadoHoy, cuota);
+      if (!alDia) pendiente += cuota;
     }
 
-    const deudaAcumulada = Math.max(0, montoDebido - totalPagado);
-    detalle.push({ cliente, cr, cuota, montoPagadoHoy, completo: alDia, deudaAcumulada });
+    detalle.push({ cliente, cr, cuota, montoPagadoHoy, completo: alDia, deudaAcumulada, vencido });
   });
 
-  return { metaTotal, pagadoHoy, pendiente, detalle };
+  return { metaTotal, pagadoHoy, pendiente, detalle, totalVencidos, clientesVencidos };
 };
 
 window.guardarNota = async function () {
@@ -328,12 +334,27 @@ window.renderCuadre = function () {
         </div>
       </div>
 
-      <div style="background:var(--bg); border-radius:4px; height:5px; overflow:hidden; margin-bottom:10px;
+    <div style="background:var(--bg); border-radius:4px; height:5px; overflow:hidden; margin-bottom:10px;
                   border:1px solid var(--border)">
         <div style="width:${meta.metaTotal > 0 ? Math.min(100, meta.pagadoHoy / meta.metaTotal * 100) : 0}%;
                     background:${metaAlcanzada ? '#22c55e' : 'linear-gradient(90deg,#0f172a,#2563eb)'};
                     height:100%; border-radius:4px; transition:width 0.6s cubic-bezier(0.4,0,0.2,1)"></div>
       </div>
+
+      ${meta.totalVencidos > 0 ? `
+      <div style="background:#fff7ed; border-radius:8px; padding:10px 12px; margin-bottom:10px;
+                  border-left:3px solid #f97316; display:flex; justify-content:space-between; align-items:center">
+        <div>
+          <div style="font-size:11px; font-weight:700; color:#c2410c; text-transform:uppercase;
+                      letter-spacing:0.4px">⚠️ Vencidos por cobrar</div>
+          <div style="font-size:11px; color:#9a3412; margin-top:2px">
+            ${meta.clientesVencidos} cliente${meta.clientesVencidos > 1 ? 's' : ''}
+          </div>
+        </div>
+        <div style="font-size:18px; font-weight:900; color:#c2410c">
+          ${formatMoney(meta.totalVencidos)}
+        </div>
+      </div>` : ''}
 
       ${segurosHoy > 0 ? `
         <div style="background:#eff6ff; border-radius:8px; padding:8px 12px; margin-bottom:10px;
