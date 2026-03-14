@@ -44,7 +44,6 @@ window.calcularMetaReal = function (cobradorId, fecha) {
 
   const creditosActivos = creditos.filter(cr =>
     misClientesIds.includes(cr.clienteId) &&
-
     cr.activo === true &&
     cr.fechaInicio <= fecha &&
     esDiaLaboral(fecha)
@@ -57,30 +56,24 @@ window.calcularMetaReal = function (cobradorId, fecha) {
     const cliente = clientes.find(c => c.id === cr.clienteId);
     const cuota = Number(cr.cuotaDiaria) || 0;
 
-    // Pagos de HOY para este crédito
     const pagosHoy = pagos.filter(p => p.creditoId === cr.id && p.fecha === fecha);
     const montoPagadoHoy = pagosHoy.reduce((s, p) => s + Number(p.monto), 0);
 
-    // Total pagado HISTÓRICO para saber si ya está al día
     const totalPagado = pagos
       .filter(p => p.creditoId === cr.id)
       .reduce((s, p) => s + Number(p.monto), 0);
 
-    // Cuántas cuotas debería tener pagadas hasta hoy
     const diasTranscurridos = Math.max(0, contarDiasHabiles(cr.fechaInicio, fecha));
     const cuotasDebidas = Math.min(diasTranscurridos, cr.diasTotal);
     const montoDebido = cuotasDebidas * cuota;
 
-    // Está al día si pagó lo que debería hasta hoy
     const alDia = totalPagado >= (montoDebido - 0.5);
 
-    // Solo suma a la meta si el cliente NO está al día
     if (!alDia) {
       metaTotal += cuota;
       pagadoHoy += Math.min(montoPagadoHoy, cuota);
     }
 
-    // Solo aparece como pendiente si NO está al día
     if (!alDia) pendiente += cuota;
 
     const deudaAcumulada = Math.max(0, montoDebido - totalPagado);
@@ -257,6 +250,37 @@ window.renderCuadre = function () {
   const meta = calcularMetaReal(userId, hoyC);
   const caja = getCajaChicaDelDia(userId, hoyC);
 
+ // ── Exponer detalle para el mapa ──
+  window._metaDetalle = meta.detalle;
+
+  // ── Ordenar clientes por distancia o por nombre ──
+  const clientesPendientes = meta.detalle.filter(d => !d.completo);
+
+  if (state.miUbicacion) {
+    clientesPendientes.sort((a, b) => {
+      const dA = calcularDistancia(
+        state.miUbicacion.lat, state.miUbicacion.lng,
+        a.cliente?.lat, a.cliente?.lng
+      );
+      const dB = calcularDistancia(
+        state.miUbicacion.lat, state.miUbicacion.lng,
+        b.cliente?.lat, b.cliente?.lng
+      );
+      return dA - dB;
+    });
+  } else {
+    clientesPendientes.sort((a, b) =>
+      (a.cliente?.nombre || '').localeCompare(b.cliente?.nombre || '')
+    );
+  }
+
+  // ── Indicador de modo GPS ──
+  const indicadorGPS = state.miUbicacion
+    ? `<span style="font-size:10px; color:#16a34a; font-weight:700; background:#f0fdf4;
+         padding:2px 8px; border-radius:12px">📍 Por cercanía</span>`
+    : `<span style="font-size:10px; color:#92400e; font-weight:700; background:#fffbeb;
+         padding:2px 8px; border-radius:12px">⚠️ Por nombre</span>`;
+
   const metaAlcanzada = meta.pagadoHoy >= meta.metaTotal;
 
   const segurosHoy = (DB._cache['creditos'] || [])
@@ -375,53 +399,95 @@ window.renderCuadre = function () {
           ${mostrarTodos ? '▲ Ver menos' : '▼ Ver todos (' + gastos.length + ')'}
         </button>` : ''}
     </div>
-
+<!-- SWITCH DE RUTA -->
+    <div style="margin-bottom:12px; display:flex; align-items:center; justify-content:space-between;
+                background:white; border-radius:10px; padding:14px 16px; box-shadow:var(--shadow);
+                border:1.5px solid ${state.rutaActiva ? '#86efac' : 'var(--border)'}">
+      <div>
+        <div style="font-size:13px; font-weight:700; color:var(--text)">
+          ${state.rutaActiva ? '🟢 Ruta en curso' : '⚪ Ruta pausada'}
+        </div>
+        <div style="font-size:11px; color:var(--muted); margin-top:2px">
+          ${state.rutaActiva
+            ? 'GPS activo · lista ordenada por cercanía'
+            : 'Presiona para activar el GPS y optimizar la ruta'}
+        </div>
+      </div>
+      <button onclick="toggleRuta()"
+        style="flex-shrink:0; border:none; border-radius:10px; padding:10px 18px;
+               font-size:13px; font-weight:700; cursor:pointer;
+               background:${state.rutaActiva ? '#fff1f2' : '#0f172a'};
+               color:${state.rutaActiva ? '#9f1239' : 'white'}">
+        ${state.rutaActiva ? '⏸️ Pausar' : '▶️ Empezar Ruta'}
+      </button>
+    </div>
     <!-- CLIENTES POR COBRAR -->
-<div class="card" style="margin-bottom:12px; padding:0; overflow:hidden">
-  <div style="padding:14px 16px; border-bottom:1px solid var(--border);
-              display:flex; justify-content:space-between; align-items:center">
-    <div class="card-title" style="margin:0">Clientes por Cobrar</div>
-    <span style="font-size:10.5px; background:var(--bg); padding:3px 10px;
-                 border-radius:20px; color:var(--muted); font-weight:700">
-      ${meta.detalle.filter(d => !d.completo).length} restantes
-    </span>
-  </div>
+    <div class="card" style="margin-bottom:12px; padding:0; overflow:hidden">
 
-  <div style="padding:0 16px 8px">
-    ${meta.detalle.filter(d => !d.completo).length === 0
-    ? `<div style="text-align:center; padding:28px 0">
-           <div style="font-size:28px; margin-bottom:8px">✅</div>
-           <p style="color:#16a34a; font-weight:700; margin:0; font-size:13.5px">¡Ruta completada!</p>
-         </div>`
-    : meta.detalle.filter(d => !d.completo)
-      .sort((a, b) => (a.cliente?.nombre || '').localeCompare(b.cliente?.nombre || ''))
-      .map(d => `
-          <div style="display:flex; justify-content:space-between; align-items:center;
-                      padding:11px 0; border-bottom:1px solid var(--border)">
-            <div>
-              <div style="font-weight:700; font-size:14px; color:var(--text)">
-                ${d.cliente?.nombre || 'Sin nombre'}
-              </div>
-             <div style="font-size:11.5px; color:var(--muted); margin-top:2px;
-            display:flex; align-items:center; gap:6px; flex-wrap:wrap">
-  ${d.deudaAcumulada > d.cuota + 0.5 ? `
-    <span style="background:#fff1f2; color:#9f1239; font-size:10px; font-weight:700;
-                 padding:1px 6px; border-radius:4px; white-space:nowrap">
-      ⚠️ Debe ${formatMoney(d.deudaAcumulada)}
-    </span>` : ''}
-</div>
-            </div>
-            <button
-              onclick="if(this.getAttribute('data-loading')) return; this.setAttribute('data-loading','true'); this.style.opacity='0.5'; pagoRapido('${d.cr.id}');"
-              style="cursor:pointer; border:none; padding:0; background:none; outline:none">
-              <span style="font-size:10.5px; font-weight:700; padding:5px 12px; border-radius:6px;
-                           background:#fff1f2; color:#9f1239; display:inline-block; white-space:nowrap">
-                ⏳ ${formatMoney(d.cuota)}
-              </span>
-            </button>
-          </div>`).join('')}
-  </div>
-</div>
+      <!-- Encabezado -->
+      <div style="padding:14px 16px; border-bottom:1px solid var(--border);
+                  display:flex; justify-content:space-between; align-items:center">
+        <div style="display:flex; align-items:center; gap:8px">
+          <div class="card-title" style="margin:0">Clientes por Cobrar</div>
+          ${indicadorGPS}
+        </div>
+        <span style="font-size:10.5px; background:var(--bg); padding:3px 10px;
+                     border-radius:20px; color:var(--muted); font-weight:700">
+          ${clientesPendientes.length} restantes
+        </span>
+      </div>
+
+      <!-- Lista -->
+      <div style="padding:0 16px 8px">
+        ${clientesPendientes.length === 0
+          ? `<div style="text-align:center; padding:28px 0">
+               <div style="font-size:28px; margin-bottom:8px">✅</div>
+               <p style="color:#16a34a; font-weight:700; margin:0; font-size:13.5px">¡Ruta completada!</p>
+             </div>`
+          : clientesPendientes.map(d => {
+              const dist = state.miUbicacion
+                ? calcularDistancia(
+                    state.miUbicacion.lat, state.miUbicacion.lng,
+                    d.cliente?.lat, d.cliente?.lng)
+                : null;
+              const distLabel = dist !== null ? _fmtDistancia(dist) : null;
+
+              return `
+              <div style="display:flex; justify-content:space-between; align-items:center;
+                          padding:11px 0; border-bottom:1px solid var(--border)">
+                <div>
+                  <div style="font-weight:700; font-size:14px; color:var(--text)">
+                    ${d.cliente?.nombre || 'Sin nombre'}
+                  </div>
+                  <div style="font-size:11.5px; color:var(--muted); margin-top:2px;
+                              display:flex; align-items:center; gap:6px; flex-wrap:wrap">
+                    ${distLabel ? `
+                      <span style="background:#eff6ff; color:#1d4ed8; font-size:10px;
+                                   font-weight:700; padding:1px 6px; border-radius:4px">
+                        📍 a ${distLabel}
+                      </span>` : ''}
+                    ${d.deudaAcumulada > d.cuota + 0.5 ? `
+                      <span style="background:#fff1f2; color:#9f1239; font-size:10px;
+                                   font-weight:700; padding:1px 6px; border-radius:4px">
+                        ⚠️ Debe ${formatMoney(d.deudaAcumulada)}
+                      </span>` : ''}
+                  </div>
+                </div>
+                <button
+                  onclick="if(this.getAttribute('data-loading')) return;
+                           this.setAttribute('data-loading','true');
+                           this.style.opacity='0.5';
+                           pagoRapido('${d.cr.id}');"
+                  style="cursor:pointer; border:none; padding:0; background:none; outline:none">
+                  <span style="font-size:10.5px; font-weight:700; padding:5px 12px; border-radius:6px;
+                               background:#fff1f2; color:#9f1239; display:inline-block; white-space:nowrap">
+                    ⏳ ${formatMoney(d.cuota)}
+                  </span>
+                </button>
+              </div>`;
+            }).join('')}
+      </div>
+    </div>
 
     <!-- NOTA DEL DÍA -->
     <div style="background:#fefce8; border-radius:10px; padding:16px; margin-bottom:12px;
@@ -450,5 +516,28 @@ window.renderCuadre = function () {
       </div>
     </div>
 
+    <!-- BOTÓN FLOTANTE MAPA -->
+    <button onclick="abrirMapaRuta()"
+      style="position:fixed; bottom:24px; right:20px; z-index:999;
+             width:56px; height:56px; border-radius:50%; border:none;
+             background:#0f172a; color:white; font-size:22px;
+             box-shadow:0 4px 16px rgba(0,0,0,0.35); cursor:pointer;
+             display:flex; align-items:center; justify-content:center">
+      🗺️
+    </button>
+
   </div>`;
+};
+
+window.toggleRuta = function () {
+  if (state.rutaActiva) {
+    detenerGPSCuadre();
+    state.rutaActiva = false;
+    state.miUbicacion = null;
+    state._ultimaUbicacionRuta = null;
+  } else {
+    state.rutaActiva = true;
+    iniciarGPSCuadre();
+  }
+  render();
 };

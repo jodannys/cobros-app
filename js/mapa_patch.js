@@ -1,9 +1,3 @@
-
-// ============================================================
-// MAPA_PATCH.JS — GPS y mapa estático (sin API key)
-// ============================================================
-
-// Variable global para coordenadas seleccionadas en el modal
 window._coordsSeleccionadas = null;
 
 window.renderMapaSelector = function renderMapaSelector(latExistente, lngExistente) {
@@ -104,4 +98,165 @@ window.renderMapaCliente = function renderMapaCliente(lat, lng) {
 
 window.iniciarMapaCliente = function iniciarMapaCliente(lat, lng, nombre) {
   // Mapa estático: no necesita inicialización
+};
+
+// ============================================================
+// NUEVO — Haversine: distancia entre dos puntos en metros
+// ============================================================
+window.calcularDistancia = function(lat1, lon1, lat2, lon2) {
+  if (!lat1 || !lon1 || !lat2 || !lon2) return 999999;
+  const R = 6371e3;
+  const phi1 = lat1 * Math.PI / 180;
+  const phi2 = lat2 * Math.PI / 180;
+  const dPhi = (lat2 - lat1) * Math.PI / 180;
+  const dLam = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dPhi/2)**2 + Math.cos(phi1)*Math.cos(phi2)*Math.sin(dLam/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+};
+
+// ============================================================
+// NUEVO — GPS continuo para Mi Cuadre (filtro 18 metros)
+// ============================================================
+window.iniciarGPSCuadre = function() {
+  if (!navigator.geolocation) return;
+  if (state._gpsWatchId != null) return; // ya está corriendo
+
+  const UMBRAL_METROS = 18;
+
+  state._gpsWatchId = navigator.geolocation.watchPosition(
+    pos => {
+      const nueva = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      state.miUbicacion = nueva;
+
+      const ultima = state._ultimaUbicacionRuta;
+      const distMovida = ultima
+        ? calcularDistancia(ultima.lat, ultima.lng, nueva.lat, nueva.lng)
+        : 999;
+
+      if (distMovida >= UMBRAL_METROS) {
+        state._ultimaUbicacionRuta = nueva;
+        render();
+      }
+    },
+    err => { console.warn('GPS Cuadre error:', err.code); },
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
+  );
+};
+
+window.detenerGPSCuadre = function() {
+  if (state._gpsWatchId != null) {
+    navigator.geolocation.clearWatch(state._gpsWatchId);
+    state._gpsWatchId = null;
+  }
+};
+
+// ── Helper interno: formatea metros para mostrar en pantalla ──
+window._fmtDistancia = function(metros) {
+  if (metros >= 999990) return null;
+  if (metros < 1000) return `${Math.round(metros)}m`;
+  return `${(metros / 1000).toFixed(1)}km`;
+};
+
+// ============================================================
+// NUEVO — Mapa de ruta con Leaflet (sin API key)
+// ============================================================
+window.abrirMapaRuta = function() {
+  // Elimina modal anterior si existía
+  const anterior = document.getElementById('modal-mapa-ruta');
+  if (anterior) anterior.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'modal-mapa-ruta';
+  modal.style.cssText = `
+    position:fixed; inset:0; background:rgba(0,0,0,0.7);
+    z-index:9999; display:flex; flex-direction:column;
+    align-items:stretch; justify-content:flex-end;
+  `;
+  modal.innerHTML = `
+    <div style="background:white; border-radius:20px 20px 0 0;
+                height:85vh; display:flex; flex-direction:column; overflow:hidden">
+      <div style="padding:14px 16px; border-bottom:1px solid #e5e7eb;
+                  display:flex; justify-content:space-between; align-items:center; flex-shrink:0">
+        <div style="font-weight:800; font-size:15px">🗺️ Mapa de Ruta</div>
+        <button onclick="document.getElementById('modal-mapa-ruta').remove()"
+          style="border:none; background:#f1f5f9; border-radius:8px;
+                 padding:6px 14px; font-weight:700; cursor:pointer; font-size:13px">
+          ✕ Cerrar
+        </button>
+      </div>
+      <div id="mapa-leaflet" style="flex:1; width:100%"></div>
+    </div>`;
+  document.body.appendChild(modal);
+
+  setTimeout(() => {
+    const centro = state.miUbicacion
+      ? [state.miUbicacion.lat, state.miUbicacion.lng]
+      : [-12.046374, -77.042793];
+
+    const mapa = L.map('mapa-leaflet').setView(centro, 15);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap'
+    }).addTo(mapa);
+
+    // Clientes pendientes (puntos rojos) — fijos, no cambian
+    const pendientes = (window._metaDetalle || []).filter(d => !d.completo);
+    pendientes.forEach(d => {
+      if (!d.cliente?.lat || !d.cliente?.lng) return;
+      const dist = state.miUbicacion
+        ? _fmtDistancia(calcularDistancia(
+            state.miUbicacion.lat, state.miUbicacion.lng,
+            d.cliente.lat, d.cliente.lng))
+        : null;
+      L.circleMarker([d.cliente.lat, d.cliente.lng], {
+        radius: 9, fillColor: '#e11d48', color: 'white',
+        weight: 2, opacity: 1, fillOpacity: 0.9
+      }).addTo(mapa)
+        .bindPopup(`<b>${d.cliente.nombre}</b><br>${dist ? '📍 ' + dist + '<br>' : ''}💰 ${formatMoney(d.cuota)}`);
+    });
+
+    // Tu posición (punto azul) — se mueve en tiempo real
+    let marcadorYo = null;
+
+    const actualizarPosicion = (lat, lng) => {
+      if (marcadorYo) {
+        marcadorYo.setLatLng([lat, lng]);
+      } else {
+        marcadorYo = L.circleMarker([lat, lng], {
+          radius: 10, fillColor: '#2563eb', color: 'white',
+          weight: 3, opacity: 1, fillOpacity: 1
+        }).addTo(mapa).bindPopup('📍 Tú estás aquí');
+      }
+    };
+
+    // Posición inicial
+    if (state.miUbicacion) {
+      actualizarPosicion(state.miUbicacion.lat, state.miUbicacion.lng);
+    }
+
+    // Rastreo en tiempo real dentro del mapa
+    let watchIdMapa = null;
+    if (navigator.geolocation) {
+      watchIdMapa = navigator.geolocation.watchPosition(
+        pos => {
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          state.miUbicacion = { lat, lng };
+          actualizarPosicion(lat, lng);
+        },
+        err => console.warn('GPS mapa:', err.code),
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 3000 }
+      );
+    }
+
+    // Al cerrar el modal, detener el watch del mapa
+    const btnCerrar = document.querySelector('#modal-mapa-ruta button');
+    if (btnCerrar) {
+      btnCerrar.onclick = () => {
+        if (watchIdMapa != null) navigator.geolocation.clearWatch(watchIdMapa);
+        document.getElementById('modal-mapa-ruta').remove();
+      };
+    }
+
+  }, 150);
 };

@@ -5,13 +5,13 @@ const _savedUser = (() => {
 
 window.state = {
   screen: 'login',
-  screen: _savedUser ? 'main' : 'login',  // ← si hay sesión, va directo a main
-  currentUser: _savedUser || null,         // ← restaura el usuario
+  screen: _savedUser ? 'main' : 'login',
+  currentUser: _savedUser || null,
   nav: 'clientes',
   currentUser: null,
   nav: 'clientes',
   selectedClient: null,
-  selectedCredito: null, // Aquí se guardará el crédito cuando abras el modal
+  selectedCredito: null,
   modal: null,
   search: '',
   selectedCobrador: null,
@@ -24,6 +24,12 @@ window.state = {
   // Login
   loginError: '',
   loginUserField: localStorage.getItem('lastUser') || '',
-  loginPassField: ''
+  loginPassField: '',  // ← cambia el punto y coma por coma aquí
+
+  // GPS Cuadre
+  miUbicacion: null,
+  _ultimaUbicacionRuta: null,
+  _gpsWatchId: null,
+  rutaActiva: false,
   
 };

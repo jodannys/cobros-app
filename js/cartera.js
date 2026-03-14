@@ -1,15 +1,3 @@
-// ============================================================
-// CARTERA.JS — Cartera del Admin y Mochila del Cobrador
-// ============================================================
-// Tipos de movimiento en 'movimientos_cartera':
-//   inyeccion        → Admin mete dinero propio         (+Cartera)
-//   envio_cobrador   → Admin envía a cobrador           (-Cartera, +Mochila)
-//   gasto_admin      → Gasto propio del admin           (-Cartera)
-//   retiro           → Admin saca ganancia/personal     (-Cartera)
-//   confirmar_yape   → Admin confirma recibo cobrador   (+Cartera, -Mochila)
-//   deposito_cobrador→ Cobrador declara envío pendiente
-// ============================================================
-
 // ── Helpers internos ─────────────────────────────────────────
 function _clientesDelCobrador(cobradorId) {
   return (DB._cache['clientes'] || [])
