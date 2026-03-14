@@ -59,25 +59,26 @@ window.calcularMetaReal = function (cobradorId, fecha) {
   const detalle = [];
 
   creditosActivos.forEach(cr => {
-    const cliente   = clientes.find(c => c.id === cr.clienteId);
-    const cuota     = Number(cr.cuotaDiaria) || 0;
+    const cliente  = clientes.find(c => c.id === cr.clienteId);
+    const cuota    = Number(cr.cuotaDiaria) || 0;
 
-    // ── Solo pagos NO eliminados para la meta ──
     const pagosNoEliminados = pagos.filter(p => p.creditoId === cr.id && !p.eliminado);
-
-    const pagosHoy      = pagosNoEliminados.filter(p => p.fecha === fecha);
-    const montoPagadoHoy = pagosHoy.reduce((s, p) => s + Number(p.monto), 0);
-    const totalPagado   = pagosNoEliminados.reduce((s, p) => s + Number(p.monto), 0);
+    const pagosHoy          = pagosNoEliminados.filter(p => p.fecha === fecha);
+    const montoPagadoHoy    = pagosHoy.reduce((s, p) => s + Number(p.monto), 0);
+    const totalPagado       = pagosNoEliminados.reduce((s, p) => s + Number(p.monto), 0);
 
     const diasTranscurridos = Math.max(0, contarDiasHabiles(cr.fechaInicio, fecha));
     const cuotasDebidas     = Math.min(diasTranscurridos, cr.diasTotal);
     const montoDebido       = cuotasDebidas * cuota;
     const alDia             = totalPagado >= (montoDebido - 0.5);
 
+    // ── SIEMPRE suma la cuota a la meta ──
+    metaTotal += cuota;
+    // ── SIEMPRE suma lo pagado hoy (aunque esté al día) ──
+    pagadoHoy += Math.min(montoPagadoHoy, cuota);
+
     if (!alDia) {
-      metaTotal  += cuota;
-      pagadoHoy  += Math.min(montoPagadoHoy, cuota);
-      pendiente  += cuota;
+      pendiente += cuota;
     }
 
     const deudaAcumulada = Math.max(0, montoDebido - totalPagado);
