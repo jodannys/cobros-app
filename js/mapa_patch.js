@@ -178,11 +178,19 @@ window.abrirMapaRuta = function() {
       <div style="padding:14px 16px; border-bottom:1px solid #e5e7eb;
                   display:flex; justify-content:space-between; align-items:center; flex-shrink:0">
         <div style="font-weight:800; font-size:15px">🗺️ Mapa de Ruta</div>
-        <button onclick="document.getElementById('modal-mapa-ruta').remove()"
-          style="border:none; background:#f1f5f9; border-radius:8px;
-                 padding:6px 14px; font-weight:700; cursor:pointer; font-size:13px">
-          ✕ Cerrar
-        </button>
+        <div style="display:flex; gap:8px; align-items:center">
+          <button id="btn-gps-mapa"
+            style="border:none; background:#f0fdf4; border-radius:8px;
+                   padding:6px 14px; font-weight:700; cursor:pointer;
+                   font-size:13px; color:#16a34a">
+            ▶️ Mi posición
+          </button>
+          <button id="btn-cerrar-mapa"
+            style="border:none; background:#f1f5f9; border-radius:8px;
+                   padding:6px 14px; font-weight:700; cursor:pointer; font-size:13px">
+            ✕ Cerrar
+          </button>
+        </div>
       </div>
       <div id="mapa-leaflet" style="flex:1; width:100%"></div>
     </div>`;
@@ -194,14 +202,13 @@ window.abrirMapaRuta = function() {
       : [-12.046374, -77.042793];
 
     const mapa = L.map('mapa-leaflet').setView(centro, 15);
-
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap'
     }).addTo(mapa);
 
-    // Clientes pendientes (puntos rojos) — fijos, no cambian
+    // Clientes pendientes (puntos rojos)
     const pendientes = (window._metaDetalle || []).filter(d => !d.completo);
-    pendientes.forEach(d => {
+    pendientes.forEach((d, i) => {
       if (!d.cliente?.lat || !d.cliente?.lng) return;
       const dist = state.miUbicacion
         ? _fmtDistancia(calcularDistancia(
@@ -212,11 +219,22 @@ window.abrirMapaRuta = function() {
         radius: 9, fillColor: '#e11d48', color: 'white',
         weight: 2, opacity: 1, fillOpacity: 0.9
       }).addTo(mapa)
-        .bindPopup(`<b>${d.cliente.nombre}</b><br>${dist ? '📍 ' + dist + '<br>' : ''}💰 ${formatMoney(d.cuota)}`);
+        .bindPopup(`<b>${i + 1}. ${d.cliente.nombre}</b><br>${dist ? '📍 ' + dist + '<br>' : ''}💰 ${formatMoney(d.cuota)}`);
     });
 
-    // Tu posición (punto azul) — se mueve en tiempo real
+    // Ajustar zoom si hay clientes
+    if (pendientes.filter(d => d.cliente?.lat).length > 0) {
+      const bounds = L.latLngBounds(
+        pendientes.filter(d => d.cliente?.lat && d.cliente?.lng)
+                  .map(d => [d.cliente.lat, d.cliente.lng])
+      );
+      mapa.fitBounds(bounds, { padding: [40, 40] });
+    }
+
+    // Play/Pausa GPS
+    let watchIdMapa = null;
     let marcadorYo = null;
+    let gpsActivo = false;
 
     const actualizarPosicion = (lat, lng) => {
       if (marcadorYo) {
@@ -229,34 +247,52 @@ window.abrirMapaRuta = function() {
       }
     };
 
-    // Posición inicial
+    // Si cobrador ya tenía ruta activa, mostrar posición de inmediato
     if (state.miUbicacion) {
       actualizarPosicion(state.miUbicacion.lat, state.miUbicacion.lng);
-    }
-
-    // Rastreo en tiempo real dentro del mapa
-    let watchIdMapa = null;
-    if (navigator.geolocation) {
+      gpsActivo = true;
+      const btn = document.getElementById('btn-gps-mapa');
+      if (btn) { btn.textContent = '⏸️ Pausar GPS'; btn.style.background = '#fff1f2'; btn.style.color = '#9f1239'; }
       watchIdMapa = navigator.geolocation.watchPosition(
         pos => {
-          const lat = pos.coords.latitude;
-          const lng = pos.coords.longitude;
-          state.miUbicacion = { lat, lng };
-          actualizarPosicion(lat, lng);
+          state.miUbicacion = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          actualizarPosicion(state.miUbicacion.lat, state.miUbicacion.lng);
         },
         err => console.warn('GPS mapa:', err.code),
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 3000 }
       );
     }
 
-    // Al cerrar el modal, detener el watch del mapa
-    const btnCerrar = document.querySelector('#modal-mapa-ruta button');
-    if (btnCerrar) {
-      btnCerrar.onclick = () => {
-        if (watchIdMapa != null) navigator.geolocation.clearWatch(watchIdMapa);
-        document.getElementById('modal-mapa-ruta').remove();
-      };
-    }
+    document.getElementById('btn-gps-mapa').onclick = () => {
+      const btn = document.getElementById('btn-gps-mapa');
+      if (gpsActivo) {
+        if (watchIdMapa != null) { navigator.geolocation.clearWatch(watchIdMapa); watchIdMapa = null; }
+        if (marcadorYo) { marcadorYo.remove(); marcadorYo = null; }
+        gpsActivo = false;
+        btn.textContent = '▶️ Mi posición';
+        btn.style.background = '#f0fdf4';
+        btn.style.color = '#16a34a';
+      } else {
+        if (!navigator.geolocation) { alert('Tu dispositivo no soporta GPS'); return; }
+        gpsActivo = true;
+        btn.textContent = '⏸️ Pausar GPS';
+        btn.style.background = '#fff1f2';
+        btn.style.color = '#9f1239';
+        watchIdMapa = navigator.geolocation.watchPosition(
+          pos => {
+            state.miUbicacion = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            actualizarPosicion(state.miUbicacion.lat, state.miUbicacion.lng);
+          },
+          err => console.warn('GPS mapa:', err.code),
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 3000 }
+        );
+      }
+    };
+
+    document.getElementById('btn-cerrar-mapa').onclick = () => {
+      if (watchIdMapa != null) navigator.geolocation.clearWatch(watchIdMapa);
+      document.getElementById('modal-mapa-ruta').remove();
+    };
 
   }, 150);
 };

@@ -71,25 +71,27 @@ window.renderModal = function renderModal() {
   if (!m) return '';
   let content = '';
 
-  if      (m === 'nuevo-cliente')        content = renderModalNuevoCliente();
-  else if (m === 'editar-cliente')       content = renderModalEditarCliente();
-  else if (m === 'editar-monto-gasto')   content = renderModalEditarMontoGasto ? renderModalEditarMontoGasto() : '';
-  else if (m === 'editar-pago')          content = renderModalEditarPago ? renderModalEditarPago() : '';
-  else if (m === 'nuevo-credito')        content = renderModalNuevoCredito();
-  else if (m === 'registrar-pago')       content = renderModalRegistrarPago();
-  else if (m === 'nuevo-usuario')        content = renderModalNuevoUsuario();
-  else if (m === 'gestionar-credito')    content = renderModalGestionarCredito();
-  else if (m === 'banner-alertas')       content = renderModalBannerAlertas();
-  else if (m === 'editar-usuario')       content = renderModalEditarUsuario();
-  else if (m === 'editar-admin')         content = renderModalEditarAdmin();
-  else if (m === 'nuevo-gasto')          content = renderModalNuevoGasto();
-  else if (m === 'asignar-caja')         content = renderModalAsignarCaja();
-  else if (m === 'editar-credito')       content = renderModalEditarCredito ? renderModalEditarCredito() : '';
-  else if (m === 'historial-cliente')    content = renderModalHistorialCliente();
-  else if (m === 'editar-gasto')         content = renderModalEditarGasto();
-  else if (m === 'movimiento-cartera')   content = renderModalMovimientoCartera();
-  else if (m === 'deposito-cobrador')    content = renderModalDepositoCobrador();
-  else if (m === 'agregar-feriado')      content = renderModalAgregarFeriado();
+  if (m === 'nuevo-cliente') content = renderModalNuevoCliente();
+  else if (m === 'editar-cliente') content = renderModalEditarCliente();
+  else if (m === 'editar-monto-gasto') content = renderModalEditarMontoGasto ? renderModalEditarMontoGasto() : '';
+  else if (m === 'editar-pago') content = renderModalEditarPago ? renderModalEditarPago() : '';
+  else if (m === 'nuevo-credito') content = renderModalNuevoCredito();
+  else if (m === 'registrar-pago') content = renderModalRegistrarPago();
+  else if (m === 'nuevo-usuario') content = renderModalNuevoUsuario();
+  else if (m === 'gestionar-credito') content = renderModalGestionarCredito();
+  else if (m === 'banner-alertas') content = renderModalBannerAlertas();
+  else if (m === 'editar-usuario') content = renderModalEditarUsuario();
+  else if (m === 'editar-admin') content = renderModalEditarAdmin();
+  else if (m === 'nuevo-gasto') content = renderModalNuevoGasto();
+  else if (m === 'asignar-caja') content = renderModalAsignarCaja();
+  else if (m === 'editar-credito') content = renderModalEditarCredito ? renderModalEditarCredito() : '';
+  else if (m === 'historial-cliente') content = renderModalHistorialCliente();
+  else if (m === 'editar-gasto') content = renderModalEditarGasto();
+  else if (m === 'movimiento-cartera') content = renderModalMovimientoCartera();
+  else if (m === 'deposito-cobrador') content = renderModalDepositoCobrador();
+  else if (m === 'agregar-feriado') content = renderModalAgregarFeriado();
+  else if (m === 'retiro-cobrador') content = renderModalRetiroCobrador();
+
 
   return `
   <div class="modal-overlay" onclick="closeModal(event)">
@@ -242,10 +244,10 @@ window.renderModalEditarCliente = function renderModalEditarCliente() {
            style="display:none" onchange="previewFoto(this,'previewEFoto')">
     <div style="width:100%; display:flex; justify-content:center">
       ${c.foto
-        ? `<img src="${c.foto}" class="uploaded-img" id="previewEFoto"
+      ? `<img src="${c.foto}" class="uploaded-img" id="previewEFoto"
                onclick="verImagen(this.src)"
                style="margin:0; max-width:100%; height:auto; cursor:zoom-in">`
-        : `<img id="previewEFoto" onclick="verImagen(this.src)"
+      : `<img id="previewEFoto" onclick="verImagen(this.src)"
                style="display:none; margin:0; max-width:100%; height:auto; cursor:zoom-in"
                class="uploaded-img">`}
     </div>
@@ -262,7 +264,7 @@ window.renderModalEditarCliente = function renderModalEditarCliente() {
 // ── MODAL NUEVO CRÉDITO (con seguro) ─────────────────────────
 window.renderModalNuevoCredito = function renderModalNuevoCredito() {
   const seguroActivo = state._crSeguro !== false;
-  const pctSeguro    = state._crPctSeguro ?? 5;
+  const pctSeguro = state._crPctSeguro ?? 5;
 
   return `
   <div class="modal-handle"></div>
@@ -438,7 +440,7 @@ window.renderModalGestionarCredito = function renderModalGestionarCredito() {
   const c = state.selectedClient;
   if (!cr || !c) return '';
 
-  const pagos = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id);
+  const pagos = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id && !p.eliminado);
   const totalPagado = pagos.reduce((s, p) => s + (Number(p.monto) || 0), 0);
   const saldoBase = Number(cr.total || 0) - totalPagado;
 
@@ -472,8 +474,8 @@ window.renderModalGestionarCredito = function renderModalGestionarCredito() {
     </button>
     <p style="font-size:11px; color:var(--muted); margin-top:8px; text-align:center; line-height:1.2">
       ${cr.mora_activa
-        ? 'La mora está activa y sumando al "Total Pendiente".'
-        : 'La mora está desactivada para este cliente.'}
+      ? 'La mora está activa y sumando al "Total Pendiente".'
+      : 'La mora está desactivada para este cliente.'}
     </p>
   </div>
 
@@ -481,8 +483,8 @@ window.renderModalGestionarCredito = function renderModalGestionarCredito() {
     <div style="font-weight:700;font-size:16px;margin-bottom:8px">${c.nombre}</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       ${mostrarAlertaRoja
-        ? `<span style="background:#fff5f5;color:var(--danger);padding:4px 10px;border-radius:20px;font-size:12px;font-weight:700;border:1px solid #fed7d7">${textoBadge}</span>`
-        : `<span style="background:#f0f9ff;color:#0369a1;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:500;border:1px solid #bae6fd">🟢 Al día</span>`}
+      ? `<span style="background:#fff5f5;color:var(--danger);padding:4px 10px;border-radius:20px;font-size:12px;font-weight:700;border:1px solid #fed7d7">${textoBadge}</span>`
+      : `<span style="background:#f0f9ff;color:#0369a1;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:500;border:1px solid #bae6fd">🟢 Al día</span>`}
       <span style="background:#fef2f2;color:var(--danger);padding:4px 10px;border-radius:20px;font-size:12px;font-weight:500;border:1px solid #fee2e2">
         Total Pendiente: ${formatMoney(saldoBase + mora)}
       </span>
@@ -538,13 +540,13 @@ window.renderModalBannerAlertas = function renderModalBannerAlertas() {
            ✅ No hay alertas pendientes
          </div>`
       : alertas.map(a => {
-          const colorAlerta = a.tipo === 'vencido' ? 'var(--danger)' : 'var(--warning)';
-          const bgAlerta    = a.tipo === 'vencido' ? '#fff1f2' : '#fffbeb';
-          const icon        = a.tipo === 'vencido' ? '🚩' : '⏳';
-          const statusText  = a.tipo === 'vencido'
-            ? `Vencido hace ${a.dias || 0} días`
-            : `Sin abonar ${a.dias || 0} días`;
-          return `
+        const colorAlerta = a.tipo === 'vencido' ? 'var(--danger)' : 'var(--warning)';
+        const bgAlerta = a.tipo === 'vencido' ? '#fff1f2' : '#fffbeb';
+        const icon = a.tipo === 'vencido' ? '🚩' : '⏳';
+        const statusText = a.tipo === 'vencido'
+          ? `Vencido hace ${a.dias || 0} días`
+          : `Sin abonar ${a.dias || 0} días`;
+        return `
           <div style="background:white; border-radius:10px; padding:14px 14px 14px 18px;
                       margin-bottom:10px; box-shadow:var(--shadow); position:relative; overflow:hidden;">
             <div style="position:absolute; left:0; top:0; bottom:0; width:3px;
@@ -582,7 +584,7 @@ window.renderModalBannerAlertas = function renderModalBannerAlertas() {
               </button>
             </div>
           </div>`;
-        }).join('')}
+      }).join('')}
   </div>
 
   <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:16px">
@@ -728,8 +730,8 @@ window.eliminarAdmin = async function eliminarAdmin(id) {
 
 window.guardarAdmin = async function guardarAdmin(idExistente) {
   const nombre = document.getElementById('adNombre').value.trim();
-  const user   = document.getElementById('adUser').value.trim();
-  const pass   = document.getElementById('adPass').value.trim();
+  const user = document.getElementById('adUser').value.trim();
+  const pass = document.getElementById('adPass').value.trim();
   if (!nombre || !user) { alert('Nombre y usuario son obligatorios'); return; }
   const users = DB._cache['users'] || [];
   if (!idExistente) {
@@ -768,9 +770,9 @@ window.renderModalHistorialCliente = function renderModalHistorialCliente() {
     ${cobrador ? ` · ${cobrador.nombre}` : ''}
   </div>
   ${creditos.map(cr => {
-    const pagosCr  = pagos.filter(p => p.creditoId === cr.id);
+    const pagosCr = pagos.filter(p => p.creditoId === cr.id && !p.eliminado);
     const pagadoCr = pagosCr.reduce((s, p) => s + p.monto, 0);
-    const saldoCr  = Math.max(0, cr.total - pagadoCr);
+    const saldoCr = Math.max(0, cr.total - pagadoCr);
     return `
     <div style="border:1px solid #e2e8f0;border-radius:12px;padding:14px;margin-bottom:12px">
       <div class="flex-between" style="margin-bottom:8px">

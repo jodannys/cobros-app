@@ -320,7 +320,7 @@ window.renderHistorial = function renderHistorial() {
         ? `<div style="text-align:center; color:var(--muted); font-size:13.5px; padding:20px 0">Sin créditos</div>`
         : creditosFiltrados.map(cr => {
           const cl = clientes.find(c => c.id === cr.clienteId);
-          const pagosCredito = pagos.filter(p => p.creditoId === cr.id);
+          const pagosCredito = pagos.filter(p => p.creditoId === cr.id && !p.eliminado);
           const totalPagado = pagosCredito.reduce((s, p) => s + p.monto, 0);
           const saldo = cr.total - totalPagado;
           const porcentaje = cr.total > 0 ? Math.min(100, Math.round((totalPagado / cr.total) * 100)) : 0;
@@ -399,7 +399,7 @@ window.renderBusquedaClientes = function renderBusquedaClientes() {
     const creditoActivo = creditos.filter(cr => cr.clienteId === c.id).find(cr => cr.activo);
     const saldo = creditoActivo
       ? Math.max(0, creditoActivo.total - pagosCliente
-        .filter(p => p.creditoId === creditoActivo.id)
+        .filter(p => p.creditoId === creditoActivo.id && !p.eliminado)
         .reduce((s, p) => s + p.monto, 0))
       : 0;
     return `
@@ -437,7 +437,7 @@ window.verHistorialCliente = function verHistorialCliente(clienteId) {
   texto += `\n`;
 
   creditos.forEach(cr => {
-    const pagosCr = pagos.filter(p => p.creditoId === cr.id);
+    const pagosCr = pagos.filter(p => p.creditoId === cr.id && !p.eliminado);
     const pagadoCr = pagosCr.reduce((s, p) => s + p.monto, 0);
     const saldoCr = Math.max(0, cr.total - pagadoCr);
     texto += `💳 *Crédito ${formatDate(cr.fechaInicio)}*\n`;

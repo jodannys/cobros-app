@@ -49,3 +49,65 @@ window.fbEscuchar = function(colName, callback) {
     console.error(`Error escuchando ${colName}:`, error);
   });
 };
+
+// ─── MODO LOCAL MOCK ─────────────────────────────────────────
+const USE_LOCAL_MOCK = false; // ← false para producción
+
+if (USE_LOCAL_MOCK) {
+  const _mockData = {};
+  const _fbGetAllOriginal = window.fbGetAll;
+
+  window.fbGetAll = async (col) => {
+    const cached = localStorage.getItem(`mock_${col}`);
+    if (cached) {
+      _mockData[col] = JSON.parse(cached);
+      return _mockData[col];
+    }
+    const datos = await _fbGetAllOriginal(col);
+    localStorage.setItem(`mock_${col}`, JSON.stringify(datos));
+    _mockData[col] = datos;
+    return datos;
+  };
+
+  window.fbSet = async (col, id, data) => {
+    if (!_mockData[col]) {
+      _mockData[col] = JSON.parse(localStorage.getItem(`mock_${col}`) || '[]');
+    }
+    const idx = _mockData[col].findIndex(x => x.id === id);
+    if (idx !== -1) _mockData[col][idx] = data;
+    else _mockData[col].push(data);
+    localStorage.setItem(`mock_${col}`, JSON.stringify(_mockData[col]));
+  };
+
+  window.fbUpdate = async (col, id, data) => {
+    if (!_mockData[col]) {
+      _mockData[col] = JSON.parse(localStorage.getItem(`mock_${col}`) || '[]');
+    }
+    const item = _mockData[col].find(x => x.id === id);
+    if (item) Object.assign(item, data);
+    localStorage.setItem(`mock_${col}`, JSON.stringify(_mockData[col]));
+  };
+
+  window.fbDelete = async (col, id) => {
+    if (!_mockData[col]) {
+      _mockData[col] = JSON.parse(localStorage.getItem(`mock_${col}`) || '[]');
+    }
+    _mockData[col] = _mockData[col].filter(x => x.id !== id);
+    localStorage.setItem(`mock_${col}`, JSON.stringify(_mockData[col]));
+  };
+
+  window.fbQuery = async (col, field, value) => {
+    if (!_mockData[col]) {
+      _mockData[col] = JSON.parse(localStorage.getItem(`mock_${col}`) || '[]');
+    }
+    return _mockData[col].filter(x => x[field] === value);
+  };
+
+  window.fbEscuchar = (col, cb) => {
+    _mockData[col] = JSON.parse(localStorage.getItem(`mock_${col}`) || '[]');
+    cb(_mockData[col]);
+    return () => {};
+  };
+
+  console.warn("🟡 MODO LOCAL MOCK activo — sin lecturas a Firestore");
+}

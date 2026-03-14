@@ -6,12 +6,9 @@ function _clientesDelCobrador(cobradorId) {
 }
 
 // ── MOCHILA: Saldo histórico total ───────────────────────────
-// "¿Cuánto dinero tiene el cobrador en su poder AHORA?"
-// Enviado Admin + Cobros + Seguros − Préstamos − Gastos − Devuelto confirmado
 window.getSaldoMochila = function (cobradorId) {
   return _calcularMochila(cobradorId, null);
 };
-
 
 window.getSaldoMochilaHasta = function (cobradorId, fechaExclusiva) {
   return _calcularMochila(cobradorId, fechaExclusiva);
@@ -24,50 +21,39 @@ function _calcularMochila(cobradorId, fechaLimite) {
   const gastos = DB._cache['gastos'] || [];
   const clientesIds = _clientesDelCobrador(cobradorId);
 
-  // Filtro de fecha
   const antes = fechaLimite ? (f) => f < fechaLimite : () => true;
 
-  // (+) DINERO ENVIADO POR ADMIN: Capital inicial o inyecciones
   const enviado = movs
     .filter(m => m.tipo === 'envio_cobrador' && m.cobradorId === cobradorId && antes(m.fecha))
     .reduce((s, m) => s + Number(m.monto || 0), 0);
 
-  // (+) COBROS: Cuotas cobradas a clientes
   const cobros = pagos
     .filter(p => p.cobradorId === cobradorId && antes(p.fecha))
     .reduce((s, p) => s + Number(p.monto || 0), 0);
 
-  // (+) SEGUROS: Montos de seguros de los créditos creados
   const seguros = creditos
     .filter(cr => clientesIds.includes(cr.clienteId) && cr.seguro && antes(cr.fechaInicio))
     .reduce((s, cr) => s + Number(cr.montoSeguro || 0), 0);
 
-  // (-) PRÉSTAMOS: Capital entregado a los clientes
   const prestamos = creditos
     .filter(cr => clientesIds.includes(cr.clienteId) && antes(cr.fechaInicio))
     .reduce((s, cr) => s + Number(cr.monto || 0), 0);
 
-  // (-) GASTOS: Gastos registrados por el cobrador
   const totalGastos = gastos
     .filter(g => g.cobradorId === cobradorId && antes(g.fecha))
     .reduce((s, g) => s + Number(g.monto || 0), 0);
 
-  // (-) DEVUELTO AL ADMIN (BAJA SOLO CON OK):
-  // Solo resta si el movimiento está CONFIRMADO.
   const devuelto = movs
-    .filter(m => {
-      const esMio = m.cobradorId === cobradorId;
-      const esAntes = antes(m.fecha);
-      // Solo baja si tú presionaste OK (confirmado es true)
-      const estaConfirmado = m.confirmado === true || m.tipo === 'confirmar_yape';
+  .filter(m => {
+    const esMio = m.cobradorId === cobradorId;
+    const esAntes = antes(m.fecha);
+    const estaConfirmado = m.confirmado === true || m.tipo === 'confirmar_yape';
+    const esGastoCobrador = m.tipo === 'gasto_cobrador';
+    return esMio && esAntes && (estaConfirmado || esGastoCobrador);
+  })
+  .reduce((s, m) => s + Number(m.monto || 0), 0);
 
-      return esMio && esAntes && estaConfirmado;
-    })
-    .reduce((s, m) => s + Number(m.monto || 0), 0);
-
-  // Operación final
-  const resultado = enviado + cobros + seguros - prestamos - totalGastos - devuelto;
-  return resultado;
+  return enviado + cobros + seguros - prestamos - totalGastos - devuelto;
 }
 
 // ── CARTERA: Saldo del admin ──────────────────────────────────
@@ -105,7 +91,7 @@ window.getTotalEnLaCalle = function () {
     .filter(cr => cr.activo)
     .reduce((s, cr) => {
       const pagado = pagos
-        .filter(p => p.creditoId === cr.id)
+        .filter(p => p.creditoId === cr.id && !p.eliminado)
         .reduce((ss, p) => ss + Number(p.monto), 0);
       return s + Math.max(0, Number(cr.total) - pagado);
     }, 0);
@@ -129,7 +115,6 @@ window.renderPanelCartera = function () {
   const menuAbierto = state._menuCarteraAbierto || false;
   const mostrarMovs = state._verMovsCartera || false;
 
-  // Datos del cuadre (admin)
   const isAdmin = state.currentUser?.role === 'admin';
   let totalRecaudado = 0, totalObjetivo = 0, totalSeguros = 0;
   let totalPrestado = 0, totalGastos = 0;
@@ -156,20 +141,15 @@ window.renderPanelCartera = function () {
       .filter(cr => cr.fechaInicio === hoy)
       .reduce((s, cr) => s + Number(cr.montoSeguro || 0), 0);
 
-    // --- CORRECCIÓN AQUÍ ---
-    // 1. Gastos de ruta de los cobradores
     const gastosRuta = cobradores_admin.reduce((s, u) => s + getCajaChicaDelDia(u.id, hoy).totalGastos, 0);
-
-    // 2. Gastos Admin y Retiros Personales hechos por ti (u otros admin)
     const gastosMovsCartera = (DB._cache['movimientos_cartera'] || [])
       .filter(m => m.fecha === hoy && (m.tipo === 'gasto_admin' || m.tipo === 'retiro'))
       .reduce((s, m) => s + Number(m.monto || 0), 0);
-
-    totalGastos = gastosRuta + gastosMovsCartera; // Ahora suma TODO
-    // -----------------------
+    totalGastos = gastosRuta + gastosMovsCartera;
 
     totalPrestado = cobradores_admin.reduce((s, u) => s + getCajaChicaDelDia(u.id, hoy).totalPrestadoHoy, 0);
   }
+
   return `
 <!-- PANEL PRINCIPAL -->
 <div style="background:#0f172a; background-image:
@@ -218,11 +198,19 @@ window.renderPanelCartera = function () {
           </button>
           <button onclick="abrirMovimientoCartera('envio_cobrador'); state._menuCarteraAbierto=false; render()"
             style="width:100%; padding:9px 12px; border-radius:8px; border:none; cursor:pointer;
-                   background:transparent; font-weight:600; font-size:13px;
+                   background:transparent; font-weight:600; font-size:13px; margin-bottom:2px;
                    display:flex; align-items:center; gap:10px; color:#1e40af; text-align:left">
             <span style="width:28px; height:28px; background:#eff6ff; border-radius:6px;
                          display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0">💰</span>
             Enviar a Cobrador
+          </button>
+          <button onclick="abrirRetirarCobrador(); state._menuCarteraAbierto=false; render()"
+            style="width:100%; padding:9px 12px; border-radius:8px; border:none; cursor:pointer;
+                   background:transparent; font-weight:600; font-size:13px; margin-top:2px;
+                   display:flex; align-items:center; gap:10px; color:#9f1239; text-align:left">
+            <span style="width:28px; height:28px; background:#fff1f2; border-radius:6px;
+                         display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0">💼</span>
+            Retirar de Cobrador
           </button>
         </div>` : ''}
       </div>
@@ -390,6 +378,51 @@ window.renderPanelCartera = function () {
 
 </div>
 
+<!-- ÚLTIMOS MOVIMIENTOS -->
+<div class="card" style="margin-bottom:12px">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px">
+    <div class="card-title" style="margin:0">📒 Movimientos</div>
+    <button onclick="state._verMovsCartera=!state._verMovsCartera; render()"
+      style="font-size:11px; font-weight:700; background:var(--bg); border:none;
+             padding:5px 12px; border-radius:8px; cursor:pointer; color:var(--muted)">
+      ${mostrarMovs ? 'Ver menos' : 'Ver todos'}
+    </button>
+  </div>
+  ${movs.length === 0
+    ? `<div style="text-align:center; color:var(--muted); font-size:13px; padding:16px 0">Sin movimientos</div>`
+    : (mostrarMovs
+        ? (DB._cache['movimientos_cartera'] || []).slice().sort((a,b) => b.fecha.localeCompare(a.fecha))
+        : movs
+      ).map(m => {
+        const cob = (DB._cache['users'] || []).find(u => u.id === m.cobradorId);
+        const labels = {
+          inyeccion:        { icon: '➕', color: '#16a34a', label: 'Inyección' },
+          envio_cobrador:   { icon: '💰', color: '#1d4ed8', label: `Envío → ${cob?.nombre || '—'}` },
+          gasto_admin:      { icon: '💸', color: '#9f1239', label: 'Gasto Admin' },
+          retiro:           { icon: '🏠', color: '#92400e', label: 'Retiro Personal' },
+          confirmar_yape:   { icon: '✅', color: '#16a34a', label: `Depósito de ${cob?.nombre || '—'}` },
+          deposito_cobrador:{ icon: '📤', color: '#92400e', label: `Envío de ${cob?.nombre || '—'}` },
+        };
+        const cfg = labels[m.tipo] || { icon: '📌', color: 'var(--muted)', label: m.tipo };
+        return `
+        <div style="display:flex; justify-content:space-between; align-items:center;
+                    padding:10px 0; border-bottom:1px solid var(--border)">
+          <div style="display:flex; align-items:center; gap:10px">
+            <span style="font-size:18px">${cfg.icon}</span>
+            <div>
+              <div style="font-size:13px; font-weight:700; color:var(--text)">${cfg.label}</div>
+              <div style="font-size:11px; color:var(--muted); margin-top:2px">
+                ${formatDate(m.fecha)}${m.descripcion ? ' · ' + m.descripcion : ''}
+              </div>
+            </div>
+          </div>
+          <div style="font-weight:800; font-size:12px; color:${cfg.color}">
+            ${formatMoney(m.monto)}
+          </div>
+        </div>`;
+      }).join('')}
+</div>
+
 <!-- MOCHILAS -->
 <div class="card" style="margin-bottom:12px">
   <div class="card-title">Dinero en caja de cobradores</div>
@@ -455,7 +488,6 @@ ${cobradores_admin.map(u => {
   <div style="padding:14px 16px; display:flex; align-items:center; gap:12px; cursor:pointer"
     onclick="state._expandCobrador='${u.id}'===state._expandCobrador?null:'${u.id}'; render()">
 
-    <!-- AVATAR -->
     <div style="width:42px; height:42px; border-radius:8px; flex-shrink:0;
                 background:linear-gradient(135deg,#0f172a,#2563eb);
                 display:flex; align-items:center; justify-content:center;
@@ -463,9 +495,7 @@ ${cobradores_admin.map(u => {
       ${u.nombre.charAt(0)}
     </div>
 
-    <!-- INFO -->
     <div style="flex:1; min-width:0">
-
       <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px">
         <div style="font-weight:700; font-size:14px; color:var(--text)">${u.nombre}</div>
         <div style="text-align:right">
@@ -479,14 +509,12 @@ ${cobradores_admin.map(u => {
         </div>
       </div>
 
-      <!-- BARRA -->
       <div style="background:var(--bg); border-radius:4px; height:4px; margin-bottom:6px; overflow:hidden">
         <div style="width:${pct}%; height:100%; border-radius:4px;
                     background:${pct >= 100 ? '#22c55e' : 'var(--primary)'};
                     transition:width 0.4s ease"></div>
       </div>
 
-      <!-- META -->
       <div style="display:flex; justify-content:space-between; align-items:center">
         <div style="font-size:11px; color:var(--muted)">
           Meta: <span style="font-weight:600; color:var(--text)">${formatMoney(meta.metaTotal)}</span>
@@ -500,13 +528,10 @@ ${cobradores_admin.map(u => {
               : '✅ Meta cumplida'}
 </div>
       </div>
-
     </div>
 
-    <!-- CHEVRON -->
     <div style="color:var(--muted); font-size:20px; flex-shrink:0;
                 transform:rotate(${expandido ? '90' : '0'}deg); transition:transform 0.2s">›</div>
-
   </div>
 
     ${expandido ? `
@@ -571,7 +596,6 @@ window.abrirEnviarCobrador = function (cobradorId) {
   abrirMovimientoCartera('envio_cobrador', cobradorId);
 };
 
-// Aliases por compatibilidad con cuadre.js
 window.abrirInyectarCapital = () => abrirMovimientoCartera('inyeccion');
 window.abrirGastoAdminPropio = () => abrirMovimientoCartera('gasto_admin');
 window.abrirRetiroHipoteca = () => abrirMovimientoCartera('retiro');
@@ -588,14 +612,11 @@ window.confirmarDeposito = async function (movId) {
       confirmado: true,
       tipo: 'confirmar_yape'
     });
-
-    // ✅ Actualizar cache local inmediatamentea
     const idx = (DB._cache['movimientos_cartera'] || []).findIndex(m => m.id === movId);
     if (idx !== -1) {
       DB._cache['movimientos_cartera'][idx].confirmado = true;
       DB._cache['movimientos_cartera'][idx].tipo = 'confirmar_yape';
     }
-
     showToast('✅ Depósito confirmado — sumado a tu cartera');
     render();
   } catch (e) {
@@ -627,7 +648,6 @@ window.guardarMovimientoCartera = async function () {
     state.modal = null;
     state._movCarteraTipo = null;
     state._movCarteraCobrador = null;
-
     const labels = {
       inyeccion: `➕ ${formatMoney(monto)} inyectados`,
       envio_cobrador: `💰 Caja asignada — ${formatMoney(monto)}`,
@@ -665,7 +685,6 @@ window.guardarDepositoCobrador = async function () {
   showToast('📲 Depósito registrado — esperando confirmación');
   render();
 };
-
 
 // ============================================================
 // MODALES
@@ -715,7 +734,6 @@ window.renderModalMovimientoCartera = function () {
 <div class="modal-handle"></div>
 <div class="modal-title">${cfg.titulo}</div>
 
-<!-- DESCRIPCIÓN -->
 <div style="background:${cfg.bg}; border-radius:8px; padding:10px 14px; margin-bottom:14px;
             display:flex; align-items:flex-start; gap:8px">
   <div style="font-size:12.5px; color:${cfg.color}; font-weight:500; line-height:1.5">
@@ -723,7 +741,6 @@ window.renderModalMovimientoCartera = function () {
   </div>
 </div>
 
-<!-- COBRADOR (solo envio) -->
 ${tipo === 'envio_cobrador' ? `
 <div class="form-group">
   <label>Cobrador *</label>
@@ -735,7 +752,6 @@ ${tipo === 'envio_cobrador' ? `
   </select>
 </div>` : ''}
 
-<!-- ACCESOS RÁPIDOS (solo retiro) -->
 ${tipo === 'retiro' ? `
 <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:14px">
   <button onclick="
@@ -756,7 +772,6 @@ ${tipo === 'retiro' ? `
   </button>
 </div>` : ''}
 
-<!-- MONTO -->
 <div class="form-group">
   <label>Monto (S/) *</label>
   <input class="form-control" id="mcMonto" type="number" placeholder="0"
@@ -819,4 +834,99 @@ window.renderModalDepositoCobrador = function () {
     onclick="guardarDepositoCobrador()">
     Registrar Envío
   </button>`;
+};
+
+window.abrirRetirarCobrador = function(cobradorIdPresel) {
+  state._retiroCobrador = cobradorIdPresel || null;
+  state.modal = 'retiro-cobrador';
+  render();
+};
+
+window.renderModalRetiroCobrador = function() {
+  const cobradores = (DB._cache['users'] || []).filter(u => u.role === 'cobrador');
+  const presel = state._retiroCobrador || '';
+
+  return `
+  <div class="modal-handle"></div>
+  <div class="modal-title">💼 Retirar de Cobrador</div>
+
+  <div style="background:#fff1f2; border-radius:8px; padding:10px 14px; margin-bottom:14px;
+              font-size:12.5px; color:#9f1239; font-weight:500; line-height:1.5">
+    💡 Registra el dinero que retiras físicamente de la caja del cobrador.
+    Resta de su mochila y suma a tu cartera.
+  </div>
+
+  <div class="form-group">
+    <label>Cobrador *</label>
+    <select class="form-control" id="rcCobrador">
+      <option value="">Selecciona cobrador...</option>
+      ${cobradores.map(u => {
+        const saldo = getSaldoMochila(u.id);
+        return `<option value="${u.id}" ${u.id === presel ? 'selected' : ''}>
+          ${u.nombre} — ${formatMoney(saldo)} en caja
+        </option>`;
+      }).join('')}
+    </select>
+  </div>
+
+  <div class="form-group">
+    <label>Monto a retirar (S/) *</label>
+    <input class="form-control" id="rcMonto" type="number" placeholder="0"
+      onwheel="this.blur()"
+      style="font-size:22px; font-weight:800; text-align:center; letter-spacing:-0.5px;
+             border:1.5px solid #fecdd3">
+  </div>
+
+  <div class="form-group">
+    <label>Descripción</label>
+    <input class="form-control" id="rcDescripcion"
+      placeholder="Ej: Retiro cobros del día, cierre de semana...">
+  </div>
+
+  <div class="form-group">
+    <label>Fecha</label>
+    <input class="form-control" id="rcFecha" type="date" value="${today()}">
+  </div>
+
+  <button class="btn" onclick="guardarRetiroCobrador()"
+    style="height:48px; font-size:15px; font-weight:700;
+           background:#9f1239; color:white; border:none; cursor:pointer;
+           border-radius:10px; width:100%">
+    Confirmar Retiro
+  </button>`;
+};
+
+window.guardarRetiroCobrador = async function() {
+  const cobradorId = document.getElementById('rcCobrador').value;
+  const monto = parseMonto(document.getElementById('rcMonto').value);
+  const descripcion = document.getElementById('rcDescripcion').value.trim();
+  const fecha = document.getElementById('rcFecha').value;
+
+  if (!cobradorId) { alert('Selecciona un cobrador'); return; }
+  if (!monto || monto <= 0) { alert('Ingresa un monto válido'); return; }
+  if (!fecha) { alert('Selecciona una fecha'); return; }
+
+  const id = genId();
+  const nuevo = {
+    id,
+    tipo: 'confirmar_yape',
+    monto,
+    descripcion: descripcion || 'Retiro de cobrador',
+    fecha,
+    cobradorId,
+    confirmado: true,
+    registradoPor: state.currentUser.id
+  };
+
+  try {
+    await DB.set('movimientos_cartera', id, nuevo);
+    if (!DB._cache['movimientos_cartera']) DB._cache['movimientos_cartera'] = [];
+    DB._cache['movimientos_cartera'].push(nuevo);
+    state.modal = null;
+    state._retiroCobrador = null;
+    showToast(`💼 Retiro de ${formatMoney(monto)} registrado`);
+    render();
+  } catch(e) {
+    alert('Error: ' + e.message);
+  }
 };

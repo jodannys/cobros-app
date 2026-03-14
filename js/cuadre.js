@@ -7,7 +7,7 @@ window.getCuadreDelDia = function (cobradorId, fecha) {
   const creditos = DB._cache['creditos'] || [];
   const clientes = DB._cache['clientes'] || [];
 
-  const pagosDia = pagos.filter(p => p.cobradorId === cobradorId && p.fecha === fecha);
+  const pagosDia = pagos.filter(p => p.cobradorId === cobradorId && p.fecha === fecha && !p.eliminado);
 
   let yape = pagosDia.filter(p => p.tipo === 'yape').reduce((s, p) => s + Number(p.monto), 0);
   let efectivo = pagosDia.filter(p => p.tipo === 'efectivo').reduce((s, p) => s + Number(p.monto), 0);
@@ -35,12 +35,18 @@ window.getCuadreDelDia = function (cobradorId, fecha) {
   };
 };
 
+// PARCHE cuadre.js — reemplazá SOLO la función calcularMetaReal
+// Las demás funciones (getCuadreDelDia, getCajaChicaDelDia) NO cambian
+// porque SÍ deben ver los pagos eliminados para preservar el historial
+
 window.calcularMetaReal = function (cobradorId, fecha) {
   const creditos = DB._cache['creditos'] || [];
   const clientes = DB._cache['clientes'] || [];
-  const pagos = DB._cache['pagos'] || [];
+  const pagos    = DB._cache['pagos']    || [];
 
-  const misClientesIds = clientes.filter(c => c.cobradorId === cobradorId).map(c => c.id);
+  const misClientesIds = clientes
+    .filter(c => c.cobradorId === cobradorId)
+    .map(c => c.id);
 
   const creditosActivos = creditos.filter(cr =>
     misClientesIds.includes(cr.clienteId) &&
@@ -53,28 +59,26 @@ window.calcularMetaReal = function (cobradorId, fecha) {
   const detalle = [];
 
   creditosActivos.forEach(cr => {
-    const cliente = clientes.find(c => c.id === cr.clienteId);
-    const cuota = Number(cr.cuotaDiaria) || 0;
+    const cliente   = clientes.find(c => c.id === cr.clienteId);
+    const cuota     = Number(cr.cuotaDiaria) || 0;
 
-    const pagosHoy = pagos.filter(p => p.creditoId === cr.id && p.fecha === fecha);
+    // ── Solo pagos NO eliminados para la meta ──
+    const pagosNoEliminados = pagos.filter(p => p.creditoId === cr.id && !p.eliminado);
+
+    const pagosHoy      = pagosNoEliminados.filter(p => p.fecha === fecha);
     const montoPagadoHoy = pagosHoy.reduce((s, p) => s + Number(p.monto), 0);
-
-    const totalPagado = pagos
-      .filter(p => p.creditoId === cr.id)
-      .reduce((s, p) => s + Number(p.monto), 0);
+    const totalPagado   = pagosNoEliminados.reduce((s, p) => s + Number(p.monto), 0);
 
     const diasTranscurridos = Math.max(0, contarDiasHabiles(cr.fechaInicio, fecha));
-    const cuotasDebidas = Math.min(diasTranscurridos, cr.diasTotal);
-    const montoDebido = cuotasDebidas * cuota;
-
-    const alDia = totalPagado >= (montoDebido - 0.5);
+    const cuotasDebidas     = Math.min(diasTranscurridos, cr.diasTotal);
+    const montoDebido       = cuotasDebidas * cuota;
+    const alDia             = totalPagado >= (montoDebido - 0.5);
 
     if (!alDia) {
-      metaTotal += cuota;
-      pagadoHoy += Math.min(montoPagadoHoy, cuota);
+      metaTotal  += cuota;
+      pagadoHoy  += Math.min(montoPagadoHoy, cuota);
+      pendiente  += cuota;
     }
-
-    if (!alDia) pendiente += cuota;
 
     const deudaAcumulada = Math.max(0, montoDebido - totalPagado);
     detalle.push({ cliente, cr, cuota, montoPagadoHoy, completo: alDia, deudaAcumulada });
@@ -113,7 +117,7 @@ window.guardarNota = async function () {
 };
 
 // ── Helper: caja chica profesional (cobrador) ─────────────────
-function _renderCajaChicaPro(caja, cuadre) {
+window._renderCajaChicaPro = function(caja, cuadre) {
   const saldoPositivo = caja.saldo >= 0;
   const saldoColor = saldoPositivo ? '#4ade80' : '#f87171';
 

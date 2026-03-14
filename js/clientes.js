@@ -100,8 +100,8 @@ window.renderClientes = function () {
 
       <div id="lista-clientes">
         ${lista.length === 0
-          ? `<div class="empty-state"><div class="icon">👤</div><p>No se encontraron clientes</p></div>`
-          : lista.map(c => _renderClienteItem(c, creditos, users, pagos, isAdmin)).join('')}
+      ? `<div class="empty-state"><div class="icon">👤</div><p>No se encontraron clientes</p></div>`
+      : lista.map(c => _renderClienteItem(c, creditos, users, pagos, isAdmin)).join('')}
       </div>
     </div>
     <button class="fab" onclick="openModal('nuevo-cliente')">+</button>
@@ -199,7 +199,7 @@ window._renderClienteItem = function (c, creditos, users, pagos, isAdmin) {
 // ============================================================
 window.clienteEstaAtrasado = function (cr, pagos) {
   if (!cr || !cr.activo) return false;
-  const totalPagado = pagos.filter(p => p.creditoId === cr.id).reduce((s, p) => s + Number(p.monto), 0);
+  const totalPagado = pagos.filter(p => p.creditoId === cr.id && !p.eliminado).reduce((s, p) => s + Number(p.monto), 0);
   const saldo = cr.total - totalPagado;
   if (saldo <= 0) return false;
   const diasTranscurridos = Math.max(0, contarDiasHabiles(cr.fechaInicio, today()) - 1);
@@ -210,7 +210,7 @@ window.clienteEstaAtrasado = function (cr, pagos) {
 };
 
 window.cuotaAtrasada = function (cr, pagos) {
-  const totalPagado = pagos.filter(p => p.creditoId === cr.id).reduce((s, p) => s + Number(p.monto), 0);
+  const totalPagado = pagos.filter(p => p.creditoId === cr.id && !p.eliminado).reduce((s, p) => s + Number(p.monto), 0);
   const cuotasCubiertas = Math.floor(totalPagado / cr.cuotaDiaria);
   const diasTranscurridos = Math.max(0, contarDiasHabiles(cr.fechaInicio, today()) - 1);
   const cuotasDebidas = Math.min(diasTranscurridos, cr.diasTotal);
@@ -221,7 +221,7 @@ window.cuotaAtrasada = function (cr, pagos) {
 // ESQUEMA VISUAL DE CUOTAS
 // ============================================================
 window.renderEsquemaCuotas = function (cr) {
-  const pagos = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id);
+  const pagos = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id && !p.eliminado);
   const totalPagado = pagos.reduce((s, p) => s + Number(p.monto), 0);
   const cuotaDiaria = Number(cr.cuotaDiaria);
   const cuotasCubiertas = Math.floor(totalPagado / cuotaDiaria);
@@ -243,30 +243,30 @@ window.renderEsquemaCuotas = function (cr) {
   }
 
   const cursor = new Date(primerDia);
-let cuotaNum = 0;
-while (cuotaNum < cr.diasTotal) {
-  const yyyy = cursor.getFullYear();
-  const mm0 = String(cursor.getMonth() + 1).padStart(2, '0');
-  const dd0 = String(cursor.getDate()).padStart(2, '0');
-  const fechaStr = `${yyyy}-${mm0}-${dd0}`;
+  let cuotaNum = 0;
+  while (cuotaNum < cr.diasTotal) {
+    const yyyy = cursor.getFullYear();
+    const mm0 = String(cursor.getMonth() + 1).padStart(2, '0');
+    const dd0 = String(cursor.getDate()).padStart(2, '0');
+    const fechaStr = `${yyyy}-${mm0}-${dd0}`;
 
-  if (esDiaLaboral(fechaStr)) {
-    const dd = dd0;
-    const mm = mm0;
-    cuotaNum++;
-    let estado;
-    if (cuotaNum <= cuotasCubiertas) estado = 'pagada';
-    else if (cuotaNum <= diasTranscurridos) estado = 'atrasada';
-    else estado = 'pendiente';
-    celdas.push({ dd, mm, num: cuotaNum, estado });
-  } else if (cursor.getDay() !== 0) {
-    // Feriado — mostrar celda vacía en el calendario
-    const dd = dd0;
-    const mm = mm0;
-    celdas.push({ vacia: true, dd, mm, feriado: true });
+    if (esDiaLaboral(fechaStr)) {
+      const dd = dd0;
+      const mm = mm0;
+      cuotaNum++;
+      let estado;
+      if (cuotaNum <= cuotasCubiertas) estado = 'pagada';
+      else if (cuotaNum <= diasTranscurridos) estado = 'atrasada';
+      else estado = 'pendiente';
+      celdas.push({ dd, mm, num: cuotaNum, estado });
+    } else if (cursor.getDay() !== 0) {
+      // Feriado — mostrar celda vacía en el calendario
+      const dd = dd0;
+      const mm = mm0;
+      celdas.push({ vacia: true, dd, mm, feriado: true });
+    }
+    cursor.setDate(cursor.getDate() + 1);
   }
-  cursor.setDate(cursor.getDate() + 1);
-}
 
   const pagadas = celdas.filter(d => d.estado === 'pagada').length;
   const atrasadas = celdas.filter(d => d.estado === 'atrasada').length;
@@ -276,8 +276,8 @@ while (cuotaNum < cr.diasTotal) {
   const bdr = { pagada: '#86efac', atrasada: '#fecdd3', pendiente: '#e2e8f0' };
   const txt = { pagada: '#166534', atrasada: '#9f1239', pendiente: '#94a3b8' };
 
-const renderCelda = d => {
-  if (d.vacia) return `
+  const renderCelda = d => {
+    if (d.vacia) return `
     <div>
       <div style="width:100%; padding-top:100%; position:relative; border-radius:6px;
                   background:${d.feriado ? '#fdf4ff' : 'transparent'};
@@ -292,14 +292,14 @@ const renderCelda = d => {
       </div>
     </div>`;
 
-  const estilos = {
-    pagada:    { bg: '#f0fdf4', num: '#16a34a', fecha: '#86efac', punto: '#22c55e' },
-    atrasada:  { bg: '#fff1f2', num: '#e11d48', fecha: '#fda4af', punto: '#f43f5e' },
-    pendiente: { bg: '#f8fafc', num: '#94a3b8', fecha: '#cbd5e1', punto: 'transparent' },
-  };
-  const s = estilos[d.estado];
+    const estilos = {
+      pagada: { bg: '#f0fdf4', num: '#16a34a', fecha: '#86efac', punto: '#22c55e' },
+      atrasada: { bg: '#fff1f2', num: '#e11d48', fecha: '#fda4af', punto: '#f43f5e' },
+      pendiente: { bg: '#f8fafc', num: '#94a3b8', fecha: '#cbd5e1', punto: 'transparent' },
+    };
+    const s = estilos[d.estado];
 
-  return `
+    return `
     <div>
       <div style="width:100%; padding-top:100%; position:relative; border-radius:6px;
                   background:${s.bg};">
@@ -315,7 +315,7 @@ const renderCelda = d => {
         ${d.dd}/${d.mm}
       </div>
     </div>`;
-};
+  };
 
   return `
   <div style="margin-top:14px">
@@ -496,8 +496,8 @@ window.renderClientDetail = function () {
       <div class="flex-between mb-2" style="margin-top:20px">
         <div class="card-title" style="margin:0">💳 Gestión de Créditos</div>
         ${!creditoActivo
-          ? `<button class="btn btn-primary btn-sm" onclick="openModal('nuevo-credito')">+ Nuevo crédito</button>`
-          : `<span style="font-size:11.5px; color:var(--muted); font-style:italic">Crédito activo en curso</span>`}
+      ? `<button class="btn btn-primary btn-sm" onclick="openModal('nuevo-credito')">+ Nuevo crédito</button>`
+      : `<span style="font-size:11.5px; color:var(--muted); font-style:italic">Crédito activo en curso</span>`}
       </div>
 
       <div class="seccion-creditos-container">
@@ -528,7 +528,7 @@ window.enviarEstadoWhatsApp = function (clienteId) {
   }
 
   const cr = creditosActivos[creditosActivos.length - 1];
-  const pagosCr = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id);
+  const pagosCr = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id && !p.eliminado);
   const totalPagadoCr = pagosCr.reduce((s, p) => s + p.monto, 0);
   const saldoCapital = Math.max(0, cr.total - totalPagadoCr);
   const infoMora = obtenerDatosMora(cr);
@@ -651,21 +651,21 @@ window.guardarCliente = async function () {
 window.actualizarCliente = async function () {
   if (window._actualizandoCliente) return;
   window._actualizandoCliente = true;
- 
+
   const btn = document.querySelector('[onclick="actualizarCliente()"]');
   if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
- 
+
   try {
     const c = state.selectedClient;
     const isAdmin = state.currentUser.role === 'admin';
     const cobradorEl = document.getElementById('eCobrador');
- 
+
     const fotoEl = document.getElementById('previewEFoto');
     let foto = c.foto;
     if (fotoEl && fotoEl.style.display !== 'none' && fotoEl.src && fotoEl.src !== window.location.href) {
       if (fotoEl.src !== c.foto) foto = await comprimirImagen(fotoEl.src, 600, 0.6);
     }
- 
+
     const updated = {
       ...c,
       dni: document.getElementById('eDNI').value.trim(),
@@ -678,7 +678,7 @@ window.actualizarCliente = async function () {
       cobradorId: isAdmin && cobradorEl ? cobradorEl.value : c.cobradorId,
       foto
     };
- 
+
     await DB.set('clientes', c.id, updated);
     state.selectedClient = updated;
     _coordsSeleccionadas = null;
@@ -692,7 +692,7 @@ window.actualizarCliente = async function () {
     if (btn) { btn.disabled = false; btn.textContent = 'Actualizar Cliente'; }
   }
 };
- 
+
 window.eliminarCliente = async function () {
   if (!confirm('¿Eliminar este cliente? Se borrarán también sus créditos y pagos. Esta acción no se puede deshacer.')) return;
   const c = state.selectedClient;

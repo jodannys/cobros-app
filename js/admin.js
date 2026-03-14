@@ -268,55 +268,7 @@ window.renderAdminCobrador = function renderAdminCobrador() {
         </div>
       </div>
 
-      <div class="card" style="padding:16px; background:white; border-radius:12px">
-        <div style="font-size:10px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px">
-          💰 Cobros
-        </div>
-        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; text-align:center; margin-bottom:16px">
-          <div style="background:#f8fafc; border-radius:10px; padding:12px; transition:all 0.2s;">
-            <div style="font-size:10px; color:#94a3b8; font-weight:600; margin-bottom:4px">📱 Yape/Plin</div>
-            <div style="font-weight:800; font-size:16px; color:#1e293b">${formatMoney(c.yape)}</div>
-          </div>
-          <div style="background:#f8fafc; border-radius:10px; padding:12px; transition:all 0.2s;">
-            <div style="font-size:10px; color:#94a3b8; font-weight:600; margin-bottom:4px">💵 Efectivo</div>
-            <div style="font-weight:800; font-size:16px; color:#1e293b">${formatMoney(c.efectivo)}</div>
-          </div>
-          <div style="background:#f8fafc; border-radius:10px; padding:12px; transition:all 0.2s;">
-            <div style="font-size:10px; color:#94a3b8; font-weight:600; margin-bottom:4px">🏦 Transf.</div>
-            <div style="font-weight:800; font-size:16px; color:#1e293b">${formatMoney(c.transferencia)}</div>
-          </div>
-        </div>
-        
-        <div style="font-size:10px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px">
-          💼 Caja
-        </div>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px">
-          <div style="background:#f8fafc; border-radius:10px; padding:12px; border-left:3px solid #94a3b8">
-            <div style="font-size:10px; color:#94a3b8; font-weight:600; margin-bottom:4px">Inicial</div>
-            <div style="font-weight:800; font-size:16px; color:#1e293b">${formatMoney(caja.cajaInicial)}</div>
-          </div>
-          <div style="background:#f0fff4; border-radius:10px; padding:12px; border-left:3px solid #16a34a">
-            <div style="font-size:10px; color:#16a34a; font-weight:600; margin-bottom:4px">+ Cobros</div>
-            <div style="font-weight:800; font-size:16px; color:#16a34a">${formatMoney(caja.cobrosDelDia)}</div>
-          </div>
-          <div style="background:#fff5f5; border-radius:10px; padding:12px; border-left:3px solid #dc2626">
-            <div style="font-size:10px; color:#dc2626; font-weight:600; margin-bottom:4px">− Préstamos</div>
-            <div style="font-weight:800; font-size:16px; color:#dc2626">${formatMoney(caja.totalPrestadoHoy)}</div>
-          </div>
-          <div style="background:#fff5f5; border-radius:10px; padding:12px; border-left:3px solid #dc2626">
-            <div style="font-size:10px; color:#dc2626; font-weight:600; margin-bottom:4px">− Gastos</div>
-            <div style="font-weight:800; font-size:16px; color:#dc2626">${formatMoney(caja.totalGastos)}</div>
-          </div>
-        </div>
-        <div style="background:linear-gradient(135deg, #1e293b, #0f172a); border-radius:10px; padding:14px 16px; display:flex; justify-content:space-between; align-items:center">
-          <div style="font-size:12px; color:rgba(255,255,255,0.7); font-weight:600">Saldo en caja</div>
-          <div style="font-size:22px; font-weight:800; color:${caja.saldo >= caja.cajaInicial ? '#4ade80' : '#fbbf24'};
-            text-shadow:0 0 20px ${caja.saldo >= caja.cajaInicial ? 'rgba(74,222,128,0.3)' : 'rgba(251,191,36,0.2)'}">
-            ${formatMoney(caja.saldo)}
-          </div>
-        </div>
-      </div>
-
+     ${_renderCajaChicaPro(caja, c)}
       <!-- GASTOS DEL DÍA -->
       <div class="card" style="padding:16px; background:white; border-radius:12px">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px">
@@ -360,7 +312,21 @@ window.renderAdminCobrador = function renderAdminCobrador() {
             </button>` : ''}
           `}
       </div>
-
+<!-- MAPA DE RUTA DEL DÍA -->
+      <div class="card" style="padding:14px 16px; background:white; border-radius:12px">
+        <div style="display:flex; justify-content:space-between; align-items:center">
+          <div style="font-size:10px; font-weight:700; color:#94a3b8;
+                      text-transform:uppercase; letter-spacing:0.5px">
+            🗺️ Ruta del día
+          </div>
+          <button onclick="abrirMapaRutaCobrador('${cobrador.id}', '${fechaVer}')"
+            style="border:none; border-radius:8px; padding:8px 16px;
+                   background:#0f172a; color:white; font-size:12px;
+                   font-weight:700; cursor:pointer">
+            Ver mapa
+          </button>
+        </div>
+      </div>
       ${c.nota ? `
       <div class="card" style="padding:14px 16px; background:#fefce8; border-radius:12px; border-left:4px solid #eab308">
         <div style="font-size:10px; font-weight:700; color:#854d0e; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px">
@@ -683,4 +649,9 @@ window.eliminarFeriado = async function (fecha) {
   } catch (e) {
     alert('Error al eliminar: ' + e.message);
   }
+};
+window.abrirMapaRutaCobrador = function(cobradorId, fecha) {
+  const meta = calcularMetaReal(cobradorId, fecha);
+  window._metaDetalle = meta.detalle;
+  abrirMapaRuta();
 };

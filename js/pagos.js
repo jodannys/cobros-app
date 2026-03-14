@@ -1,7 +1,7 @@
 // ============================================================
 // 1. CANDADO EN STATE (no en variable local)
 // ============================================================
-window.deshabilitarBotonesPago = function(estado) {
+window.deshabilitarBotonesPago = function (estado) {
   document.querySelectorAll('button[id^="btn-pago-"]').forEach(btn => {
     btn.disabled = estado;
     btn.style.opacity = estado ? '0.5' : '1';
@@ -15,7 +15,7 @@ window.deshabilitarBotonesPago = function(estado) {
 // ============================================================
 // 2. EJECUTAR PAGO PROTEGIDO
 // ============================================================
-window.ejecutarPagoProtegido = function(btn, creditoId) {
+window.ejecutarPagoProtegido = function (btn, creditoId) {
   console.log(`[PAGO] Clic detectado en crédito: ${creditoId}`);
 
   if (state._pagoProcesando) {
@@ -41,7 +41,7 @@ window.ejecutarPagoProtegido = function(btn, creditoId) {
 // ============================================================
 // 3. ABRIR MODAL DE PAGO
 // ============================================================
-window.openRegistrarPago = function(crId) {
+window.openRegistrarPago = function (crId) {
   if (state.modal && state.modal !== 'registrar-pago') {
     state.modal = null;
   }
@@ -62,7 +62,7 @@ window.openRegistrarPago = function(crId) {
 // ============================================================
 // 4. PAGO RÁPIDO
 // ============================================================
-window.pagoRapido = function(crId) {
+window.pagoRapido = function (crId) {
   if (state._pagoProcesando) {
     console.warn("⚠️ Ya hay un pago en proceso.");
     return;
@@ -87,7 +87,7 @@ window.pagoRapido = function(crId) {
 // ============================================================
 // 5. GUARDAR PAGO
 // ============================================================
-window.guardarPago = async function() {
+window.guardarPago = async function () {
   try {
     const cr = state.selectedCredito;
     const montoInput = document.getElementById('pMonto');
@@ -107,7 +107,7 @@ window.guardarPago = async function() {
       btnConfirmar.innerHTML = '⏳ Guardando...';
     }
 
-    const pagosAnteriores = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id);
+    const pagosAnteriores = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id && !p.eliminado);
     const totalPagadoAntes = pagosAnteriores.reduce((s, p) => s + (Number(p.monto) || 0), 0);
     const saldoRestante = Math.max(0, cr.total - totalPagadoAntes);
 
@@ -164,11 +164,11 @@ window.guardarPago = async function() {
 // ============================================================
 // 6. RENDERIZAR MODAL
 // ============================================================
-window.renderModalRegistrarPago = function() {
+window.renderModalRegistrarPago = function () {
   const cr = state.selectedCredito;
   if (!cr) return '';
 
-  const pagos = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id);
+  const pagos = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id && !p.eliminado);
   const totalPagado = pagos.reduce((s, p) => s + (Number(p.monto) || 0), 0);
   const saldo = Math.max(0, cr.total - totalPagado);
 

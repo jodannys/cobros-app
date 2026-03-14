@@ -199,7 +199,7 @@ window.DB = {
       }
 
       if (cr.activo === true) {
-        const pagosCr = pagos.filter(p => p.creditoId === cr.id);
+        const pagosCr = pagos.filter(p => p.creditoId === cr.id && !p.eliminado);
         const totalPagado = pagosCr.reduce((s, p) => s + (Number(p.monto) || 0), 0);
         const totalDeberia = Number(cr.total || 0);
         if (totalPagado >= totalDeberia && totalDeberia > 0) {

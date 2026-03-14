@@ -114,7 +114,7 @@ window.estaVencido = function(fechaInicio, dias) {
 
 window.diasSinPagar = function(creditoId) {
   const pagos = DB._cache['pagos'] || [];
-  const pagosCr = pagos.filter(p => p.creditoId === creditoId);
+  const pagosCr = pagos.filter(p => p.creditoId === creditoId && !p.eliminado);
   if (pagosCr.length === 0) return null;
   const ultimo = pagosCr.map(p => p.fecha).sort((a, b) => b.localeCompare(a))[0];
   const hoyStr = hoyPeru().toISOString().split('T')[0];
@@ -138,7 +138,7 @@ window.getAlertasCreditos = function() {
       if (!cliente) return;
 
       const cobrador = users.find(u => u.id === cliente.cobradorId) || { nombre: 'Sin Cobrador', id: 'n/a' };
-      const pagosCr = todosLosPagos.filter(p => p.creditoId === cr.id);
+      const pagosCr = todosLosPagos.filter(p => p.creditoId === cr.id && !p.eliminado);
       const totalPagado = pagosCr.reduce((s, p) => s + (Number(p.monto) || 0), 0);
       const saldoTotal = Number(cr.total || 0) - totalPagado;
 
@@ -209,7 +209,7 @@ window.obtenerDatosMora = function(credito, pagos) {
   }
   fFin.setHours(0, 0, 0, 0);
 
-  const pagosCr = listaPagos.filter(p => p.creditoId === credito.id);
+  const pagosCr = listaPagos.filter(p => p.creditoId === credito.id && !p.eliminado);
   let fechaRef = credito.fechaInicio;
   if (pagosCr.length > 0) {
     const fechas = pagosCr.map(p => p.fecha).filter(f => f);
@@ -240,7 +240,7 @@ window.estaRealmenteAtrasado = function(clienteId) {
     const cr = DB._cache['creditos'].find(c => c.clienteId === clienteId && c.activo);
     if (!cr) return false;
 
-    const pagosCr = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id);
+    const pagosCr = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id && !p.eliminado);
     const totalPagado = pagosCr.reduce((s, p) => s + (Number(p.monto) || 0), 0);
     const hoyStr = today();
 
@@ -331,7 +331,7 @@ window.debugCaja = function() {
     cr.fechaInicio <= fecha
   );
 
-  const pagosDia = pagos.filter(p => p.cobradorId === cobradorId && p.fecha === fecha);
+  const pagosDia = pagos.filter(p => p.cobradorId === cobradorId && p.fecha === fecha && !p.eliminado);
 
   console.group('🔍 DEBUG CAJA — ' + fecha);
 
@@ -405,7 +405,7 @@ window.debugCaja = function() {
   console.group('📋 Créditos activos (' + creditosActivos.length + ')');
   console.table(creditosActivos.map(cr => {
     const totalPagado = pagos
-      .filter(p => p.creditoId === cr.id)
+      .filter(p => p.creditoId === cr.id && !p.eliminado)
       .reduce((s, p) => s + Number(p.monto), 0);
     const cliente = clientes.find(c => c.id === cr.clienteId);
     return {

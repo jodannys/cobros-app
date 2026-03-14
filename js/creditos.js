@@ -60,7 +60,7 @@ window.toggleHistorial = function () {
 };
 
 window.renderCreditoCard = function (cr) {
-  const pagos = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id);
+  const pagos = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id && !p.eliminado);
   const totalPagado = pagos.reduce((s, p) => s + p.monto, 0);
   const saldo = Math.max(0, cr.total - totalPagado);
   const pagadoReal = saldo <= 0;
@@ -336,8 +336,8 @@ window.calcularCredito = function () {
   const preview = document.getElementById('crPreview');
   if (preview) preview.style.display = 'block';
   if (document.getElementById('crInteres')) document.getElementById('crInteres').textContent = formatMoney(interes);
-  if (document.getElementById('crTotal'))   document.getElementById('crTotal').textContent   = formatMoney(total);
-  if (document.getElementById('crCuota'))   document.getElementById('crCuota').textContent   = formatMoney(cuota);
+  if (document.getElementById('crTotal')) document.getElementById('crTotal').textContent = formatMoney(total);
+  if (document.getElementById('crCuota')) document.getElementById('crCuota').textContent = formatMoney(cuota);
 
   const seguroActivo = state._crSeguro !== false;
   const seguroPreview = document.getElementById('crSeguroPreview');
@@ -425,11 +425,11 @@ window.eliminarCredito = async function (crId) {
   const cr = (DB._cache['creditos'] || []).find(c => c.id === crId);
   if (!cr) return;
 
-  const pagos = (DB._cache['pagos'] || []).filter(p => p.creditoId === crId);
+  const pagos = (DB._cache['pagos'] || []).filter(p => p.creditoId === crId && !p.eliminado);
   const totalPagado = pagos.reduce((s, p) => s + Number(p.monto), 0);
   const montoSeguro = Number(cr.montoSeguro || 0);
-  const montoTotal  = Number(cr.monto) + montoSeguro;
-  const cliente     = (DB._cache['clientes'] || []).find(c => c.id === cr.clienteId);
+  const montoTotal = Number(cr.monto) + montoSeguro;
+  const cliente = (DB._cache['clientes'] || []).find(c => c.id === cr.clienteId);
 
   const lineas = [
     `Monto prestado: ${formatMoney(cr.monto)}`,
@@ -437,8 +437,7 @@ window.eliminarCredito = async function (crId) {
     `Cuotas cobradas: ${formatMoney(totalPagado)}`,
     `Fecha del crédito: ${formatDate(cr.fechaInicio)}`,
     ``,
-    `Se eliminarán ${pagos.length} pago(s) y se ajustará`,
-    `la caja con fecha ${formatDate(cr.fechaInicio)}.`,
+    `Se eliminarán ${pagos.length} pago(s) y se ajustará la caja.`,
     `Esta acción no se puede deshacer.`
   ].filter(l => l !== null).join('\n');
 
@@ -447,29 +446,27 @@ window.eliminarCredito = async function (crId) {
   window._eliminandoCredito = true;
 
   try {
-    // 1. Eliminar todos los pagos
+    // 1. Marcar pagos como eliminados (NO borrar — preserva cuadre histórico)
     for (const p of pagos) {
-      await DB.delete('pagos', p.id);
+      await DB.update('pagos', p.id, { eliminado: true });
+      const idx = (DB._cache['pagos'] || []).findIndex(x => x.id === p.id);
+      if (idx !== -1) DB._cache['pagos'][idx].eliminado = true;
     }
-    DB._cache['pagos'] = (DB._cache['pagos'] || []).filter(p => p.creditoId !== crId);
 
     // 2. Eliminar el crédito
     await DB.delete('creditos', crId);
     DB._cache['creditos'] = (DB._cache['creditos'] || []).filter(c => c.id !== crId);
 
-    const cobradorId  = cliente?.cobradorId || null;
-    const fechaAjuste = cr.fechaInicio; // fecha original para no romper historial
+    const cobradorId = cliente?.cobradorId || null;
+    const fechaAjuste = cr.fechaInicio;
 
-    // 3. Ajuste cartera admin: devolver monto prestado + seguro
+    // 3. Ajuste cartera admin: devolver monto + seguro
     if (montoTotal > 0) {
       const idAdmin = genId();
       const ajusteAdmin = {
-        id: idAdmin,
-        tipo: 'gasto_admin',
-        monto: montoTotal,
-        descripcion: `Eliminación crédito — ${cliente?.nombre || 'cliente'}`,
-        fecha: fechaAjuste,
-        cobradorId,
+        id: idAdmin, tipo: 'inyeccion', monto: montoTotal,
+        descripcion: `Baja crédito`,
+        fecha: fechaAjuste, cobradorId,
         registradoPor: state.currentUser.id
       };
       await DB.set('movimientos_cartera', idAdmin, ajusteAdmin);
@@ -481,12 +478,9 @@ window.eliminarCredito = async function (crId) {
     if (totalPagado > 0 && cobradorId) {
       const idCobrador = genId();
       const ajusteCobrador = {
-        id: idCobrador,
-        tipo: 'gasto_cobrador',
-        monto: totalPagado,
-        descripcion: `Eliminación crédito — ${cliente?.nombre || 'cliente'}`,
-        fecha: fechaAjuste,
-        cobradorId,
+        id: idCobrador, tipo: 'gasto_cobrador', monto: totalPagado,
+        descripcion: `Baja crédito`,
+        fecha: fechaAjuste, cobradorId,
         registradoPor: state.currentUser.id
       };
       await DB.set('movimientos_cartera', idCobrador, ajusteCobrador);
@@ -506,7 +500,7 @@ window.cerrarCredito = async function (crId) {
   const cr = (DB._cache['creditos'] || []).find(c => c.id === crId);
   if (!cr) return;
 
-  const pagos = (DB._cache['pagos'] || []).filter(p => p.creditoId === crId);
+  const pagos = (DB._cache['pagos'] || []).filter(p => p.creditoId === crId && !p.eliminado);
   const totalPagado = pagos.reduce((s, p) => s + p.monto, 0);
   const saldo = cr.total - totalPagado;
 
@@ -674,10 +668,32 @@ window.guardarPagoEditado = async function () {
 };
 
 window.eliminarPago = async function (pagoId) {
-  if (!confirm('¿Eliminar este pago? Esta acción no se puede deshacer y afectará el saldo del crédito.')) return;
+  if (!confirm('¿Eliminar este pago? Esta acción afectará el saldo del crédito.')) return;
+
+  const p = (DB._cache['pagos'] || []).find(x => x.id === pagoId);
+  if (!p) return;
+
   try {
-    await DB.delete('pagos', pagoId);
-    DB._cache['pagos'] = (DB._cache['pagos'] || []).filter(p => p.id !== pagoId);
+    // Marcar como eliminado (NO borrar — preserva cuadre histórico)
+    await DB.update('pagos', pagoId, { eliminado: true });
+    const idx = (DB._cache['pagos'] || []).findIndex(x => x.id === pagoId);
+    if (idx !== -1) DB._cache['pagos'][idx].eliminado = true;
+
+    // Ajuste mochila cobrador: quitar ese cobro
+    if (p.cobradorId && p.monto > 0) {
+      const idAjuste = genId();
+      const ajuste = {
+        id: idAjuste, tipo: 'gasto_cobrador', monto: Number(p.monto),
+        descripcion: `Baja pago`,
+        fecha: p.fecha,
+        cobradorId: p.cobradorId,
+        registradoPor: state.currentUser.id
+      };
+      await DB.set('movimientos_cartera', idAjuste, ajuste);
+      if (!DB._cache['movimientos_cartera']) DB._cache['movimientos_cartera'] = [];
+      DB._cache['movimientos_cartera'].push(ajuste);
+    }
+
     state._editandoPago = null;
     state.modal = null;
     showToast('Pago eliminado');
@@ -686,6 +702,7 @@ window.eliminarPago = async function (pagoId) {
     alert('Error al eliminar: ' + e.message);
   }
 };
+
 
 window.reabrirCredito = async function (crId) {
   if (!confirm('¿Reabrir este crédito? Volverá a estar activo y aparecerá en los cobros.')) return;
