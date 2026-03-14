@@ -27,9 +27,9 @@ function _calcularMochila(cobradorId, fechaLimite) {
     .filter(m => m.tipo === 'envio_cobrador' && m.cobradorId === cobradorId && antes(m.fecha))
     .reduce((s, m) => s + Number(m.monto || 0), 0);
 
-  const cobros = pagos
-    .filter(p => p.cobradorId === cobradorId && antes(p.fecha))
-    .reduce((s, p) => s + Number(p.monto || 0), 0);
+const cobros = pagos
+  .filter(p => p.cobradorId === cobradorId && !p.eliminado && antes(p.fecha))
+  .reduce((s, p) => s + Number(p.monto || 0), 0);
 
   const seguros = creditos
     .filter(cr => clientesIds.includes(cr.clienteId) && cr.seguro && antes(cr.fechaInicio))

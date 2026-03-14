@@ -446,7 +446,7 @@ window.eliminarCredito = async function (crId) {
   window._eliminandoCredito = true;
 
   try {
-    // 1. Marcar pagos como eliminados (NO borrar — preserva cuadre histórico)
+    // 1. Marcar pagos como eliminados
     for (const p of pagos) {
       await DB.update('pagos', p.id, { eliminado: true });
       const idx = (DB._cache['pagos'] || []).findIndex(x => x.id === p.id);
@@ -472,19 +472,6 @@ window.eliminarCredito = async function (crId) {
       await DB.set('movimientos_cartera', idAdmin, ajusteAdmin);
       if (!DB._cache['movimientos_cartera']) DB._cache['movimientos_cartera'] = [];
       DB._cache['movimientos_cartera'].push(ajusteAdmin);
-    }
-
-    // 4. Ajuste mochila cobrador: quitar cuotas cobradas
-    if (totalPagado > 0 && cobradorId) {
-      const idCobrador = genId();
-      const ajusteCobrador = {
-        id: idCobrador, tipo: 'gasto_cobrador', monto: totalPagado,
-        descripcion: `Baja crédito`,
-        fecha: fechaAjuste, cobradorId,
-        registradoPor: state.currentUser.id
-      };
-      await DB.set('movimientos_cartera', idCobrador, ajusteCobrador);
-      DB._cache['movimientos_cartera'].push(ajusteCobrador);
     }
 
     showToast('✅ Crédito eliminado y caja ajustada');
