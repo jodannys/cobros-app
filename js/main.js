@@ -1,10 +1,4 @@
-// ============================================================
-// MAIN.JS — Punto de entrada de Vite
-// Orden importa: firebase → helpers → state → db → resto → app
-// firebase.js expone todo via window.* — no usar import destructurado
-// ============================================================
-
-import './firebase.js';
+// firebase.js se carga en index.html — no importar aquí
 import './helpers.js';
 import './state.js';
 import './db.js';
