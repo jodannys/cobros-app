@@ -73,12 +73,11 @@ window.calcularMetaReal = function (cobradorId, fecha) {
     const deudaAcumulada    = Math.max(0, montoDebido - totalPagado);
     const atrasado          = !alDia && deudaAcumulada > 0 && diasTranscurridos <= cr.diasTotal;
 
-    // ✅ FIX: verificar si ya cubrió la cuota de HOY (incluyendo pagos adelantados)
-    const cuotasDebidasHoy   = Math.min(diasTranscurridos + 1, cr.diasTotal);
-    const yaCubrioHoy        = totalPagado >= (cuotasDebidasHoy * cuota - 0.5);
+    // ✅ Le toca pagar hoy si tiene días transcurridos y no cubrió todas las cuotas debidas
+    const cuotasCubiertas   = Math.floor(totalPagado / cuota);
+    const necesitaPagarHoy  = !atrasado && diasTranscurridos >= 1 && cuotasCubiertas < diasTranscurridos;
 
-    // Meta solo cuenta clientes al día que AÚN deben pagar hoy
-    if (!atrasado && !yaCubrioHoy) {
+    if (necesitaPagarHoy) {
       metaTotal  += cuota;
       pagadoHoy  += montoPagadoHoy;
       if (montoPagadoHoy < cuota) {
@@ -91,9 +90,11 @@ window.calcularMetaReal = function (cobradorId, fecha) {
       clientesVencidos++;
     }
 
-    // Completo = ya cubrió hoy Y no está atrasado
-    const pagoHoy = yaCubrioHoy && !atrasado;
-    detalle.push({ cliente, cr, cuota, montoPagadoHoy, completo: pagoHoy, deudaAcumulada, atrasado });
+    detalle.push({
+      cliente, cr, cuota, montoPagadoHoy,
+      completo: !necesitaPagarHoy && !atrasado,
+      deudaAcumulada, atrasado
+    });
   });
 
   return { metaTotal, pagadoHoy, pendiente, detalle, totalVencidos, clientesVencidos };
