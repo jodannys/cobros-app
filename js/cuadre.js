@@ -66,26 +66,23 @@ window.calcularMetaReal = function (cobradorId, fecha) {
     const pagosHoy          = pagosNoEliminados.filter(p => p.fecha === fecha);
     const montoPagadoHoy    = pagosHoy.reduce((s, p) => s + Number(p.monto), 0);
     const totalPagado       = pagosNoEliminados.reduce((s, p) => s + Number(p.monto), 0);
+    const pagadoAntesDeHoy  = totalPagado - montoPagadoHoy;
 
     const saldoRestante = Number(cr.total) - totalPagado;
     if (saldoRestante <= 0) return;
 
-    // Calculamos días hábiles transcurridos
     const diasTranscurridos = Math.max(0, contarDiasHabiles(cr.fechaInicio, fecha) - 1);
-    
-    // Lo que el cliente debería tener pagado sumando la cuota de HOY
-    const montoEsperadoHoy = Math.min(Number(cr.total), diasTranscurridos * cuota);
-    
-    // Lo que el cliente debía hasta AYER
+    const montoEsperadoHoy  = Math.min(Number(cr.total), diasTranscurridos * cuota);
     const montoEsperadoAyer = Math.max(0, (diasTranscurridos - 1) * cuota);
-    const pagadoAntesDeHoy = totalPagado - montoPagadoHoy;
+    
+    // --- LÓGICA DE VISIBILIDAD Y METAS ---
 
-    // REGLA PARA LA META DE S/ 731:
-    // Si lo que pagó antes de hoy es menor a lo que debe tener hoy, esa cuota entra en la meta.
-    const leFaltaCuotaHoy = pagadoAntesDeHoy < (montoEsperadoHoy - 0.5);
-    const pasoDiaGracia = diasTranscurridos >= 1;
+    // 1. ¿Suma a la Meta de S/ 731? 
+    // Solo si hoy le toca pagar y no ha cubierto la cuota de hoy.
+    const yaCubrioCuotaHoy = pagadoAntesDeHoy >= (montoEsperadoHoy - 0.5);
+    const leTocaHoy        = diasTranscurridos >= 1 && diasTranscurridos <= cr.diasTotal;
 
-    if (pasoDiaGracia && leFaltaCuotaHoy) {
+    if (leTocaHoy && !yaCubrioCuotaHoy) {
       metaTotal += cuota;
       pagadoHoy += montoPagadoHoy;
       if (montoPagadoHoy < cuota) {
@@ -93,26 +90,32 @@ window.calcularMetaReal = function (cobradorId, fecha) {
       }
     }
 
-    // REGLA PARA VENCIDOS DE S/ 1,826:
-    // Es la deuda acumulada de días anteriores que NO se ha pagado.
-    const deudaAnterior = Math.max(0, montoEsperadoAyer - pagadoAntesDeHoy);
-    if (deudaAnterior > 0.5) {
-      totalVencidos += deudaAnterior;
+    // 2. ¿Suma a Vencidos de S/ 1,826? (El Triángulo ⚠️)
+    const deudaAtrasada = Math.max(0, montoEsperadoAyer - pagadoAntesDeHoy);
+    if (deudaAtrasada > 0.5) {
+      totalVencidos += deudaAtrasada;
       clientesVencidos++;
     }
+
+    // 3. ¿Debe aparecer en la lista de "Restantes"?
+    // Aparece si: (Le toca pagar hoy y no ha pagado) O (Debe dinero de días anteriores)
+    const tienePendienteHoy = leTocaHoy && (montoPagadoHoy < cuota) && !yaCubrioCuotaHoy;
+    const tieneDeudaVieja   = deudaAtrasada > 0.5;
+    
+    // Si no tiene ninguna de las dos, "completo" es true y desaparece de la lista de ruta.
+    const estaCompletado = !tienePendienteHoy && !tieneDeudaVieja;
 
     detalle.push({ 
       cliente, 
       cr, 
       cuota, 
       montoPagadoHoy, 
-      completo: totalPagado >= (montoEsperadoHoy - 0.5), 
-      deudaAcumulada: Math.max(0, montoEsperadoHoy - totalPagado), 
-      atrasado: deudaAnterior > 0.5 
+      completo: estaCompletado, 
+      deudaAcumulada: deudaAtrasada,
+      atrasado: tieneDeudaVieja
     });
   });
 
-  // Ajuste fino para asegurar que los decimales no te jueguen una mala pasada
   return { 
     metaTotal: Math.round(metaTotal), 
     pagadoHoy, 
