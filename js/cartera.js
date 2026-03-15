@@ -166,8 +166,6 @@ window.renderPanelCartera = function () {
     <div style="font-size:10.5px; font-weight:700; color:rgba(255,255,255,0.45);
                 text-transform:uppercase; letter-spacing:1px">Mi Cartera</div>
     <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px">
-      <span style="font-size:11px; background:rgba(255,255,255,0.08); color:rgba(255,255,255,0.5);
-                   padding:3px 12px; border-radius:20px; font-weight:600">Disponible</span>
       <div style="position:relative">
         <button onclick="state._menuCarteraAbierto=!state._menuCarteraAbierto; render()"
           style="background:none; border:none; color:rgba(255,255,255,0.7); padding:0;
