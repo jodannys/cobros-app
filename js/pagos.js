@@ -176,6 +176,9 @@ window.renderModalRegistrarPago = function () {
   const totalConMora = saldo + infoMora.total;
   window._pagoTipo = 'efectivo';
 
+  // Fecha forzada a Lima
+  const fechaHoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
+
   return `
   <div class="modal-handle"></div>
   <div class="modal-title">Registrar Pago</div>
@@ -219,7 +222,7 @@ window.renderModalRegistrarPago = function () {
 
   <div class="form-group">
     <label>Fecha</label>
-    <input class="form-control" id="pFecha" type="date" value="${today()}">
+    <input class="form-control" id="pFecha" type="date" value="${fechaHoy}">
   </div>
 
   <div class="form-group">
