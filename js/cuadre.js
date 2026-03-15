@@ -89,7 +89,7 @@ window.calcularMetaReal = function (cobradorId, fecha) {
     }
 // TRIÁNGULO ATRASADOS
 const cuotasDebidas   = Math.min(diasTranscurridos, cr.diasTotal);
-const cuotasCubiertas = Math.floor(totalPagado / cuota);
+const cuotasCubiertas = Math.floor(pagadoAntesDeHoy / cuota);
 const atrasado = (cuotasDebidas - cuotasCubiertas) > 1 && diasTranscurridos > 0;
 
 // Deuda de días ANTERIORES a hoy (sin incluir la cuota de hoy)
