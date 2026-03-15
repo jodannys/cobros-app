@@ -646,14 +646,13 @@ window.guardarCliente = async function () {
       negocio: document.getElementById('nNegocio').value.trim(),
       telefono: document.getElementById('nTelefono').value.trim(),
       direccion: document.getElementById('nDireccion').value.trim(),
-      lat: _coordsSeleccionadas?.lat || null,
-      lng: _coordsSeleccionadas?.lng || null,
+      lat: window._coordsSeleccionadas?.lat || null,
+      lng: window._coordsSeleccionadas?.lng || null,
       cobradorId, foto, creado: today()
     };
 
     await DB.set('clientes', id, nuevoCliente);
-    _coordsSeleccionadas = null;
-    showToast('Cliente guardado exitosamente');
+    window._coordsSeleccionadas = null;
 
     if (state.abrirCreditoAlGuardar) {
       state.selectedClient = nuevoCliente;
@@ -700,17 +699,15 @@ window.actualizarCliente = async function () {
       negocio: document.getElementById('eNegocio').value.trim(),
       telefono: document.getElementById('eTelefono').value.trim(),
       direccion: document.getElementById('eDireccion').value.trim(),
-      lat: _coordsSeleccionadas?.lat ?? c.lat ?? null,
-      lng: _coordsSeleccionadas?.lng ?? c.lng ?? null,
+      lat: window._coordsSeleccionadas?.lat ?? c.lat ?? null,
+      lng: window._coordsSeleccionadas?.lng ?? c.lng ?? null,
       cobradorId: isAdmin && cobradorEl ? cobradorEl.value : c.cobradorId,
       foto
     };
 
     await DB.set('clientes', c.id, updated);
     state.selectedClient = updated;
-    _coordsSeleccionadas = null;
-    state.modal = null;
-    showToast('Cliente actualizado');
+    window._coordsSeleccionadas = null;
     render();
   } catch (e) {
     alert('Error al actualizar: ' + e.message);
