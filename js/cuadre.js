@@ -66,23 +66,22 @@ window.calcularMetaReal = function (cobradorId, fecha) {
     const pagosHoy          = pagosNoEliminados.filter(p => p.fecha === fecha);
     const montoPagadoHoy    = pagosHoy.reduce((s, p) => s + Number(p.monto), 0);
     const totalPagado       = pagosNoEliminados.reduce((s, p) => s + Number(p.monto), 0);
+    
+    // Lo que pagó antes de empezar el día de hoy
     const pagadoAntesDeHoy  = totalPagado - montoPagadoHoy;
 
     const saldoRestante = Number(cr.total) - totalPagado;
     if (saldoRestante <= 0) return;
 
     const diasTranscurridos = Math.max(0, contarDiasHabiles(cr.fechaInicio, fecha) - 1);
-    const montoEsperadoHoy  = Math.min(Number(cr.total), diasTranscurridos * cuota);
-    const montoEsperadoAyer = Math.max(0, (diasTranscurridos - 1) * cuota);
     
-    // --- LÓGICA DE VISIBILIDAD Y METAS ---
-
-    // 1. ¿Suma a la Meta de S/ 731? 
-    // Solo si hoy le toca pagar y no ha cubierto la cuota de hoy.
-    const yaCubrioCuotaHoy = pagadoAntesDeHoy >= (montoEsperadoHoy - 0.5);
+    // --- 1. LÓGICA DEL RELOJ (META DE HOY: S/ 731) ---
+    // Solo cuenta si hoy es un día de cobro y no lo ha pagado por adelantado.
+    const montoEsperadoHoy = Math.min(Number(cr.total), diasTranscurridos * cuota);
+    const yaCubrioHoy      = pagadoAntesDeHoy >= (montoEsperadoHoy - 0.5);
     const leTocaHoy        = diasTranscurridos >= 1 && diasTranscurridos <= cr.diasTotal;
 
-    if (leTocaHoy && !yaCubrioCuotaHoy) {
+    if (leTocaHoy && !yaCubrioHoy) {
       metaTotal += cuota;
       pagadoHoy += montoPagadoHoy;
       if (montoPagadoHoy < cuota) {
@@ -90,29 +89,25 @@ window.calcularMetaReal = function (cobradorId, fecha) {
       }
     }
 
-    // 2. ¿Suma a Vencidos de S/ 1,826? (El Triángulo ⚠️)
-    const deudaAtrasada = Math.max(0, montoEsperadoAyer - pagadoAntesDeHoy);
+    // --- 2. LÓGICA DEL TRIÁNGULO (VENCIDOS ATRASADOS: S/ 1,826) ---
+    // Es lo que debió pagar hasta AYER y no pagó.
+    const montoEsperadoAyer = Math.max(0, (diasTranscurridos - 1) * cuota);
+    const deudaAtrasada     = Math.max(0, montoEsperadoAyer - pagadoAntesDeHoy);
+
     if (deudaAtrasada > 0.5) {
       totalVencidos += deudaAtrasada;
       clientesVencidos++;
     }
 
-    // 3. ¿Debe aparecer en la lista de "Restantes"?
-    // Aparece si: (Le toca pagar hoy y no ha pagado) O (Debe dinero de días anteriores)
-    const tienePendienteHoy = leTocaHoy && (montoPagadoHoy < cuota) && !yaCubrioCuotaHoy;
-    const tieneDeudaVieja   = deudaAtrasada > 0.5;
-    
-    // Si no tiene ninguna de las dos, "completo" es true y desaparece de la lista de ruta.
-    const estaCompletado = !tienePendienteHoy && !tieneDeudaVieja;
-
+    // Para la lista visual
     detalle.push({ 
       cliente, 
       cr, 
       cuota, 
       montoPagadoHoy, 
-      completo: estaCompletado, 
-      deudaAcumulada: deudaAtrasada,
-      atrasado: tieneDeudaVieja
+      completo: (montoPagadoHoy >= cuota || yaCubrioHoy) && deudaAtrasada <= 0.5, 
+      deudaAcumulada: deudaAtrasada, // El triángulo
+      atrasado: deudaAtrasada > 0.5 
     });
   });
 
