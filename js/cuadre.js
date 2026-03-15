@@ -66,25 +66,22 @@ window.calcularMetaReal = function (cobradorId, fecha) {
     const pagosHoy          = pagosNoEliminados.filter(p => p.fecha === fecha);
     const montoPagadoHoy    = pagosHoy.reduce((s, p) => s + Number(p.monto), 0);
     const totalPagado       = pagosNoEliminados.reduce((s, p) => s + Number(p.monto), 0);
+    
+    // Lo que pagó antes de empezar el día de hoy
     const pagadoAntesDeHoy  = totalPagado - montoPagadoHoy;
 
     const saldoRestante = Number(cr.total) - totalPagado;
     if (saldoRestante <= 0) return;
 
-    // --- LA CLAVE: EL CONTEO DE DÍAS ---
-    // diasTotales incluye HOY. 
-    // diasVencidos son los días que ya pasaron antes de hoy.
-    const diasTotales  = contarDiasHabiles(cr.fechaInicio, fecha);
-    const diasVencidos = Math.max(0, diasTotales - 1); 
+    const diasTranscurridos = Math.max(0, contarDiasHabiles(cr.fechaInicio, fecha) - 1);
     
-    // 1. EL RELOJ (⏳ Meta de hoy: S/ 731)
-    // Solo sumamos la cuota si el crédito está en su rango de días.
-    const leTocaPagarHoy = diasTotales <= cr.diasTotal;
-    // Si ya pagó más de lo que debía hasta ayer, el saldo va para la cuota de hoy.
-    const deudaAtrasadaAlEmpezar = Math.max(0, (diasVencidos * cuota) - pagadoAntesDeHoy);
-    const yaCubrioHoy = pagadoAntesDeHoy > (diasVencidos * cuota);
+    // --- 1. LÓGICA DEL RELOJ (META DE HOY: S/ 731) ---
+    // Solo cuenta si hoy es un día de cobro y no lo ha pagado por adelantado.
+    const montoEsperadoHoy = Math.min(Number(cr.total), diasTranscurridos * cuota);
+    const yaCubrioHoy      = pagadoAntesDeHoy >= (montoEsperadoHoy - 0.5);
+    const leTocaHoy        = diasTranscurridos >= 1 && diasTranscurridos <= cr.diasTotal;
 
-    if (leTocaPagarHoy && !yaCubrioHoy) {
+    if (leTocaHoy && !yaCubrioHoy) {
       metaTotal += cuota;
       pagadoHoy += montoPagadoHoy;
       if (montoPagadoHoy < cuota) {
@@ -92,18 +89,25 @@ window.calcularMetaReal = function (cobradorId, fecha) {
       }
     }
 
-    // 2. EL TRIÁNGULO (⚠️ Vencidos: S/ 1,826)
-    // Es estrictamente la deuda acumulada hasta ayer.
-    if (deudaAtrasadaAlEmpezar > 0.5) {
-      totalVencidos += deudaAtrasadaAlEmpezar;
+    // --- 2. LÓGICA DEL TRIÁNGULO (VENCIDOS ATRASADOS: S/ 1,826) ---
+    // Es lo que debió pagar hasta AYER y no pagó.
+    const montoEsperadoAyer = Math.max(0, (diasTranscurridos - 1) * cuota);
+    const deudaAtrasada     = Math.max(0, montoEsperadoAyer - pagadoAntesDeHoy);
+
+    if (deudaAtrasada > 0.5) {
+      totalVencidos += deudaAtrasada;
       clientesVencidos++;
     }
 
+    // Para la lista visual
     detalle.push({ 
-      cliente, cr, cuota, montoPagadoHoy, 
-      completo: totalPagado >= (diasTotales * cuota), 
-      deudaAcumulada: deudaAtrasadaAlEmpezar, // Esto es lo que verá en el triángulo
-      atrasado: deudaAtrasadaAlEmpezar > 0.5 
+      cliente, 
+      cr, 
+      cuota, 
+      montoPagadoHoy, 
+      completo: (montoPagadoHoy >= cuota || yaCubrioHoy) && deudaAtrasada <= 0.5, 
+      deudaAcumulada: deudaAtrasada, // El triángulo
+      atrasado: deudaAtrasada > 0.5 
     });
   });
 
