@@ -5,10 +5,10 @@
 window.genId = () => '_' + Math.random().toString(36).substr(2, 9);
 
 // ── HORA PERUANA (UTC-5) ─────────────────────────────────────
+// ✅ CORRECTO
 window.hoyPeru = () => {
-  const ahora = new Date();
-  ahora.setMinutes(ahora.getMinutes() - (ahora.getTimezoneOffset() + 300));
-  return new Date(ahora.toISOString().split('T')[0] + 'T00:00:00');
+  const hoyStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
+  return new Date(hoyStr + 'T00:00:00');
 };
 
 window.today = () => {
