@@ -1,4 +1,4 @@
-// firebase.js se carga en index.html — no importar aquí
+/*firebase.js se carga en index.html — no importar aquí
 import './helpers.js';
 import './state.js';
 import './db.js';
@@ -13,4 +13,4 @@ import './cajachica.js';
 import './cartera.js';
 import './admin.js';
 import './modals.js';
-import './app.js';
+import './app.js';*/
