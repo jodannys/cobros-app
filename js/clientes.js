@@ -206,7 +206,7 @@ window.clienteEstaAtrasado = function (cr, pagos) {
   if (diasTranscurridos <= 0) return false;
   const cuotasDebidas = Math.min(diasTranscurridos, cr.diasTotal);
   const cuotasCubiertas = Math.floor(totalPagado / cr.cuotaDiaria);
-  return cuotasCubiertas < cuotasDebidas;
+  return (cuotasDebidas - cuotasCubiertas) > 1; // ← solo si debe más de una cuota
 };
 
 window.cuotaAtrasada = function (cr, pagos) {
