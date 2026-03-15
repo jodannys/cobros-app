@@ -44,7 +44,6 @@ window.calcularMetaReal = function (cobradorId, fecha) {
     .filter(c => c.cobradorId === cobradorId)
     .map(c => c.id);
 
-  // Si es feriado o domingo → meta cero
   if (!esDiaLaboral(fecha)) {
     return { metaTotal: 0, pagadoHoy: 0, pendiente: 0, detalle: [], totalVencidos: 0, clientesVencidos: 0 };
   }
@@ -68,50 +67,42 @@ window.calcularMetaReal = function (cobradorId, fecha) {
     const montoPagadoHoy    = pagosHoy.reduce((s, p) => s + Number(p.monto), 0);
     const totalPagado       = pagosNoEliminados.reduce((s, p) => s + Number(p.monto), 0);
 
-    // Crédito ya saldado → no cuenta
     const saldoRestante = Number(cr.total) - totalPagado;
     if (saldoRestante <= 0) return;
 
-    // Días transcurridos (topado al total de días del crédito para no cobrar infinito)
     const diasTranscurridos = Math.min(Number(cr.diasTotal), Math.max(0, contarDiasHabiles(cr.fechaInicio, fecha) - 1));
-
-    // ⚠️ EL TRUCO: Lo que había pagado HASTA AYER (para congelar la meta)
-    const pagadoAntesDeHoy = totalPagado - montoPagadoHoy;
     
-    // Lo que matemáticamente debió haber pagado hasta ayer y hasta hoy
+    // --- NUEVA LÓGICA SOLICITADA ---
+    
+    // 1. ¿Le toca pagar hoy? 
+    // Si los días que han pasado son menores al total de días del crédito, hoy es un día de cobro.
+    const leTocaPagarHoy = diasTranscurridos >= 1 && diasTranscurridos <= cr.diasTotal;
+
+    // 2. ¿Está al día con la cuota de HOY?
+    const montoEsperadoHoy = diasTranscurridos * cuota;
+    const yaCompletoHoy = totalPagado >= (montoEsperadoHoy - 0.5);
+
+    // 3. Cálculo de Atrasos (Deuda de días anteriores)
     const montoEsperadoAyer = (diasTranscurridos - 1) * cuota;
-    const montoEsperadoHoy  = diasTranscurridos * cuota;
+    const deudaAnterior = Math.max(0, montoEsperadoAyer - (totalPagado - montoPagadoHoy));
+    const tieneAtraso = deudaAnterior > 0.5;
 
-    // ════ TUS 3 REGLAS EXACTAS ════
-    // 1. Pasó el día de gracia
-    const pasoDiaGracia = diasTranscurridos >= 1;
-    
-    // 2. No está atrasado (lo que pagó hasta ayer cubre lo que debía hasta ayer)
-    // Usamos -0.5 para dar un margen de tolerancia a centavos perdidos
-    const noEstaAtrasado = pagadoAntesDeHoy >= (montoEsperadoAyer - 0.5);
-    
-    // 3. El número de cuotas pagadas es menor a los días (le falta lo de hoy)
-    const leTocaHoy = pagadoAntesDeHoy < (montoEsperadoHoy - 0.5);
-
-    // ESTADO ACTUALIZADO (Con el pago de hoy, para mostrar los checks y atrasos reales en la UI)
-    const yaEstaAlDia = totalPagado >= (montoEsperadoHoy - 0.5);
-    const deudaAcumulada = Math.max(0, montoEsperadoHoy - totalPagado);
-    const atrasadoActual = totalPagado < (montoEsperadoAyer - 0.5);
-
-    // ── ¿SUMA A LA META DIARIA? ──
-    if (pasoDiaGracia && noEstaAtrasado && leTocaHoy) {
+    // --- ASIGNACIÓN A LA META ---
+    // Si le toca hoy, sumamos la cuota a la meta siempre.
+    if (leTocaPagarHoy) {
       metaTotal += cuota;
       pagadoHoy += montoPagadoHoy;
       
+      // El pendiente es lo que le falta para cubrir al menos la cuota de hoy
       if (montoPagadoHoy < cuota) {
         pendiente += (cuota - montoPagadoHoy);
       }
     }
 
-    // ── ¿ES UN CLIENTE VENCIDO/ATRASADO? ──
-    // Evaluamos con su deuda actual. Si hoy se puso al día, sale automáticamente de los naranjas.
-    if (pasoDiaGracia && atrasadoActual) {
-      totalVencidos += deudaAcumulada;
+    // --- ASIGNACIÓN A VENCIDOS ---
+    // Mantenemos los vencidos por separado para el bloque naranja (solo deuda vieja)
+    if (tieneAtraso) {
+      totalVencidos += deudaAnterior;
       clientesVencidos++;
     }
 
@@ -120,15 +111,14 @@ window.calcularMetaReal = function (cobradorId, fecha) {
       cr, 
       cuota, 
       montoPagadoHoy, 
-      completo: yaEstaAlDia, 
-      deudaAcumulada, 
-      atrasado: atrasadoActual 
+      completo: yaCompletoHoy, 
+      deudaAcumulada: Math.max(0, montoEsperadoHoy - totalPagado), 
+      atrasado: tieneAtraso 
     });
   });
 
   return { metaTotal, pagadoHoy, pendiente, detalle, totalVencidos, clientesVencidos };
 };
-
 window.guardarNota = async function () {
   const notaElement = document.getElementById('notaHoy');
   if (!notaElement) return;
