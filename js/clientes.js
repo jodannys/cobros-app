@@ -43,6 +43,9 @@ window.renderClientes = function () {
     );
   }
 
+  // ── Ordenamiento por filtro ──────────────────────────────
+  lista = _ordenarClientes(lista, filtro, creditos, pagos);
+
   const filtros = [
     { key: 'todos', label: 'Todos' },
     { key: 'activos', label: '✅ Activos' },
@@ -102,6 +105,61 @@ window.renderClientes = function () {
     </div>
     <button class="fab" onclick="openModal('nuevo-cliente')">+</button>
   </div>`;
+};
+
+// ============================================================
+// ORDENAMIENTO POR FILTRO
+// ============================================================
+window._ordenarClientes = function (lista, filtro, creditos, pagos) {
+  const todosCreditos = creditos || DB._cache['creditos'] || [];
+  const todosPagos    = pagos    || DB._cache['pagos']    || [];
+
+  if (filtro === 'todos') {
+    // Prioridad: vencidos → atrasados → activos al día → sin crédito
+    // Dentro de cada grupo: A-Z
+    const prioridad = (c) => {
+      const cr = todosCreditos.find(x => x.clienteId === c.id && x.activo);
+      if (!cr) return 3; // sin crédito activo
+      const vencido = cr.fechaFin && today() > cr.fechaFin;
+      if (vencido) return 0;
+      const estado = calcularEstadoAtraso(cr, todosPagos);
+      if (estado.atrasado) return 1;
+      return 2; // activo al día
+    };
+    return lista.slice().sort((a, b) => {
+      const diff = prioridad(a) - prioridad(b);
+      if (diff !== 0) return diff;
+      return a.nombre.localeCompare(b.nombre);
+    });
+  }
+
+  if (filtro === 'atrasados') {
+    // Por monto de deuda de mayor a menor
+    return lista.slice().sort((a, b) => {
+      const crA = todosCreditos.find(x => x.clienteId === a.id && x.activo);
+      const crB = todosCreditos.find(x => x.clienteId === b.id && x.activo);
+      const deudaA = crA ? calcularEstadoAtraso(crA, todosPagos).montoAtraso : 0;
+      const deudaB = crB ? calcularEstadoAtraso(crB, todosPagos).montoAtraso : 0;
+      return deudaB - deudaA;
+    });
+  }
+
+  if (filtro === 'activos') {
+    // A-Z
+    return lista.slice().sort((a, b) => a.nombre.localeCompare(b.nombre));
+  }
+
+  if (filtro === 'sin_credito' || filtro === 'cerrados') {
+    // Más reciente primero (por campo creado)
+    return lista.slice().sort((a, b) => {
+      const fa = a.creado || '';
+      const fb = b.creado || '';
+      return fb.localeCompare(fa);
+    });
+  }
+
+  // Fallback: A-Z
+  return lista.slice().sort((a, b) => a.nombre.localeCompare(b.nombre));
 };
 
 window._renderClienteItem = function (c, creditos, users, pagos, isAdmin) {
@@ -233,7 +291,6 @@ window.renderEsquemaCuotas = function (cr) {
       else estado = 'pendiente';
       celdas.push({ dd, mm, num: cuotaNum, estado });
     } else if (cursor.getDay() !== 0) {
-      // Feriado — mostrar celda vacía en el calendario
       const dd = dd0;
       const mm = mm0;
       celdas.push({ vacia: true, dd, mm, feriado: true });
@@ -241,13 +298,9 @@ window.renderEsquemaCuotas = function (cr) {
     cursor.setDate(cursor.getDate() + 1);
   }
 
-  const pagadas = celdas.filter(d => d.estado === 'pagada').length;
+  const pagadas  = celdas.filter(d => d.estado === 'pagada').length;
   const atrasadas = celdas.filter(d => d.estado === 'atrasada').length;
   const pendientes = celdas.filter(d => d.estado === 'pendiente').length;
-
-  const bg = { pagada: '#dcfce7', atrasada: '#fff1f2', pendiente: '#f8fafc' };
-  const bdr = { pagada: '#86efac', atrasada: '#fecdd3', pendiente: '#e2e8f0' };
-  const txt = { pagada: '#166534', atrasada: '#9f1239', pendiente: '#94a3b8' };
 
   const renderCelda = d => {
     if (d.vacia) return `
@@ -266,9 +319,9 @@ window.renderEsquemaCuotas = function (cr) {
     </div>`;
 
     const estilos = {
-      pagada: { bg: '#f0fdf4', num: '#16a34a', fecha: '#86efac', punto: '#22c55e' },
+      pagada:   { bg: '#f0fdf4', num: '#16a34a', fecha: '#86efac', punto: '#22c55e' },
       atrasada: { bg: '#fff1f2', num: '#e11d48', fecha: '#fda4af', punto: '#f43f5e' },
-      pendiente: { bg: '#f8fafc', num: '#94a3b8', fecha: '#cbd5e1', punto: 'transparent' },
+      pendiente:{ bg: '#f8fafc', num: '#94a3b8', fecha: '#cbd5e1', punto: 'transparent' },
     };
     const s = estilos[d.estado];
 
@@ -347,10 +400,10 @@ window._renderListaClientes = function () {
 
   const clientes = DB._cache['clientes'] || [];
   const creditos = DB._cache['creditos'] || [];
-  const users = DB._cache['users'] || [];
-  const pagos = DB._cache['pagos'] || [];
-  const isAdmin = state.currentUser.role === 'admin';
-  const filtro = state.filtroClientes || 'todos';
+  const users    = DB._cache['users']    || [];
+  const pagos    = DB._cache['pagos']    || [];
+  const isAdmin  = state.currentUser.role === 'admin';
+  const filtro   = state.filtroClientes || 'todos';
 
   let lista = isAdmin
     ? clientes
@@ -372,7 +425,6 @@ window._renderListaClientes = function () {
       return crs.length === 0 || !crs.some(cr => cr.activo);
     });
   } else if (filtro === 'atrasados') {
-    // ✅ CORRECTO: filtrar lista directamente
     lista = lista.filter(c => estaRealmenteAtrasado(c.id));
   } else if (filtro === 'cerrados' && isAdmin) {
     lista = lista.filter(c => {
@@ -389,6 +441,9 @@ window._renderListaClientes = function () {
       (c.negocio || '').toLowerCase().includes(q)
     );
   }
+
+  // ── Ordenamiento por filtro ──────────────────────────────
+  lista = _ordenarClientes(lista, filtro, creditos, pagos);
 
   if (contador) contador.textContent = `${lista.length} cliente${lista.length !== 1 ? 's' : ''}`;
   contenedor.innerHTML = lista.length === 0
@@ -562,7 +617,6 @@ window.backFromClient = function () {
 // GUARDAR CLIENTE
 // ============================================================
 window.guardarCliente = async function () {
-  // ── Protección contra doble tap ──
   if (window._guardandoCliente) return;
   window._guardandoCliente = true;
 
