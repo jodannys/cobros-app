@@ -70,38 +70,33 @@ window.calcularMetaReal = function (cobradorId, fecha) {
     const saldoRestante = Number(cr.total) - totalPagado;
     if (saldoRestante <= 0) return;
 
-    const diasTranscurridos = Math.min(Number(cr.diasTotal), Math.max(0, contarDiasHabiles(cr.fechaInicio, fecha) - 1));
+    // Calculamos días hábiles transcurridos
+    const diasTranscurridos = Math.max(0, contarDiasHabiles(cr.fechaInicio, fecha) - 1);
     
-    // --- NUEVA LÓGICA SOLICITADA ---
+    // Lo que el cliente debería tener pagado sumando la cuota de HOY
+    const montoEsperadoHoy = Math.min(Number(cr.total), diasTranscurridos * cuota);
     
-    // 1. ¿Le toca pagar hoy? 
-    // Si los días que han pasado son menores al total de días del crédito, hoy es un día de cobro.
-    const leTocaPagarHoy = diasTranscurridos >= 1 && diasTranscurridos <= cr.diasTotal;
+    // Lo que el cliente debía hasta AYER
+    const montoEsperadoAyer = Math.max(0, (diasTranscurridos - 1) * cuota);
+    const pagadoAntesDeHoy = totalPagado - montoPagadoHoy;
 
-    // 2. ¿Está al día con la cuota de HOY?
-    const montoEsperadoHoy = diasTranscurridos * cuota;
-    const yaCompletoHoy = totalPagado >= (montoEsperadoHoy - 0.5);
+    // REGLA PARA LA META DE S/ 731:
+    // Si lo que pagó antes de hoy es menor a lo que debe tener hoy, esa cuota entra en la meta.
+    const leFaltaCuotaHoy = pagadoAntesDeHoy < (montoEsperadoHoy - 0.5);
+    const pasoDiaGracia = diasTranscurridos >= 1;
 
-    // 3. Cálculo de Atrasos (Deuda de días anteriores)
-    const montoEsperadoAyer = (diasTranscurridos - 1) * cuota;
-    const deudaAnterior = Math.max(0, montoEsperadoAyer - (totalPagado - montoPagadoHoy));
-    const tieneAtraso = deudaAnterior > 0.5;
-
-    // --- ASIGNACIÓN A LA META ---
-    // Si le toca hoy, sumamos la cuota a la meta siempre.
-    if (leTocaPagarHoy) {
+    if (pasoDiaGracia && leFaltaCuotaHoy) {
       metaTotal += cuota;
       pagadoHoy += montoPagadoHoy;
-      
-      // El pendiente es lo que le falta para cubrir al menos la cuota de hoy
       if (montoPagadoHoy < cuota) {
         pendiente += (cuota - montoPagadoHoy);
       }
     }
 
-    // --- ASIGNACIÓN A VENCIDOS ---
-    // Mantenemos los vencidos por separado para el bloque naranja (solo deuda vieja)
-    if (tieneAtraso) {
+    // REGLA PARA VENCIDOS DE S/ 1,826:
+    // Es la deuda acumulada de días anteriores que NO se ha pagado.
+    const deudaAnterior = Math.max(0, montoEsperadoAyer - pagadoAntesDeHoy);
+    if (deudaAnterior > 0.5) {
       totalVencidos += deudaAnterior;
       clientesVencidos++;
     }
@@ -111,13 +106,21 @@ window.calcularMetaReal = function (cobradorId, fecha) {
       cr, 
       cuota, 
       montoPagadoHoy, 
-      completo: yaCompletoHoy, 
+      completo: totalPagado >= (montoEsperadoHoy - 0.5), 
       deudaAcumulada: Math.max(0, montoEsperadoHoy - totalPagado), 
-      atrasado: tieneAtraso 
+      atrasado: deudaAnterior > 0.5 
     });
   });
 
-  return { metaTotal, pagadoHoy, pendiente, detalle, totalVencidos, clientesVencidos };
+  // Ajuste fino para asegurar que los decimales no te jueguen una mala pasada
+  return { 
+    metaTotal: Math.round(metaTotal), 
+    pagadoHoy, 
+    pendiente, 
+    detalle, 
+    totalVencidos: Math.round(totalVencidos), 
+    clientesVencidos 
+  };
 };
 window.guardarNota = async function () {
   const notaElement = document.getElementById('notaHoy');
