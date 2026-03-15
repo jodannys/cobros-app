@@ -1,4 +1,4 @@
-const CACHE = 'cobrosapp-v2';
+const CACHE = 'cobrosapp-v3';
 const ARCHIVOS = [
   '/',
   '/index.html',
@@ -8,15 +8,16 @@ const ARCHIVOS = [
   '/js/state.js',
   '/js/db.js',
   '/js/auth.js',
+  '/js/mapa_patch.js',
+  '/js/cascade.js',
   '/js/clientes.js',
   '/js/creditos.js',
   '/js/pagos.js',
   '/js/cartera.js',
   '/js/cuadre.js',
+  '/js/cajachica.js',
   '/js/admin.js',
   '/js/modals.js',
-  '/js/cajachica.js',
-  '/js/cascade.js',
   '/js/app.js',
   '/manifest.json'
 ];
@@ -38,9 +39,7 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  // Ignorar requests que no sean http/https (extensiones de Chrome, etc.)
   if (!e.request.url.startsWith('http')) return;
-
   e.respondWith(
     caches.match(e.request).then(r => r || fetch(e.request))
   );

@@ -636,8 +636,8 @@ window.guardarPagoEditado = async function () {
     const tipo = document.getElementById('epTipo').value;
     if (!montoNuevo || montoNuevo <= 0) { alert('Ingresa un monto válido'); return; }
 
-    const montoViejo = Number(p.monto);
-    const diferencia = montoNuevo - montoViejo;
+    const montoViejo  = Number(p.monto);
+    const diferencia  = Math.round((montoNuevo - montoViejo) * 100) / 100;
 
     // 1. Actualizar el pago
     const updates = { monto: montoNuevo, tipo };
@@ -646,17 +646,15 @@ window.guardarPagoEditado = async function () {
     if (idx !== -1) DB._cache['pagos'][idx] = { ...DB._cache['pagos'][idx], ...updates };
 
     // 2. Ajustar mochila del cobrador si el monto cambió
-    if (Math.abs(diferencia) > 0.01 && p.cobradorId) {
+    if (Math.abs(diferencia) >= 0.01 && p.cobradorId) {
       const idAjuste = genId();
-      // Si subió el monto → diferencia positiva → el cobrador tiene MÁS → no hacer nada
-      // Si bajó el monto → diferencia negativa → hay que descontarle la diferencia
-      // Si subió → hay que sumarle la diferencia como cobro extra
-      // Usamos gasto_cobrador para restar o un cobro ficticio para sumar
+      // diferencia > 0 → cobrador cobró MÁS de lo que se registró → sumar (cobro_ajuste)
+      // diferencia < 0 → cobrador cobró MENOS de lo que se registró → restar (gasto_cobrador)
       const ajuste = {
         id: idAjuste,
         tipo: diferencia > 0 ? 'cobro_ajuste' : 'gasto_cobrador',
         monto: Math.abs(diferencia),
-        descripcion: `Corrección pago (${diferencia > 0 ? '+' : '-'}S/${Math.abs(diferencia).toFixed(2)})`,
+        descripcion: `Corrección pago (${diferencia > 0 ? '+' : ''}${diferencia.toFixed(2)})`,
         fecha: p.fecha,
         cobradorId: p.cobradorId,
         registradoPor: state.currentUser.id
