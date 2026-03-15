@@ -23,14 +23,11 @@
   </div>
 </div>
 
-<!-- Firebase CDN — debe ejecutarse antes que main.js -->
+<!-- Firebase CDN — debe ir ANTES que main.js -->
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 
-<!-- firebase.js como script clásico — expone window.fbXxx sin pasar por Vite -->
-<script src="js/firebase.js"></script>
-
-<!-- main.js como módulo ES — Vite bundlea todo desde aquí en orden -->
+<!-- main.js como módulo — Vite bundlea todo desde aquí -->
 <script type="module" src="js/main.js"></script>
 
 <script>

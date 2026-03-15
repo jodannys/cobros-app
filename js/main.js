@@ -6,7 +6,7 @@
 
 // Nota: firebase.js se carga como script normal en index.html
 // antes de este módulo, por eso no se importa aquí
-
+import './firebase.js';  
 import './helpers.js';
 import './state.js';
 import './db.js';
