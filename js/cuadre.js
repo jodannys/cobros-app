@@ -105,7 +105,7 @@ if (atrasado) {
 
 detalle.push({
   cliente, cr, cuota, montoPagadoHoy,
-  completo: !leTocaHoy || yaCubrioHoy,
+ completo: !atrasado && (!leTocaHoy || yaCubrioHoy),
   deudaAcumulada,
   atrasado
 });
