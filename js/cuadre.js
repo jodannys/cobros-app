@@ -94,10 +94,10 @@ window.calcularMetaReal = function (cobradorId, fecha) {
     const montoEsperadoAyer = Math.max(0, (diasTranscurridos - 1) * cuota);
     const deudaAtrasada     = Math.max(0, montoEsperadoAyer - pagadoAntesDeHoy);
 
-    if (deudaAtrasada > 0.5) {
-      totalVencidos += deudaAtrasada;
-      clientesVencidos++;
-    }
+    if (deudaAtrasada > cuota + 0.5) {
+  totalVencidos += deudaAtrasada;
+  clientesVencidos++;
+}
 
     // Para la lista visual
     detalle.push({ 
@@ -107,7 +107,7 @@ window.calcularMetaReal = function (cobradorId, fecha) {
       montoPagadoHoy, 
       completo: (montoPagadoHoy >= cuota || yaCubrioHoy) && deudaAtrasada <= 0.5, 
       deudaAcumulada: deudaAtrasada, // El triángulo
-      atrasado: deudaAtrasada > 0.5 
+      atrasado: deudaAtrasada > cuota + 0.5
     });
   });
 
