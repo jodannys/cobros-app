@@ -35,10 +35,6 @@ window.getCuadreDelDia = function (cobradorId, fecha) {
   };
 };
 
-// PARCHE cuadre.js — reemplazá SOLO la función calcularMetaReal
-// Las demás funciones (getCuadreDelDia, getCajaChicaDelDia) NO cambian
-// porque SÍ deben ver los pagos eliminados para preservar el historial
-
 window.calcularMetaReal = function (cobradorId, fecha) {
   const creditos = DB._cache['creditos'] || [];
   const clientes = DB._cache['clientes'] || [];
@@ -62,7 +58,6 @@ window.calcularMetaReal = function (cobradorId, fecha) {
   creditosTodos.forEach(cr => {
     const cliente  = clientes.find(c => c.id === cr.clienteId);
     const cuota    = Number(cr.cuotaDiaria) || 0;
-    const vencido  = cr.fechaFin < fecha;
 
     const pagosNoEliminados = pagos.filter(p => p.creditoId === cr.id && !p.eliminado);
     const pagosHoy          = pagosNoEliminados.filter(p => p.fecha === fecha);
@@ -74,21 +69,20 @@ window.calcularMetaReal = function (cobradorId, fecha) {
     const montoDebido       = cuotasDebidas * cuota;
     const alDia             = totalPagado >= (montoDebido - 0.5);
     const deudaAcumulada    = Math.max(0, montoDebido - totalPagado);
+    const atrasado          = !alDia && deudaAcumulada > 0 && diasTranscurridos <= cr.diasTotal;
 
-    if (vencido) {
-      // Vencido: no suma a meta diaria, solo al resumen de vencidos
-      if (deudaAcumulada > 0) {
-        totalVencidos += deudaAcumulada;
-        clientesVencidos++;
-      }
-    } else {
-      // Vigente: suma a meta diaria normal
-      metaTotal += cuota;
-      pagadoHoy += Math.min(montoPagadoHoy, cuota);
-      if (!alDia) pendiente += cuota;
+    // Atrasado: suma su deuda al bloque naranja
+    if (atrasado) {
+      totalVencidos += deudaAcumulada;
+      clientesVencidos++;
     }
 
-    detalle.push({ cliente, cr, cuota, montoPagadoHoy, completo: alDia, deudaAcumulada, vencido });
+    // Todos los créditos vigentes suman a la meta diaria
+    metaTotal += cuota;
+    pagadoHoy += Math.min(montoPagadoHoy, cuota);
+    if (!alDia && !atrasado) pendiente += cuota;
+
+    detalle.push({ cliente, cr, cuota, montoPagadoHoy, completo: alDia, deudaAcumulada, atrasado });
   });
 
   return { metaTotal, pagadoHoy, pendiente, detalle, totalVencidos, clientesVencidos };
