@@ -199,14 +199,20 @@ window._renderClienteItem = function (c, creditos, users, pagos, isAdmin) {
 // ============================================================
 window.clienteEstaAtrasado = function (cr, pagos) {
   if (!cr || !cr.activo) return false;
-  const totalPagado = pagos.filter(p => p.creditoId === cr.id && !p.eliminado).reduce((s, p) => s + Number(p.monto), 0);
+  const fecha = today();
+  const pagosNoEliminados = pagos.filter(p => p.creditoId === cr.id && !p.eliminado);
+  const montoPagadoHoy = pagosNoEliminados
+    .filter(p => p.fecha === fecha)
+    .reduce((s, p) => s + Number(p.monto), 0);
+  const totalPagado = pagosNoEliminados.reduce((s, p) => s + Number(p.monto), 0);
+  const pagadoAntesDeHoy = totalPagado - montoPagadoHoy;
   const saldo = cr.total - totalPagado;
   if (saldo <= 0) return false;
-  const diasTranscurridos = Math.max(0, contarDiasHabiles(cr.fechaInicio, today()) - 1);
+  const diasTranscurridos = Math.max(0, contarDiasHabiles(cr.fechaInicio, fecha) - 1);
   if (diasTranscurridos <= 0) return false;
   const cuotasDebidas = Math.min(diasTranscurridos, cr.diasTotal);
-  const cuotasCubiertas = Math.floor(totalPagado / cr.cuotaDiaria);
-  return (cuotasDebidas - cuotasCubiertas) > 1; // ← solo si debe más de una cuota
+  const cuotasCubiertas = Math.floor(pagadoAntesDeHoy / cr.cuotaDiaria);
+  return (cuotasDebidas - cuotasCubiertas) > 1;
 };
 
 window.cuotaAtrasada = function (cr, pagos) {
