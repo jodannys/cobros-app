@@ -1,7 +1,3 @@
-// ══════════════════════════════════════════════════════════════
-// GESTIÓN DE CUADRE Y RENDIMIENTO
-// ══════════════════════════════════════════════════════════════
-
 window.getCuadreDelDia = function (cobradorId, fecha) {
   const pagos = DB._cache['pagos'] || [];
   const creditos = DB._cache['creditos'] || [];
@@ -38,13 +34,12 @@ window.getCuadreDelDia = function (cobradorId, fecha) {
 window.calcularMetaReal = function (cobradorId, fecha) {
   const creditos = DB._cache['creditos'] || [];
   const clientes = DB._cache['clientes'] || [];
-  const pagos = DB._cache['pagos'] || [];
+  const pagos    = DB._cache['pagos']    || [];
 
   const misClientesIds = clientes
     .filter(c => c.cobradorId === cobradorId)
     .map(c => c.id);
 
-  // Si es feriado o domingo → meta cero
   if (!esDiaLaboral(fecha)) {
     return { metaTotal: 0, pagadoHoy: 0, pendiente: 0, detalle: [], totalVencidos: 0, clientesVencidos: 0 };
   }
@@ -61,43 +56,44 @@ window.calcularMetaReal = function (cobradorId, fecha) {
 
   creditosTodos.forEach(cr => {
     const cliente = clientes.find(c => c.id === cr.clienteId);
-    const cuota = Number(cr.cuotaDiaria) || 0;
+    const cuota   = Number(cr.cuotaDiaria) || 0;
 
     const pagosNoEliminados = pagos.filter(p => p.creditoId === cr.id && !p.eliminado);
-    const pagosHoy = pagosNoEliminados.filter(p => p.fecha === fecha);
-    const montoPagadoHoy = pagosHoy.reduce((s, p) => s + Number(p.monto), 0);
-    const totalPagado = pagosNoEliminados.reduce((s, p) => s + Number(p.monto), 0);
+    const pagosHoy          = pagosNoEliminados.filter(p => p.fecha === fecha);
+    const montoPagadoHoy    = pagosHoy.reduce((s, p) => s + Number(p.monto), 0);
+    const totalPagado       = pagosNoEliminados.reduce((s, p) => s + Number(p.monto), 0);
 
-    // Crédito ya saldado → no cuenta
     const saldoRestante = Number(cr.total) - totalPagado;
     if (saldoRestante <= 0) return;
 
-    // Día de gracia: prestado hoy no cobra hasta mañana
     const diasTranscurridos = Math.max(0, contarDiasHabiles(cr.fechaInicio, fecha) - 1);
-    const cuotasDebidas = Math.min(diasTranscurridos, cr.diasTotal);
-    const montoDebido = cuotasDebidas * cuota;
-    const alDia = totalPagado >= (montoDebido - 0.5);
-    const deudaAcumulada = Math.max(0, montoDebido - totalPagado);
-    const atrasado = !alDia && deudaAcumulada > 0 && diasTranscurridos <= cr.diasTotal;
+    const cuotasDebidas     = Math.min(diasTranscurridos, cr.diasTotal);
+    const montoDebido       = cuotasDebidas * cuota;
+    const alDia             = totalPagado >= (montoDebido - 0.5);
+    const deudaAcumulada    = Math.max(0, montoDebido - totalPagado);
+    const atrasado          = !alDia && deudaAcumulada > 0 && diasTranscurridos <= cr.diasTotal;
 
-    // Meta = solo clientes al día (no atrasados)
-  if (!atrasado) {
-  pagadoHoy += montoPagadoHoy;
-  if (montoPagadoHoy < cuota) {
-    metaTotal += cuota;        // ← solo suma si NO pagó hoy
-    pendiente += cuota - montoPagadoHoy;
-  }
-}
-    
+    // ✅ FIX: verificar si ya cubrió la cuota de HOY (incluyendo pagos adelantados)
+    const cuotasDebidasHoy   = Math.min(diasTranscurridos + 1, cr.diasTotal);
+    const yaCubrioHoy        = totalPagado >= (cuotasDebidasHoy * cuota - 0.5);
 
-    // Atrasados → solo bloque naranja
+    // Meta solo cuenta clientes al día que AÚN deben pagar hoy
+    if (!atrasado && !yaCubrioHoy) {
+      metaTotal  += cuota;
+      pagadoHoy  += montoPagadoHoy;
+      if (montoPagadoHoy < cuota) {
+        pendiente += cuota - montoPagadoHoy;
+      }
+    }
+
     if (atrasado) {
       totalVencidos += deudaAcumulada;
       clientesVencidos++;
     }
 
-    const pagoHoy = montoPagadoHoy >= cuota;
-    detalle.push({ cliente, cr, cuota, montoPagadoHoy, completo: pagoHoy, deudaAcumulada, atrasado })
+    // Completo = ya cubrió hoy Y no está atrasado
+    const pagoHoy = yaCubrioHoy && !atrasado;
+    detalle.push({ cliente, cr, cuota, montoPagadoHoy, completo: pagoHoy, deudaAcumulada, atrasado });
   });
 
   return { metaTotal, pagadoHoy, pendiente, detalle, totalVencidos, clientesVencidos };
