@@ -51,7 +51,7 @@ window.fbEscuchar = function(colName, callback) {
 };
 
 // ─── MODO LOCAL MOCK ─────────────────────────────────────────
-const USE_LOCAL_MOCK = false; // ← false para producción
+const USE_LOCAL_MOCK = true; // ← false para producción
 
 if (USE_LOCAL_MOCK) {
   const _mockData = {};
