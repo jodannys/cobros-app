@@ -1,3 +1,27 @@
+// Fallback por si mapa_patch.js no cargó aún
+if (typeof window.renderMapaSelector !== 'function') {
+  window.renderMapaSelector = function(lat, lng) {
+    const tiene = lat && lng;
+    return `
+    <div class="form-group">
+      <label>📍 Ubicación</label>
+      <div style="background:var(--bg);border-radius:12px;padding:14px;text-align:center">
+        ${tiene ? `<div style="font-size:13px;color:var(--success);font-weight:700;margin-bottom:8px">
+          ✅ Ubicación guardada (${Number(lat).toFixed(4)}, ${Number(lng).toFixed(4)})
+        </div>` : ''}
+        <button type="button" onclick="obtenerUbicacion()"
+          style="background:var(--primary);color:white;border:none;padding:10px 20px;
+                 border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">
+          📍 ${tiene ? 'Actualizar ubicación' : 'Obtener mi ubicación GPS'}
+        </button>
+        <div id="ubicacion-status" style="font-size:12px;color:var(--muted);margin-top:8px"></div>
+        <input type="hidden" id="latInput" value="${lat || ''}">
+        <input type="hidden" id="lngInput" value="${lng || ''}">
+      </div>
+    </div>`;
+  };
+}
+
 window.comprimirImagen = function comprimirImagen(base64, maxWidth = 600, calidad = 0.6) {
   return new Promise((resolve) => {
     const img = new Image();
