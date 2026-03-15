@@ -1,11 +1,5 @@
-// ══════════════════════════════════════════════════════════════
-// HELPERS GLOBALES (Compatibles con Vite/Modules)
-// ══════════════════════════════════════════════════════════════
-
 window.genId = () => '_' + Math.random().toString(36).substr(2, 9);
 
-// ── HORA PERUANA (UTC-5) ─────────────────────────────────────
-// ✅ CORRECTO
 window.hoyPeru = () => {
   const hoyStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
   return new Date(hoyStr + 'T00:00:00');
@@ -25,7 +19,7 @@ window.getDiasNoLaborables = function() {
 
 window.esDiaLaboral = function(fechaStr) {
   const fecha = new Date(fechaStr + 'T00:00:00');
-  if (fecha.getDay() === 0) return false; // domingo siempre bloqueado
+  if (fecha.getDay() === 0) return false;
   return !getDiasNoLaborables().includes(fechaStr);
 };
 // ── DÍAS HÁBILES (sin domingos) ──────────────────────────────
@@ -63,6 +57,7 @@ window.contarDiasHabiles = function(fechaInicioStr, fechaFinStr) {
   }
   return count;
 };
+
 window.parseMonto = function(valor) {
   return Math.round((parseFloat(valor) || 0) * 100) / 100;
 };
@@ -142,41 +137,27 @@ window.getAlertasCreditos = function() {
       const totalPagado = pagosCr.reduce((s, p) => s + (Number(p.monto) || 0), 0);
       const saldoTotal = Number(cr.total || 0) - totalPagado;
 
-      // 1. Si el saldo es 0 o negativo, el crédito terminó. No hay alerta.
       if (saldoTotal <= 0.1) return;
 
-      // 2. Revisar si está VENCIDO (Ya pasó la fecha fin)
-      const finStr = cr.fechaFin && cr.fechaFin !== 'undefined' 
-                     ? cr.fechaFin 
+      // Vencido (pasó la fecha fin)
+      const finStr = cr.fechaFin && cr.fechaFin !== 'undefined'
+                     ? cr.fechaFin
                      : sumarDiasHabiles(cr.fechaInicio, Number(cr.diasTotal || 0));
       const fFin = new Date(finStr + 'T00:00:00');
 
       if (hoy > fFin) {
         const diasVencido = contarDiasHabiles(finStr, hoyStr);
         alertas.push({ tipo: 'vencido', cr, cliente, cobrador, saldo: saldoTotal, dias: diasVencido });
-      } 
-      // 3. Si no está vencido, revisar si está ATRASADO (Realmente Atrasado)
-      else {
-        // Usamos la misma lógica del filtro:
-        const diasTranscurridos = Math.max(0, contarDiasHabiles(cr.fechaInicio, hoyStr) - 1);
-        if (diasTranscurridos > 0) {
-          const cuotasDebidas = Math.min(diasTranscurridos, cr.diasTotal);
-          const montoDeberiaTener = cuotasDebidas * (Number(cr.cuotaDiaria) || 0);
-
-          if (totalPagado < (montoDeberiaTener - 0.1)) {
-            const deudaDinero = montoDeberiaTener - totalPagado;
-            // Calculamos cuántas cuotas representa ese dinero faltante
-            const diasAtraso = Math.ceil(deudaDinero / (cr.cuotaDiaria || 1));
-            
-            alertas.push({ 
-              tipo: 'moroso', 
-              cr, 
-              cliente, 
-              cobrador, 
-              saldo: saldoTotal, 
-              dias: diasAtraso 
-            });
-          }
+      } else {
+        // Atrasado — usa la función canónica
+        const estado = calcularEstadoAtraso(cr, pagosCr, hoyStr);
+        if (estado.atrasado) {
+          alertas.push({
+            tipo: 'moroso',
+            cr, cliente, cobrador,
+            saldo: saldoTotal,
+            dias: estado.cuotasAtraso
+          });
         }
       }
     } catch (e) {
@@ -187,7 +168,6 @@ window.getAlertasCreditos = function() {
   return alertas;
 };
 
-// Función auxiliar para evitar errores de fecha
 function calcularFechaFinSimple(inicio, dias) {
     const d = new Date(inicio + 'T00:00:00');
     d.setDate(d.getDate() + Number(dias));
@@ -236,26 +216,7 @@ window.calcularMora = function (cr) {
     const info = obtenerDatosMora(cr);
     return info.total || 0;
 };
-window.estaRealmenteAtrasado = function(clienteId) {
-    const cr = DB._cache['creditos'].find(c => c.clienteId === clienteId && c.activo);
-    if (!cr) return false;
 
-    const pagosCr = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id && !p.eliminado);
-    const totalPagado = pagosCr.reduce((s, p) => s + (Number(p.monto) || 0), 0);
-    const hoyStr = today();
-
-    // 1. Días que debería haber pagado (restando el día de cortesía)
-    const diasTranscurridos = Math.max(0, contarDiasHabiles(cr.fechaInicio, hoyStr) - 1);
-    if (diasTranscurridos <= 0) return false;
-
-    // 2. ¿Cuánto DINERO debería haber pagado hasta hoy?
-    const cuotasDebidas = Math.min(diasTranscurridos, cr.diasTotal);
-    const montoQueDeberiaTener = cuotasDebidas * (cr.cuotaDiaria || 0);
-
-    // 3. COMPARACIÓN REAL:
-    // Si lo que pagó es menor a lo que debería tener (con un margen de 1 sol por si acaso)
-    return totalPagado < (montoQueDeberiaTener - 1);
-};
 window.mostrarPagoExitoso = function (titulo, subtitulo, esCierre) {
     if (document.querySelector('[data-overlay="pago"]')) return;
 
@@ -313,7 +274,7 @@ window.mostrarPagoExitoso = function (titulo, subtitulo, esCierre) {
 window.debugCaja = function() {
   const cobradorId = state.currentUser.id;
   const fecha = today();
-  
+
   const pagos = DB._cache['pagos'] || [];
   const creditos = DB._cache['creditos'] || [];
   const clientes = DB._cache['clientes'] || [];
@@ -424,3 +385,71 @@ window.debugCaja = function() {
   alert('✅ Debug completo — revisá la consola del navegador (F12 → Console)');
 };
 
+// ══════════════════════════════════════════════════════════════
+// FUNCIÓN CANÓNICA DE ATRASO
+// Usada por: calcularMetaReal, getAlertasCreditos,
+//            clienteEstaAtrasado, cuotaAtrasada, estaRealmenteAtrasado
+// ══════════════════════════════════════════════════════════════
+window.calcularEstadoAtraso = function (cr, pagos, fecha) {
+  const TOLERANCIA = 0.5;
+
+  if (!cr || !cr.activo) {
+    return { atrasado: false, cuotasDebidas: 0, cuotasCubiertas: 0,
+             cuotasAtraso: 0, montoAtraso: 0, saldoRestante: 0 };
+  }
+
+  const fechaRef = fecha || today();
+  const cuota    = Number(cr.cuotaDiaria) || 0;
+  if (cuota <= 0) {
+    return { atrasado: false, cuotasDebidas: 0, cuotasCubiertas: 0,
+             cuotasAtraso: 0, montoAtraso: 0, saldoRestante: 0 };
+  }
+
+  const pagosNoEliminados = (pagos || []).filter(
+    p => p.creditoId === cr.id && !p.eliminado
+  );
+
+  const totalPagado   = pagosNoEliminados.reduce((s, p) => s + Number(p.monto), 0);
+  const saldoRestante = Math.max(0, Number(cr.total) - totalPagado);
+
+  if (saldoRestante <= TOLERANCIA) {
+    return { atrasado: false, cuotasDebidas: 0, cuotasCubiertas: 0,
+             cuotasAtraso: 0, montoAtraso: 0, saldoRestante: 0 };
+  }
+
+  const diasTranscurridos = Math.max(0, contarDiasHabiles(cr.fechaInicio, fechaRef) - 1);
+
+  if (diasTranscurridos <= 0) {
+    return { atrasado: false, cuotasDebidas: 0, cuotasCubiertas: 0,
+             cuotasAtraso: 0, montoAtraso: 0, saldoRestante };
+  }
+
+  const cuotasDebidas   = Math.min(diasTranscurridos, Number(cr.diasTotal));
+  const cuotasCubiertas = Math.min(
+    Math.floor((totalPagado + TOLERANCIA) / cuota),
+    cuotasDebidas
+  );
+
+  const cuotasAtraso = Math.max(0, cuotasDebidas - cuotasCubiertas);
+  const montoAtraso  = Math.round(cuotasAtraso * cuota * 100) / 100;
+  const atrasado     = cuotasAtraso > 0;
+
+  return { atrasado, cuotasDebidas, cuotasCubiertas, cuotasAtraso, montoAtraso, saldoRestante };
+};
+
+// Aliases para compatibilidad con llamadas existentes en clientes.js
+window.clienteEstaAtrasado = function (cr, pagos) {
+  return calcularEstadoAtraso(cr, pagos).atrasado;
+};
+
+window.cuotaAtrasada = function (cr, pagos) {
+  return calcularEstadoAtraso(cr, pagos).cuotasAtraso;
+};
+
+window.estaRealmenteAtrasado = function (clienteId) {
+  const creditos = DB._cache['creditos'] || [];
+  const pagos    = DB._cache['pagos']    || [];
+  const cr = creditos.find(c => c.clienteId === clienteId && c.activo);
+  if (!cr) return false;
+  return calcularEstadoAtraso(cr, pagos).atrasado;
+};

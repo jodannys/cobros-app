@@ -35,18 +35,18 @@ window.getCuadreDelDia = function (cobradorId, fecha) {
   };
 };
 
-
 window.calcularMetaReal = function (cobradorId, fecha) {
   const creditos = DB._cache['creditos'] || [];
   const clientes = DB._cache['clientes'] || [];
-  const pagos = DB._cache['pagos'] || [];
+  const pagos    = DB._cache['pagos']    || [];
 
   const misClientesIds = clientes
     .filter(c => c.cobradorId === cobradorId)
     .map(c => c.id);
 
   if (!esDiaLaboral(fecha)) {
-    return { metaTotal: 0, pagadoHoy: 0, pendiente: 0, detalle: [], totalVencidos: 0, clientesVencidos: 0 };
+    return { metaTotal: 0, pagadoHoy: 0, pendiente: 0,
+             detalle: [], totalVencidos: 0, clientesVencidos: 0 };
   }
 
   const creditosTodos = creditos.filter(cr =>
@@ -61,61 +61,111 @@ window.calcularMetaReal = function (cobradorId, fecha) {
 
   creditosTodos.forEach(cr => {
     const cliente = clientes.find(c => c.id === cr.clienteId);
-    const cuota = Number(cr.cuotaDiaria) || 0;
+    const cuota   = Number(cr.cuotaDiaria) || 0;
+    if (cuota <= 0) return;
 
     const pagosNoEliminados = pagos.filter(p => p.creditoId === cr.id && !p.eliminado);
-    const pagosHoy = pagosNoEliminados.filter(p => p.fecha === fecha);
-    const montoPagadoHoy = pagosHoy.reduce((s, p) => s + Number(p.monto), 0);
-    const totalPagado = pagosNoEliminados.reduce((s, p) => s + Number(p.monto), 0);
 
-    const pagadoAntesDeHoy = totalPagado - montoPagadoHoy;
+    // ── Totales de hoy y acumulados ───────────────────────────
+    const montoPagadoHoy = pagosNoEliminados
+      .filter(p => p.fecha === fecha)
+      .reduce((s, p) => s + Number(p.monto), 0);
+
+    const totalPagado = pagosNoEliminados
+      .reduce((s, p) => s + Number(p.monto), 0);
 
     const saldoRestante = Number(cr.total) - totalPagado;
-    if (saldoRestante <= 0) return;
 
-    const diasTranscurridos = Math.max(0, contarDiasHabiles(cr.fechaInicio, fecha) - 1);
+    // Si ya liquidó, no aparece en ruta ni meta
+    if (saldoRestante <= 0.5) return;
 
-    // META DE HOY
-    const montoEsperadoHoy = Math.min(Number(cr.total), diasTranscurridos * cuota);
-    const yaCubrioHoy = pagadoAntesDeHoy >= (montoEsperadoHoy - 0.5);
-    const leTocaHoy = diasTranscurridos >= 1 && diasTranscurridos <= cr.diasTotal;
+    // ── Días hábiles transcurridos hasta ayer ─────────────────
+    const diasTranscurridos = Math.max(
+      0,
+      contarDiasHabiles(cr.fechaInicio, fecha) - 1
+    );
 
-    if (leTocaHoy && !yaCubrioHoy) {
+    // ── Estado de atraso con función canónica ─────────────────
+    // Usamos calcularEstadoAtraso que incluye pagos de hoy en
+    // cuotasCubiertas, así un pago múltiple resuelve el atraso
+    // en el mismo instante.
+    const estado = calcularEstadoAtraso(cr, pagosNoEliminados, fecha);
+
+    // ── ¿Le toca cobro hoy? ───────────────────────────────────
+    // Le toca si han transcurrido entre 1 y diasTotal días hábiles
+    const leTocaHoy = diasTranscurridos >= 1 &&
+                      diasTranscurridos <= Number(cr.diasTotal);
+
+    // ── ¿Ya cubrió el cobro de hoy? ───────────────────────────
+    // Cuotas esperadas hasta ayer = diasTranscurridos (tope diasTotal)
+    // Si cuotasCubiertas >= cuotasDebidas, ya está al día (incluyendo hoy)
+    // Nota: cuotasDebidas en estado ya viene tope en diasTotal
+    const alDia = estado.cuotasCubiertas >= estado.cuotasDebidas;
+
+    // ── Meta del día ──────────────────────────────────────────
+    // Solo suma a meta si le toca hoy Y no estaba al día antes del
+    // pago de hoy (para no "resetear" la meta con pagos anticipados)
+    const totalPagadoSinHoy = totalPagado - montoPagadoHoy;
+    const cuotasCubiertasSinHoy = Math.min(
+      Math.floor((totalPagadoSinHoy + 0.5) / cuota),
+      diasTranscurridos
+    );
+    const estabaAlDiaSinHoy = cuotasCubiertasSinHoy >= diasTranscurridos;
+
+    if (leTocaHoy && !estabaAlDiaSinHoy) {
       metaTotal += cuota;
-      pagadoHoy += montoPagadoHoy;
-      if (montoPagadoHoy < cuota) {
-        pendiente += (cuota - montoPagadoHoy);
+      // Cuánto de esa cuota ya entró hoy
+      const cuotaPagadaHoy = Math.min(montoPagadoHoy, cuota);
+      pagadoHoy += cuotaPagadaHoy;
+      if (cuotaPagadaHoy < cuota) {
+        pendiente += (cuota - cuotaPagadaHoy);
       }
     }
-    // TRIÁNGULO ATRASADOS
-    const cuotasDebidas = Math.min(diasTranscurridos, cr.diasTotal);
-    const cuotasCubiertas = Math.floor(pagadoAntesDeHoy / cuota);
-    const atrasado = (cuotasDebidas - cuotasCubiertas) > 1 && diasTranscurridos > 0;
 
-    // Deuda de días ANTERIORES a hoy (sin incluir la cuota de hoy)
-    const cuotasDebidasAyer = Math.max(0, cuotasDebidas - 1);
-    const deudaAcumulada = atrasado
-      ? Math.max(0, (cuotasDebidasAyer - cuotasCubiertas) * cuota)
-      : 0;
+    // ── Deuda acumulada de días ANTERIORES (sin hoy) ──────────
+    // Esto es lo que se muestra en la sección "Atrasados"
+    const cuotasAtrasoSinHoy = Math.max(
+      0,
+      Math.min(diasTranscurridos, Number(cr.diasTotal)) - cuotasCubiertasSinHoy
+    );
+    // Si pagó hoy cuotas atrasadas, deudaAcumulada refleja lo que
+    // AÚN falta después del pago (no la deuda pre-pago)
+    const deudaAcumulada = Math.round(estado.cuotasAtraso * cuota * 100) / 100;
 
-    if (atrasado) {
-      totalVencidos += deudaAcumulada;
+    if (estado.atrasado) {
+      totalVencidos  += deudaAcumulada;
       clientesVencidos++;
     }
 
+    // ── completo: desaparece de la ruta ──────────────────────
+    // Un cliente está "completo" (sale de la lista pendientes) cuando:
+    //   a) No está atrasado (cuotasCubiertas >= cuotasDebidas), Y
+    //   b) O no le tocaba cobro hoy, O ya cubría el cobro de hoy antes de pagar
+    // Dicho de otro modo: está pendiente si tiene alguna cuota sin cubrir
+    // que ya debería haber pagado (incluyendo la de hoy si aplica).
+    const pendienteEnRuta = leTocaHoy
+      ? !alDia                // le toca y no está al día → pendiente
+      : estado.atrasado;      // no le toca hoy pero igual debe días anteriores
+
     detalle.push({
-      cliente, cr, cuota, montoPagadoHoy,
-      completo: !atrasado && (!leTocaHoy || yaCubrioHoy),
+      cliente,
+      cr,
+      cuota,
+      montoPagadoHoy,
+      completo: !pendienteEnRuta,
       deudaAcumulada,
-      atrasado
+      atrasado: estado.atrasado,
+      cuotasAtraso: estado.cuotasAtraso,
+      saldoRestante
     });
-  }); // cierre forEach
+  });
+
   return {
-    metaTotal: Math.round(metaTotal),
-    pagadoHoy,
-    pendiente,
+    metaTotal:       Math.round(metaTotal * 100) / 100,
+    pagadoHoy:       Math.round(pagadoHoy * 100) / 100,
+    pendiente:       Math.round(pendiente * 100) / 100,
     detalle,
-    totalVencidos: Math.round(totalVencidos),
+    totalVencidos:   Math.round(totalVencidos * 100) / 100,
     clientesVencidos
   };
 };

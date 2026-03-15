@@ -26,11 +26,7 @@ window.renderClientes = function () {
       return crs.length === 0 || !crs.some(cr => cr.activo);
     });
   } else if (filtro === 'atrasados') {
-    lista = lista.filter(c => {
-      const cr = creditos.find(cr => cr.clienteId === c.id && cr.activo);
-      if (!cr) return false;
-      return clienteEstaAtrasado(cr, pagos);
-    });
+    lista = lista.filter(c => estaRealmenteAtrasado(c.id));
   } else if (filtro === 'cerrados' && isAdmin) {
     lista = lista.filter(c => {
       const crs = creditos.filter(cr => cr.clienteId === c.id);
@@ -112,8 +108,11 @@ window._renderClienteItem = function (c, creditos, users, pagos, isAdmin) {
   const crs = creditos.filter(cr => cr.clienteId === c.id);
   const creditoActivo = crs.find(cr => cr.activo);
   const cob = users.find(u => u.id === c.cobradorId) || { nombre: 'Sin asignar' };
-  const atrasado = creditoActivo ? clienteEstaAtrasado(creditoActivo, pagos) : false;
-  const numCuotaAtrasada = atrasado ? cuotaAtrasada(creditoActivo, pagos) : null;
+  const estadoAtraso = creditoActivo
+    ? calcularEstadoAtraso(creditoActivo, pagos)
+    : { atrasado: false, cuotasAtraso: 0 };
+  const atrasado = estadoAtraso.atrasado;
+  const numCuotaAtrasada = estadoAtraso.cuotasAtraso > 0 ? estadoAtraso.cuotasAtraso : null;
 
   let badge, badgeStyle;
   if (atrasado) {
@@ -194,38 +193,6 @@ window._renderClienteItem = function (c, creditos, users, pagos, isAdmin) {
   </div>`;
 };
 
-// ============================================================
-// HELPERS DE ESTADO DE CUOTAS
-// ============================================================
-window.clienteEstaAtrasado = function (cr, pagos) {
-  if (!cr || !cr.activo) return false;
-  const fecha = today();
-  const pagosNoEliminados = pagos.filter(p => p.creditoId === cr.id && !p.eliminado);
-  const montoPagadoHoy = pagosNoEliminados
-    .filter(p => p.fecha === fecha)
-    .reduce((s, p) => s + Number(p.monto), 0);
-  const totalPagado = pagosNoEliminados.reduce((s, p) => s + Number(p.monto), 0);
-  const pagadoAntesDeHoy = totalPagado - montoPagadoHoy;
-  const saldo = cr.total - totalPagado;
-  if (saldo <= 0) return false;
-  const diasTranscurridos = Math.max(0, contarDiasHabiles(cr.fechaInicio, fecha) - 1);
-  if (diasTranscurridos <= 0) return false;
-  const cuotasDebidas = Math.min(diasTranscurridos, cr.diasTotal);
-  const cuotasCubiertas = Math.floor(pagadoAntesDeHoy / cr.cuotaDiaria);
-  return (cuotasDebidas - cuotasCubiertas) > 1;
-};
-
-window.cuotaAtrasada = function (cr, pagos) {
-  const totalPagado = pagos.filter(p => p.creditoId === cr.id && !p.eliminado).reduce((s, p) => s + Number(p.monto), 0);
-  const cuotasCubiertas = Math.floor(totalPagado / cr.cuotaDiaria);
-  const diasTranscurridos = Math.max(0, contarDiasHabiles(cr.fechaInicio, today()) - 1);
-  const cuotasDebidas = Math.min(diasTranscurridos, cr.diasTotal);
-  return Math.max(0, cuotasDebidas - cuotasCubiertas);
-};
-
-// ============================================================
-// ESQUEMA VISUAL DE CUOTAS
-// ============================================================
 window.renderEsquemaCuotas = function (cr) {
   const pagos = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id && !p.eliminado);
   const totalPagado = pagos.reduce((s, p) => s + Number(p.monto), 0);
