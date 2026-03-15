@@ -72,58 +72,30 @@ window.calcularMetaReal = function (cobradorId, fecha) {
     const saldoRestante = Number(cr.total) - totalPagado;
     if (saldoRestante <= 0) return;
 
-    // Días transcurridos (topado al total de días del crédito para no cobrar infinito)
-    const diasTranscurridos = Math.min(Number(cr.diasTotal), Math.max(0, contarDiasHabiles(cr.fechaInicio, fecha) - 1));
+    // Día de gracia: prestado hoy no cobra hasta mañana
+    const diasTranscurridos = Math.max(0, contarDiasHabiles(cr.fechaInicio, fecha) - 1);
+    const cuotasDebidas     = Math.min(diasTranscurridos, cr.diasTotal);
+    const montoDebido       = cuotasDebidas * cuota;
+    const alDia             = totalPagado >= (montoDebido - 0.5);
+    const deudaAcumulada    = Math.max(0, montoDebido - totalPagado);
+    const atrasado          = !alDia && deudaAcumulada > 0 && diasTranscurridos <= cr.diasTotal;
 
-    // ⚠️ EL TRUCO: Lo que había pagado HASTA AYER (para congelar la meta)
-    const pagadoAntesDeHoy = totalPagado - montoPagadoHoy;
-    
-    // Lo que matemáticamente debió haber pagado hasta ayer y hasta hoy
-    const montoEsperadoAyer = (diasTranscurridos - 1) * cuota;
-    const montoEsperadoHoy  = diasTranscurridos * cuota;
-
-    // ════ TUS 3 REGLAS EXACTAS ════
-    // 1. Pasó el día de gracia
-    const pasoDiaGracia = diasTranscurridos >= 1;
-    
-    // 2. No está atrasado (lo que pagó hasta ayer cubre lo que debía hasta ayer)
-    // Usamos -0.5 para dar un margen de tolerancia a centavos perdidos
-    const noEstaAtrasado = pagadoAntesDeHoy >= (montoEsperadoAyer - 0.5);
-    
-    // 3. El número de cuotas pagadas es menor a los días (le falta lo de hoy)
-    const leTocaHoy = pagadoAntesDeHoy < (montoEsperadoHoy - 0.5);
-
-    // ESTADO ACTUALIZADO (Con el pago de hoy, para mostrar los checks y atrasos reales en la UI)
-    const yaEstaAlDia = totalPagado >= (montoEsperadoHoy - 0.5);
-    const deudaAcumulada = Math.max(0, montoEsperadoHoy - totalPagado);
-    const atrasadoActual = totalPagado < (montoEsperadoAyer - 0.5);
-
-    // ── ¿SUMA A LA META DIARIA? ──
-    if (pasoDiaGracia && noEstaAtrasado && leTocaHoy) {
-      metaTotal += cuota;
-      pagadoHoy += montoPagadoHoy;
-      
+    // Meta = solo clientes al día (no atrasados)
+    if (!atrasado) {
+      metaTotal  += cuota;
+      pagadoHoy  += montoPagadoHoy;
       if (montoPagadoHoy < cuota) {
-        pendiente += (cuota - montoPagadoHoy);
+        pendiente += cuota - montoPagadoHoy;
       }
     }
 
-    // ── ¿ES UN CLIENTE VENCIDO/ATRASADO? ──
-    // Evaluamos con su deuda actual. Si hoy se puso al día, sale automáticamente de los naranjas.
-    if (pasoDiaGracia && atrasadoActual) {
+    // Atrasados → solo bloque naranja
+    if (atrasado) {
       totalVencidos += deudaAcumulada;
       clientesVencidos++;
     }
 
-    detalle.push({ 
-      cliente, 
-      cr, 
-      cuota, 
-      montoPagadoHoy, 
-      completo: yaEstaAlDia, 
-      deudaAcumulada, 
-      atrasado: atrasadoActual 
-    });
+    detalle.push({ cliente, cr, cuota, montoPagadoHoy, completo: alDia, deudaAcumulada, atrasado });
   });
 
   return { metaTotal, pagadoHoy, pendiente, detalle, totalVencidos, clientesVencidos };
