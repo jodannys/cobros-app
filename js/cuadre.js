@@ -356,7 +356,7 @@ window.renderCuadre = function () {
           <div style="font-size:10.5px; color:var(--muted); font-weight:700; text-transform:uppercase;
                       letter-spacing:0.6px; margin-bottom:4px">Recaudado</div>
           <div style="font-size:24px; font-weight:800; color:#16a34a; letter-spacing:-0.5px">
-            ${formatMoney(meta.pagadoHoy)}
+          ${formatMoney(cuadreHoy.total)}
           </div>
         </div>
       </div>
