@@ -265,6 +265,9 @@ window.renderModalEditarCliente = function renderModalEditarCliente() {
 window.renderModalNuevoCredito = function renderModalNuevoCredito() {
   const seguroActivo = state._crSeguro !== false;
   const pctSeguro = state._crPctSeguro ?? 5;
+  
+  // Fecha forzada a Lima
+  const fechaHoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
 
   return `
   <div class="modal-handle"></div>
@@ -361,7 +364,7 @@ window.renderModalNuevoCredito = function renderModalNuevoCredito() {
 
   <div class="form-group">
     <label>Fecha de inicio</label>
-    <input class="form-control" id="crFecha" type="date" value="${today()}">
+    <input class="form-control" id="crFecha" type="date" value="${fechaHoy}">
   </div>
 
   <div class="form-group">
