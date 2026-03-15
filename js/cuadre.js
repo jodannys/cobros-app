@@ -1,3 +1,7 @@
+// ══════════════════════════════════════════════════════════════
+// GESTIÓN DE CUADRE Y RENDIMIENTO
+// ══════════════════════════════════════════════════════════════
+
 window.getCuadreDelDia = function (cobradorId, fecha) {
   const pagos = DB._cache['pagos'] || [];
   const creditos = DB._cache['creditos'] || [];
@@ -40,6 +44,7 @@ window.calcularMetaReal = function (cobradorId, fecha) {
     .filter(c => c.cobradorId === cobradorId)
     .map(c => c.id);
 
+  // Si es feriado o domingo → meta cero
   if (!esDiaLaboral(fecha)) {
     return { metaTotal: 0, pagadoHoy: 0, pendiente: 0, detalle: [], totalVencidos: 0, clientesVencidos: 0 };
   }
@@ -63,9 +68,11 @@ window.calcularMetaReal = function (cobradorId, fecha) {
     const montoPagadoHoy    = pagosHoy.reduce((s, p) => s + Number(p.monto), 0);
     const totalPagado       = pagosNoEliminados.reduce((s, p) => s + Number(p.monto), 0);
 
+    // Crédito ya saldado → no cuenta
     const saldoRestante = Number(cr.total) - totalPagado;
     if (saldoRestante <= 0) return;
 
+    // Día de gracia: prestado hoy no cobra hasta mañana
     const diasTranscurridos = Math.max(0, contarDiasHabiles(cr.fechaInicio, fecha) - 1);
     const cuotasDebidas     = Math.min(diasTranscurridos, cr.diasTotal);
     const montoDebido       = cuotasDebidas * cuota;
@@ -73,11 +80,8 @@ window.calcularMetaReal = function (cobradorId, fecha) {
     const deudaAcumulada    = Math.max(0, montoDebido - totalPagado);
     const atrasado          = !alDia && deudaAcumulada > 0 && diasTranscurridos <= cr.diasTotal;
 
-    // ✅ Le toca pagar hoy si tiene días transcurridos y no cubrió todas las cuotas debidas
-    const cuotasCubiertas   = Math.floor(totalPagado / cuota);
-    const necesitaPagarHoy  = !atrasado && diasTranscurridos >= 1 && cuotasCubiertas < diasTranscurridos;
-
-    if (necesitaPagarHoy) {
+    // Meta = solo clientes al día (no atrasados)
+    if (!atrasado) {
       metaTotal  += cuota;
       pagadoHoy  += montoPagadoHoy;
       if (montoPagadoHoy < cuota) {
@@ -85,16 +89,13 @@ window.calcularMetaReal = function (cobradorId, fecha) {
       }
     }
 
+    // Atrasados → solo bloque naranja
     if (atrasado) {
       totalVencidos += deudaAcumulada;
       clientesVencidos++;
     }
 
-    detalle.push({
-      cliente, cr, cuota, montoPagadoHoy,
-      completo: !necesitaPagarHoy && !atrasado,
-      deudaAcumulada, atrasado
-    });
+    detalle.push({ cliente, cr, cuota, montoPagadoHoy, completo: alDia, deudaAcumulada, atrasado });
   });
 
   return { metaTotal, pagadoHoy, pendiente, detalle, totalVencidos, clientesVencidos };
@@ -130,7 +131,7 @@ window.guardarNota = async function () {
 };
 
 // ── Helper: caja chica profesional (cobrador) ─────────────────
-window._renderCajaChicaPro = function (caja, cuadre) {
+window._renderCajaChicaPro = function(caja, cuadre) {
   const saldoPositivo = caja.saldo >= 0;
   const saldoColor = saldoPositivo ? '#4ade80' : '#f87171';
 
@@ -267,7 +268,7 @@ window.renderCuadre = function () {
   const meta = calcularMetaReal(userId, hoyC);
   const caja = getCajaChicaDelDia(userId, hoyC);
 
-  // ── Exponer detalle para el mapa ──
+ // ── Exponer detalle para el mapa ──
   window._metaDetalle = meta.detalle;
 
   // ── Ordenar clientes por distancia o por nombre ──
@@ -441,8 +442,8 @@ window.renderCuadre = function () {
         </div>
         <div style="font-size:11px; color:var(--muted); margin-top:2px">
           ${state.rutaActiva
-      ? 'GPS activo · lista ordenada por cercanía'
-      : 'Presiona para activar el GPS y optimizar la ruta'}
+            ? 'GPS activo · lista ordenada por cercanía'
+            : 'Presiona para activar el GPS y optimizar la ruta'}
         </div>
       </div>
       <button onclick="toggleRuta()"
@@ -472,19 +473,19 @@ window.renderCuadre = function () {
       <!-- Lista -->
       <div style="padding:0 16px 8px">
         ${clientesPendientes.length === 0
-      ? `<div style="text-align:center; padding:28px 0">
+          ? `<div style="text-align:center; padding:28px 0">
                <div style="font-size:28px; margin-bottom:8px">✅</div>
                <p style="color:#16a34a; font-weight:700; margin:0; font-size:13.5px">¡Ruta completada!</p>
              </div>`
-      : clientesPendientes.map(d => {
-        const dist = state.miUbicacion
-          ? calcularDistancia(
-            state.miUbicacion.lat, state.miUbicacion.lng,
-            d.cliente?.lat, d.cliente?.lng)
-          : null;
-        const distLabel = dist !== null ? _fmtDistancia(dist) : null;
+          : clientesPendientes.map(d => {
+              const dist = state.miUbicacion
+                ? calcularDistancia(
+                    state.miUbicacion.lat, state.miUbicacion.lng,
+                    d.cliente?.lat, d.cliente?.lng)
+                : null;
+              const distLabel = dist !== null ? _fmtDistancia(dist) : null;
 
-        return `
+              return `
               <div style="display:flex; justify-content:space-between; align-items:center;
                           padding:11px 0; border-bottom:1px solid var(--border)">
                 <div>
@@ -517,7 +518,7 @@ window.renderCuadre = function () {
                   </span>
                 </button>
               </div>`;
-      }).join('')}
+            }).join('')}
       </div>
     </div>
 
