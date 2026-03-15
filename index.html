@@ -23,25 +23,15 @@
   </div>
 </div>
 
+<!-- Firebase CDN — debe ejecutarse antes que main.js -->
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 
-<script type="module" src="js/firebase.js"></script>
-<script type="module" src="js/helpers.js"></script>
-<script type="module" src="js/state.js"></script>
-<script type="module" src="js/db.js"></script>
-<script type="module" src="js/auth.js"></script>
-<script type="module" src="js/mapa_patch.js"></script>
-<script type="module" src="js/cascade.js"></script>
-<script type="module" src="js/clientes.js"></script>
-<script type="module" src="js/creditos.js"></script>
-<script type="module" src="js/pagos.js"></script>
-<script type="module" src="js/cuadre.js"></script>
-<script type="module" src="js/cajachica.js"></script>
-<script type="module" src="js/cartera.js"></script>
-<script type="module" src="js/admin.js"></script>
-<script type="module" src="js/modals.js"></script>
-<script type="module" src="js/app.js"></script>
+<!-- firebase.js como script clásico — expone window.fbXxx sin pasar por Vite -->
+<script src="js/firebase.js"></script>
+
+<!-- main.js como módulo ES — Vite bundlea todo desde aquí en orden -->
+<script type="module" src="js/main.js"></script>
 
 <script>
   if ('serviceWorker' in navigator) {
