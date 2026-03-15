@@ -1,86 +1,24 @@
-window._coordsSeleccionadas = null;
+// ============================================================
+// MAPA_PATCH.JS — GPS, distancias y mapa de ruta
+// Fixes aplicados:
+//   1. Indicador visual para clientes sin coordenadas
+//   2. Centro del mapa basado en clientes, no en Lima hardcodeado
+//   3. watchPosition del mapa se limpia si se cierra con tap fuera
+//   4. (orderamiento en tiempo real ya funcionaba — sin cambio)
+//   5. _metaDetalle se recalcula al abrir el mapa (clientes ya cobrados no aparecen)
+// ============================================================
 
-window.renderMapaSelector = function renderMapaSelector(latExistente, lngExistente) {
-  const tieneUbicacion = latExistente && lngExistente;
-  window._coordsSeleccionadas = tieneUbicacion ? { lat: latExistente, lng: lngExistente } : null;
-
-  return `
-  <div class="form-group">
-    <label>📍 Ubicación</label>
-    <div style="background:var(--bg);border-radius:12px;padding:14px;text-align:center">
-
-      ${tieneUbicacion ? `
-      <div style="margin-bottom:12px">
-        <div style="font-size:13px;color:var(--success);font-weight:700;margin-bottom:8px">
-          ✅ Ubicación guardada
-        </div>
-        <a href="https://www.google.com/maps?q=${latExistente},${lngExistente}"
-          target="_blank"
-          style="display:inline-flex;align-items:center;gap:6px;background:#eff6ff;
-          color:var(--primary);padding:8px 14px;border-radius:8px;font-size:13px;
-          font-weight:600;text-decoration:none;margin-bottom:10px">
-          🗺️ Ver en Google Maps
-        </a>
-        <div style="font-size:11px;color:var(--muted)">${latExistente.toFixed(6)}, ${lngExistente.toFixed(6)}</div>
-      </div>` : ''}
-
-      <button type="button" id="btn-obtener-gps"
-        onclick="obtenerUbicacionGPS()"
-        class="btn btn-sm"
-        style="background:var(--primary);color:white;width:auto;padding:10px 20px;font-size:14px">
-        📍 ${tieneUbicacion ? 'Actualizar ubicación' : 'Obtener mi ubicación GPS'}
-      </button>
-
-      <div id="gps-status" style="font-size:12px;color:var(--muted);margin-top:8px;min-height:16px">
-        ${tieneUbicacion ? '' : 'Toca el botón para guardar la ubicación exacta del cliente'}
-      </div>
-    </div>
-  </div>`;
-};
-
-window.obtenerUbicacionGPS = function obtenerUbicacionGPS() {
-  const btn    = document.getElementById('btn-obtener-gps');
-  const status = document.getElementById('gps-status');
-
-  if (!navigator.geolocation) {
-    if (status) { status.textContent = '❌ Tu dispositivo no soporta GPS'; status.style.color = 'var(--danger)'; }
+window.guardarUbicacionCliente = function () {
+  const lat = document.getElementById('latInput')?.value;
+  const lng = document.getElementById('lngInput')?.value;
+  if (!lat || !lng) {
+    const status = document.getElementById('ubicacion-status');
+    if (status) { status.textContent = '⚠️ No se ha seleccionado ubicación'; status.style.color = 'var(--danger)'; }
     return;
   }
-
-  if (btn)    { btn.textContent = '⏳ Obteniendo GPS...'; btn.disabled = true; }
-  if (status) { status.textContent = 'Buscando señal GPS...'; status.style.color = 'var(--muted)'; }
-
-  navigator.geolocation.getCurrentPosition(
-    pos => {
-      const lat = pos.coords.latitude;
-      const lng = pos.coords.longitude;
-      const acc = Math.round(pos.coords.accuracy);
-      window._coordsSeleccionadas = { lat, lng };
-
-      if (btn) { btn.textContent = '✅ Ubicación obtenida'; btn.style.background = 'var(--success)'; btn.disabled = false; }
-      if (status) {
-        status.innerHTML = `
-          <span style="color:var(--success);font-weight:700">
-            📍 ${lat.toFixed(6)}, ${lng.toFixed(6)}
-          </span>
-          <br><span style="color:var(--muted)">Precisión: ~${acc}m</span>
-          <br><a href="https://www.google.com/maps?q=${lat},${lng}" target="_blank"
-            style="color:var(--primary);font-weight:600;text-decoration:none">
-            🗺️ Verificar en Google Maps
-          </a>`;
-      }
-    },
-    err => {
-      if (btn) { btn.textContent = '📍 Obtener mi ubicación GPS'; btn.disabled = false; }
-      const msgs = {
-        1: 'Permiso de ubicación denegado. Actívalo en la configuración del navegador.',
-        2: 'No se pudo obtener la ubicación. Intenta de nuevo.',
-        3: 'Tiempo agotado. Intenta de nuevo.'
-      };
-      if (status) { status.textContent = '❌ ' + (msgs[err.code] || 'Error desconocido'); status.style.color = 'var(--danger)'; }
-    },
-    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-  );
+  _coordsSeleccionadas = { lat: parseFloat(lat), lng: parseFloat(lng) };
+  const status = document.getElementById('ubicacion-status');
+  if (status) { status.textContent = '✅ Ubicación guardada'; status.style.color = 'var(--success)'; }
 };
 
 window.renderMapaCliente = function renderMapaCliente(lat, lng) {
@@ -101,7 +39,7 @@ window.iniciarMapaCliente = function iniciarMapaCliente(lat, lng, nombre) {
 };
 
 // ============================================================
-// NUEVO — Haversine: distancia entre dos puntos en metros
+// Haversine: distancia entre dos puntos en metros
 // ============================================================
 window.calcularDistancia = function(lat1, lon1, lat2, lon2) {
   if (!lat1 || !lon1 || !lat2 || !lon2) return 999999;
@@ -114,12 +52,19 @@ window.calcularDistancia = function(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 };
 
+// ── Helper: formatea metros para mostrar en pantalla ──
+window._fmtDistancia = function(metros) {
+  if (metros >= 999990) return null;
+  if (metros < 1000) return `${Math.round(metros)}m`;
+  return `${(metros / 1000).toFixed(1)}km`;
+};
+
 // ============================================================
-// NUEVO — GPS continuo para Mi Cuadre (filtro 18 metros)
+// GPS continuo para Mi Cuadre (umbral 18 metros)
 // ============================================================
 window.iniciarGPSCuadre = function() {
   if (!navigator.geolocation) return;
-  if (state._gpsWatchId != null) return; // ya está corriendo
+  if (state._gpsWatchId != null) return;
 
   const UMBRAL_METROS = 18;
 
@@ -150,20 +95,19 @@ window.detenerGPSCuadre = function() {
   }
 };
 
-// ── Helper interno: formatea metros para mostrar en pantalla ──
-window._fmtDistancia = function(metros) {
-  if (metros >= 999990) return null;
-  if (metros < 1000) return `${Math.round(metros)}m`;
-  return `${(metros / 1000).toFixed(1)}km`;
-};
-
 // ============================================================
-// NUEVO — Mapa de ruta con Leaflet (sin API key)
+// Mapa de ruta con Leaflet
 // ============================================================
 window.abrirMapaRuta = function() {
-  // Elimina modal anterior si existía
   const anterior = document.getElementById('modal-mapa-ruta');
   if (anterior) anterior.remove();
+
+  // ── FIX 5: recalcular _metaDetalle al abrir para que refleje
+  // los pagos más recientes y no muestre clientes ya cobrados ──
+  if (typeof calcularMetaReal === 'function' && state.currentUser) {
+    const meta = calcularMetaReal(state.currentUser.id, today());
+    window._metaDetalle = meta.detalle;
+  }
 
   const modal = document.createElement('div');
   modal.id = 'modal-mapa-ruta';
@@ -196,20 +140,48 @@ window.abrirMapaRuta = function() {
     </div>`;
   document.body.appendChild(modal);
 
+  // ── FIX 3: cerrar el modal si el usuario toca el overlay oscuro ──
+  // (el overlay es el propio #modal-mapa-ruta, el contenido está en el div hijo)
+  modal.addEventListener('click', e => {
+    if (e.target === modal) _cerrarMapaRuta(null);
+  });
+
+  // ── FIX 3: cerrar con botón atrás del navegador ──
+  window._mapaRutaPopState = () => _cerrarMapaRuta(null);
+  window.history.pushState({ mapaRuta: true }, '');
+  window.addEventListener('popstate', window._mapaRutaPopState, { once: true });
+
   setTimeout(() => {
-    const centro = state.miUbicacion
-      ? [state.miUbicacion.lat, state.miUbicacion.lng]
-      : [-12.046374, -77.042793];
+    const pendientes = (window._metaDetalle || []).filter(d => !d.completo);
+
+    // ── FIX 2: calcular centro a partir de los clientes con coordenadas ──
+    // Si hay GPS activo úsalo, si no usa el centroide de los clientes,
+    // si tampoco hay clientes con coords, cae en Lima como último recurso.
+    let centro;
+    if (state.miUbicacion) {
+      centro = [state.miUbicacion.lat, state.miUbicacion.lng];
+    } else {
+      const conCoords = pendientes.filter(d => d.cliente?.lat && d.cliente?.lng);
+      if (conCoords.length > 0) {
+        const avgLat = conCoords.reduce((s, d) => s + d.cliente.lat, 0) / conCoords.length;
+        const avgLng = conCoords.reduce((s, d) => s + d.cliente.lng, 0) / conCoords.length;
+        centro = [avgLat, avgLng];
+      } else {
+        centro = [-12.046374, -77.042793]; // Lima — último recurso
+      }
+    }
 
     const mapa = L.map('mapa-leaflet').setView(centro, 15);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap'
     }).addTo(mapa);
 
-    // Clientes pendientes (puntos rojos)
-    const pendientes = (window._metaDetalle || []).filter(d => !d.completo);
-    pendientes.forEach((d, i) => {
-      if (!d.cliente?.lat || !d.cliente?.lng) return;
+    // ── FIX 1: separar clientes con y sin coordenadas ──
+    const conCoords    = pendientes.filter(d => d.cliente?.lat && d.cliente?.lng);
+    const sinCoords    = pendientes.filter(d => !d.cliente?.lat || !d.cliente?.lng);
+
+    // Clientes con coords → puntos rojos en el mapa
+    conCoords.forEach((d, i) => {
       const dist = state.miUbicacion
         ? _fmtDistancia(calcularDistancia(
             state.miUbicacion.lat, state.miUbicacion.lng,
@@ -222,19 +194,40 @@ window.abrirMapaRuta = function() {
         .bindPopup(`<b>${i + 1}. ${d.cliente.nombre}</b><br>${dist ? '📍 ' + dist + '<br>' : ''}💰 ${formatMoney(d.cuota)}`);
     });
 
-    // Ajustar zoom si hay clientes
-    if (pendientes.filter(d => d.cliente?.lat).length > 0) {
-      const bounds = L.latLngBounds(
-        pendientes.filter(d => d.cliente?.lat && d.cliente?.lng)
-                  .map(d => [d.cliente.lat, d.cliente.lng])
-      );
+    // ── FIX 1: mostrar panel de clientes sin ubicación debajo del mapa ──
+    if (sinCoords.length > 0) {
+      const contenedor = document.createElement('div');
+      contenedor.style.cssText = `
+        padding:8px 14px; background:#fffbeb; border-top:1px solid #fde68a;
+        flex-shrink:0; max-height:90px; overflow-y:auto;
+      `;
+      contenedor.innerHTML = `
+        <div style="font-size:10px; font-weight:700; color:#92400e;
+                    text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px">
+          ⚠️ Sin ubicación guardada (${sinCoords.length})
+        </div>
+        ${sinCoords.map(d => `
+          <span style="font-size:11.5px; color:#78350f; font-weight:600;
+                       margin-right:10px">• ${d.cliente?.nombre || '—'}</span>
+        `).join('')}
+      `;
+      // Insertar antes del div del mapa
+      const mapaDiv = document.getElementById('mapa-leaflet');
+      mapaDiv.parentNode.insertBefore(contenedor, mapaDiv);
+      // Ajustar altura del mapa para dejar espacio al panel
+      mapaDiv.style.flex = '1';
+    }
+
+    // Ajustar zoom para abarcar todos los clientes con coords
+    if (conCoords.length > 0) {
+      const bounds = L.latLngBounds(conCoords.map(d => [d.cliente.lat, d.cliente.lng]));
       mapa.fitBounds(bounds, { padding: [40, 40] });
     }
 
-    // Play/Pausa GPS
+    // ── GPS dentro del mapa ──
     let watchIdMapa = null;
-    let marcadorYo = null;
-    let gpsActivo = false;
+    let marcadorYo  = null;
+    let gpsActivo   = false;
 
     const actualizarPosicion = (lat, lng) => {
       if (marcadorYo) {
@@ -247,9 +240,8 @@ window.abrirMapaRuta = function() {
       }
     };
 
-    // Si cobrador ya tenía ruta activa, mostrar posición de inmediato
-    if (state.miUbicacion) {
-      actualizarPosicion(state.miUbicacion.lat, state.miUbicacion.lng);
+    const _iniciarGPSMapa = () => {
+      if (!navigator.geolocation) { alert('Tu dispositivo no soporta GPS'); return; }
       gpsActivo = true;
       const btn = document.getElementById('btn-gps-mapa');
       if (btn) { btn.textContent = '⏸️ Pausar GPS'; btn.style.background = '#fff1f2'; btn.style.color = '#9f1239'; }
@@ -261,6 +253,12 @@ window.abrirMapaRuta = function() {
         err => console.warn('GPS mapa:', err.code),
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 3000 }
       );
+    };
+
+    // Si el cobrador ya tenía ruta activa, activar GPS inmediatamente
+    if (state.miUbicacion) {
+      actualizarPosicion(state.miUbicacion.lat, state.miUbicacion.lng);
+      _iniciarGPSMapa();
     }
 
     document.getElementById('btn-gps-mapa').onclick = () => {
@@ -273,26 +271,60 @@ window.abrirMapaRuta = function() {
         btn.style.background = '#f0fdf4';
         btn.style.color = '#16a34a';
       } else {
-        if (!navigator.geolocation) { alert('Tu dispositivo no soporta GPS'); return; }
-        gpsActivo = true;
-        btn.textContent = '⏸️ Pausar GPS';
-        btn.style.background = '#fff1f2';
-        btn.style.color = '#9f1239';
-        watchIdMapa = navigator.geolocation.watchPosition(
-          pos => {
-            state.miUbicacion = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-            actualizarPosicion(state.miUbicacion.lat, state.miUbicacion.lng);
-          },
-          err => console.warn('GPS mapa:', err.code),
-          { enableHighAccuracy: true, timeout: 10000, maximumAge: 3000 }
-        );
+        _iniciarGPSMapa();
       }
     };
 
+    // ── FIX 3: función única de cierre que limpia TODO ──
+    window._cerrarMapaRuta = (watchId) => {
+      const w = watchId ?? watchIdMapa;
+      if (w != null) navigator.geolocation.clearWatch(w);
+      watchIdMapa = null;
+      // Limpiar listener de popstate si aún no se disparó
+      if (window._mapaRutaPopState) {
+        window.removeEventListener('popstate', window._mapaRutaPopState);
+        window._mapaRutaPopState = null;
+      }
+      const m = document.getElementById('modal-mapa-ruta');
+      if (m) m.remove();
+    };
+
     document.getElementById('btn-cerrar-mapa').onclick = () => {
-      if (watchIdMapa != null) navigator.geolocation.clearWatch(watchIdMapa);
-      document.getElementById('modal-mapa-ruta').remove();
+      window._cerrarMapaRuta(watchIdMapa);
     };
 
   }, 150);
+};
+
+// ============================================================
+// Obtener ubicación para ficha de cliente (selector de mapa)
+// ============================================================
+window.obtenerUbicacion = function () {
+  const status = document.getElementById('ubicacion-status');
+  if (status) { status.textContent = '⏳ Obteniendo ubicación...'; status.style.color = 'var(--muted)'; }
+
+  if (!navigator.geolocation) {
+    if (status) { status.textContent = '❌ GPS no disponible'; status.style.color = 'var(--danger)'; }
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      _coordsSeleccionadas = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      const latInput = document.getElementById('latInput');
+      const lngInput = document.getElementById('lngInput');
+      if (latInput) latInput.value = pos.coords.latitude;
+      if (lngInput) lngInput.value = pos.coords.longitude;
+      if (status) { status.textContent = '✅ Ubicación capturada'; status.style.color = 'var(--success)'; }
+    },
+    err => {
+      const msgs = {
+        1: 'Permiso denegado. Actívalo en la configuración del navegador.',
+        2: 'No se pudo obtener la ubicación. Intenta de nuevo.',
+        3: 'Tiempo agotado. Intenta de nuevo.'
+      };
+      if (status) { status.textContent = '❌ ' + (msgs[err.code] || 'Error desconocido'); status.style.color = 'var(--danger)'; }
+    },
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+  );
 };
