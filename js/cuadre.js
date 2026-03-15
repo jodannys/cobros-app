@@ -35,6 +35,7 @@ window.getCuadreDelDia = function (cobradorId, fecha) {
   };
 };
 
+
 window.calcularMetaReal = function (cobradorId, fecha) {
   const creditos = DB._cache['creditos'] || [];
   const clientes = DB._cache['clientes'] || [];
@@ -66,17 +67,15 @@ window.calcularMetaReal = function (cobradorId, fecha) {
     const pagosHoy          = pagosNoEliminados.filter(p => p.fecha === fecha);
     const montoPagadoHoy    = pagosHoy.reduce((s, p) => s + Number(p.monto), 0);
     const totalPagado       = pagosNoEliminados.reduce((s, p) => s + Number(p.monto), 0);
-    
-    // Lo que pagó antes de empezar el día de hoy
+
     const pagadoAntesDeHoy  = totalPagado - montoPagadoHoy;
 
     const saldoRestante = Number(cr.total) - totalPagado;
     if (saldoRestante <= 0) return;
 
     const diasTranscurridos = Math.max(0, contarDiasHabiles(cr.fechaInicio, fecha) - 1);
-    
-    // --- 1. LÓGICA DEL RELOJ (META DE HOY: S/ 731) ---
-    // Solo cuenta si hoy es un día de cobro y no lo ha pagado por adelantado.
+
+    // META DE HOY
     const montoEsperadoHoy = Math.min(Number(cr.total), diasTranscurridos * cuota);
     const yaCubrioHoy      = pagadoAntesDeHoy >= (montoEsperadoHoy - 0.5);
     const leTocaHoy        = diasTranscurridos >= 1 && diasTranscurridos <= cr.diasTotal;
@@ -89,37 +88,36 @@ window.calcularMetaReal = function (cobradorId, fecha) {
       }
     }
 
-    // --- 2. LÓGICA DEL TRIÁNGULO (VENCIDOS ATRASADOS: S/ 1,826) ---
-    // Es lo que debió pagar hasta AYER y no pagó.
-    const montoEsperadoAyer = Math.max(0, (diasTranscurridos - 1) * cuota);
-    const deudaAtrasada     = Math.max(0, montoEsperadoAyer - pagadoAntesDeHoy);
+    // TRIÁNGULO ATRASADOS
+    const cuotasDebidas   = Math.min(diasTranscurridos, cr.diasTotal);
+    const cuotasCubiertas = Math.floor(totalPagado / cuota);
+    const atrasado        = cuotasCubiertas < cuotasDebidas && diasTranscurridos > 0;
+    const deudaAcumulada  = atrasado ? Math.max(0, (cuotasDebidas - cuotasCubiertas) * cuota) : 0;
 
-    if (deudaAtrasada > cuota + 0.5) {
-  totalVencidos += deudaAtrasada;
-  clientesVencidos++;
-}
+    if (atrasado) {
+      totalVencidos += deudaAcumulada;
+      clientesVencidos++;
+    }
 
-    // Para la lista visual
-    detalle.push({ 
-      cliente, 
-      cr, 
-      cuota, 
-      montoPagadoHoy, 
-      completo: (montoPagadoHoy >= cuota || yaCubrioHoy) && deudaAtrasada <= 0.5, 
-      deudaAcumulada: deudaAtrasada, // El triángulo
-      atrasado: deudaAtrasada > cuota + 0.5
+    detalle.push({
+      cliente, cr, cuota, montoPagadoHoy,
+      completo: !leTocaHoy || yaCubrioHoy,
+      deudaAcumulada,
+      atrasado
     });
-  });
+  }); // ← este cierre faltaba
 
-  return { 
-    metaTotal: Math.round(metaTotal), 
-    pagadoHoy, 
-    pendiente, 
-    detalle, 
-    totalVencidos: Math.round(totalVencidos), 
-    clientesVencidos 
+  return {
+    metaTotal: Math.round(metaTotal),
+    pagadoHoy,
+    pendiente,
+    detalle,
+    totalVencidos: Math.round(totalVencidos),
+    clientesVencidos
   };
 };
+
+
 window.guardarNota = async function () {
   const notaElement = document.getElementById('notaHoy');
   if (!notaElement) return;
