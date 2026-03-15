@@ -632,15 +632,39 @@ window.guardarPagoEditado = async function () {
 
   try {
     const p = state._editandoPago;
-    const monto = parseMonto(document.getElementById('epMonto').value);
+    const montoNuevo = parseMonto(document.getElementById('epMonto').value);
     const tipo = document.getElementById('epTipo').value;
-    if (!monto || monto <= 0) { alert('Ingresa un monto válido'); return; }
+    if (!montoNuevo || montoNuevo <= 0) { alert('Ingresa un monto válido'); return; }
 
-    const updates = { monto, tipo };
+    const montoViejo = Number(p.monto);
+    const diferencia = montoNuevo - montoViejo;
+
+    // 1. Actualizar el pago
+    const updates = { monto: montoNuevo, tipo };
     await DB.update('pagos', p.id, updates);
-
     const idx = (DB._cache['pagos'] || []).findIndex(x => x.id === p.id);
     if (idx !== -1) DB._cache['pagos'][idx] = { ...DB._cache['pagos'][idx], ...updates };
+
+    // 2. Ajustar mochila del cobrador si el monto cambió
+    if (Math.abs(diferencia) > 0.01 && p.cobradorId) {
+      const idAjuste = genId();
+      // Si subió el monto → diferencia positiva → el cobrador tiene MÁS → no hacer nada
+      // Si bajó el monto → diferencia negativa → hay que descontarle la diferencia
+      // Si subió → hay que sumarle la diferencia como cobro extra
+      // Usamos gasto_cobrador para restar o un cobro ficticio para sumar
+      const ajuste = {
+        id: idAjuste,
+        tipo: diferencia > 0 ? 'cobro_ajuste' : 'gasto_cobrador',
+        monto: Math.abs(diferencia),
+        descripcion: `Corrección pago (${diferencia > 0 ? '+' : '-'}S/${Math.abs(diferencia).toFixed(2)})`,
+        fecha: p.fecha,
+        cobradorId: p.cobradorId,
+        registradoPor: state.currentUser.id
+      };
+      await DB.set('movimientos_cartera', idAjuste, ajuste);
+      if (!DB._cache['movimientos_cartera']) DB._cache['movimientos_cartera'] = [];
+      DB._cache['movimientos_cartera'].push(ajuste);
+    }
 
     state._editandoPago = null;
     state.modal = null;
@@ -653,6 +677,7 @@ window.guardarPagoEditado = async function () {
     if (btn) { btn.disabled = false; btn.textContent = 'Guardar cambios'; }
   }
 };
+
 
 window.eliminarPago = async function (pagoId) {
   if (!confirm('¿Eliminar este pago? Esta acción afectará el saldo del crédito.')) return;

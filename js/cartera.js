@@ -27,9 +27,14 @@ function _calcularMochila(cobradorId, fechaLimite) {
     .filter(m => m.tipo === 'envio_cobrador' && m.cobradorId === cobradorId && antes(m.fecha))
     .reduce((s, m) => s + Number(m.monto || 0), 0);
 
-const cobros = pagos
-  .filter(p => p.cobradorId === cobradorId && !p.eliminado && antes(p.fecha))
-  .reduce((s, p) => s + Number(p.monto || 0), 0);
+  const cobros = pagos
+    .filter(p => p.cobradorId === cobradorId && !p.eliminado && antes(p.fecha))
+    .reduce((s, p) => s + Number(p.monto || 0), 0);
+
+
+  const ajustesCobros = movs
+    .filter(m => m.tipo === 'cobro_ajuste' && m.cobradorId === cobradorId && antes(m.fecha))
+    .reduce((s, m) => s + Number(m.monto || 0), 0);
 
   const seguros = creditos
     .filter(cr => clientesIds.includes(cr.clienteId) && cr.seguro && antes(cr.fechaInicio))
@@ -44,113 +49,112 @@ const cobros = pagos
     .reduce((s, g) => s + Number(g.monto || 0), 0);
 
   const devuelto = movs
-  .filter(m => {
-    const esMio = m.cobradorId === cobradorId;
-    const esAntes = antes(m.fecha);
-    const estaConfirmado = m.confirmado === true || m.tipo === 'confirmar_yape';
-    const esGastoCobrador = m.tipo === 'gasto_cobrador';
-    return esMio && esAntes && (estaConfirmado || esGastoCobrador);
-  })
-  .reduce((s, m) => s + Number(m.monto || 0), 0);
+    .filter(m => {
+      const esMio = m.cobradorId === cobradorId;
+      const esAntes = antes(m.fecha);
+      const estaConfirmado = m.confirmado === true || m.tipo === 'confirmar_yape';
+      const esGastoCobrador = m.tipo === 'gasto_cobrador';
+      return esMio && esAntes && (estaConfirmado || esGastoCobrador);
+    })
+    .reduce((s, m) => s + Number(m.monto || 0), 0);
 
-  return enviado + cobros + seguros - prestamos - totalGastos - devuelto;
-}
+  return enviado + cobros + ajustesCobros + seguros - prestamos - totalGastos - devuelto;
 
-// ── CARTERA: Saldo del admin ──────────────────────────────────
-window.getSaldoCartera = function () {
-  const movs = DB._cache['movimientos_cartera'] || [];
-  return movs.reduce((s, m) => {
-    const monto = Number(m.monto) || 0;
-    switch (m.tipo) {
-      case 'inyeccion': return s + monto;
-      case 'confirmar_yape': return s + monto;
-      case 'envio_cobrador': return s - monto;
-      case 'gasto_admin': return s - monto;
-      case 'retiro': return s - monto;
-      default: return s;
-    }
-  }, 0);
-};
-
-window.getCapitalInvertido = function () {
-  return (DB._cache['movimientos_cartera'] || [])
-    .filter(m => m.tipo === 'inyeccion')
-    .reduce((s, m) => s + Number(m.monto), 0);
-};
-
-window.getTotalEnMochilas = function () {
-  return (DB._cache['users'] || [])
-    .filter(u => u.role === 'cobrador')
-    .reduce((s, u) => s + Math.max(0, getSaldoMochila(u.id)), 0);
-};
-
-window.getTotalEnLaCalle = function () {
-  const creditos = DB._cache['creditos'] || [];
-  const pagos = DB._cache['pagos'] || [];
-  return creditos
-    .filter(cr => cr.activo)
-    .reduce((s, cr) => {
-      const pagado = pagos
-        .filter(p => p.creditoId === cr.id && !p.eliminado)
-        .reduce((ss, p) => ss + Number(p.monto), 0);
-      return s + Math.max(0, Number(cr.total) - pagado);
+  // ── CARTERA: Saldo del admin ──────────────────────────────────
+  window.getSaldoCartera = function () {
+    const movs = DB._cache['movimientos_cartera'] || [];
+    return movs.reduce((s, m) => {
+      const monto = Number(m.monto) || 0;
+      switch (m.tipo) {
+        case 'inyeccion': return s + monto;
+        case 'confirmar_yape': return s + monto;
+        case 'envio_cobrador': return s - monto;
+        case 'gasto_admin': return s - monto;
+        case 'retiro': return s - monto;
+        default: return s;
+      }
     }, 0);
-};
+  };
 
-window.getDepositosPendientes = function () {
-  return (DB._cache['movimientos_cartera'] || [])
-    .filter(m => m.tipo === 'deposito_cobrador' && !m.confirmado);
-};
+  window.getCapitalInvertido = function () {
+    return (DB._cache['movimientos_cartera'] || [])
+      .filter(m => m.tipo === 'inyeccion')
+      .reduce((s, m) => s + Number(m.monto), 0);
+  };
 
-window.renderPanelCartera = function () {
-  const saldo = getSaldoCartera();
-  const capitalInv = getCapitalInvertido();
-  const enLaCalle = getTotalEnLaCalle();
-  const enMochilas = getTotalEnMochilas();
-  const pendientes = getDepositosPendientes();
-  const cobradores = (DB._cache['users'] || []).filter(u => u.role === 'cobrador');
-  const movs = (DB._cache['movimientos_cartera'] || [])
-    .slice().sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 5);
-  const saldoOk = saldo >= 0;
-  const menuAbierto = state._menuCarteraAbierto || false;
-  const mostrarMovs = state._verMovsCartera || false;
+  window.getTotalEnMochilas = function () {
+    return (DB._cache['users'] || [])
+      .filter(u => u.role === 'cobrador')
+      .reduce((s, u) => s + Math.max(0, getSaldoMochila(u.id)), 0);
+  };
 
-  const isAdmin = state.currentUser?.role === 'admin';
-  let totalRecaudado = 0, totalObjetivo = 0, totalSeguros = 0;
-  let totalPrestado = 0, totalGastos = 0;
-  let totalYape = 0, totalEfectivo = 0, totalTransferencia = 0;
-  const creditos = DB._cache['creditos'] || [];
-  const usuarios = DB._cache['users'] || [];
-  const hoy = today();
-  let cobradores_admin = [];
-  let porcentaje = 0;
+  window.getTotalEnLaCalle = function () {
+    const creditos = DB._cache['creditos'] || [];
+    const pagos = DB._cache['pagos'] || [];
+    return creditos
+      .filter(cr => cr.activo)
+      .reduce((s, cr) => {
+        const pagado = pagos
+          .filter(p => p.creditoId === cr.id && !p.eliminado)
+          .reduce((ss, p) => ss + Number(p.monto), 0);
+        return s + Math.max(0, Number(cr.total) - pagado);
+      }, 0);
+  };
 
-  if (isAdmin) {
-    cobradores_admin = usuarios.filter(u => u.role === 'cobrador');
-    const cuadresCobradores = cobradores_admin.map(u => getCuadreDelDia(u.id, hoy));
+  window.getDepositosPendientes = function () {
+    return (DB._cache['movimientos_cartera'] || [])
+      .filter(m => m.tipo === 'deposito_cobrador' && !m.confirmado);
+  };
 
-    totalYape = cuadresCobradores.reduce((s, c) => s + c.yape, 0);
-    totalEfectivo = cuadresCobradores.reduce((s, c) => s + c.efectivo, 0);
-    totalTransferencia = cuadresCobradores.reduce((s, c) => s + c.transferencia, 0);
-    totalRecaudado = totalYape + totalEfectivo + totalTransferencia;
+  window.renderPanelCartera = function () {
+    const saldo = getSaldoCartera();
+    const capitalInv = getCapitalInvertido();
+    const enLaCalle = getTotalEnLaCalle();
+    const enMochilas = getTotalEnMochilas();
+    const pendientes = getDepositosPendientes();
+    const cobradores = (DB._cache['users'] || []).filter(u => u.role === 'cobrador');
+    const movs = (DB._cache['movimientos_cartera'] || [])
+      .slice().sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 5);
+    const saldoOk = saldo >= 0;
+    const menuAbierto = state._menuCarteraAbierto || false;
+    const mostrarMovs = state._verMovsCartera || false;
 
-    totalObjetivo = cobradores_admin.reduce((s, u) => s + calcularMetaReal(u.id, hoy).metaTotal, 0);
-    porcentaje = totalObjetivo > 0 ? Math.round((totalRecaudado / totalObjetivo) * 100) : 0;
+    const isAdmin = state.currentUser?.role === 'admin';
+    let totalRecaudado = 0, totalObjetivo = 0, totalSeguros = 0;
+    let totalPrestado = 0, totalGastos = 0;
+    let totalYape = 0, totalEfectivo = 0, totalTransferencia = 0;
+    const creditos = DB._cache['creditos'] || [];
+    const usuarios = DB._cache['users'] || [];
+    const hoy = today();
+    let cobradores_admin = [];
+    let porcentaje = 0;
 
-    totalSeguros = creditos
-      .filter(cr => cr.fechaInicio === hoy)
-      .reduce((s, cr) => s + Number(cr.montoSeguro || 0), 0);
+    if (isAdmin) {
+      cobradores_admin = usuarios.filter(u => u.role === 'cobrador');
+      const cuadresCobradores = cobradores_admin.map(u => getCuadreDelDia(u.id, hoy));
 
-    const gastosRuta = cobradores_admin.reduce((s, u) => s + getCajaChicaDelDia(u.id, hoy).totalGastos, 0);
-    const gastosMovsCartera = (DB._cache['movimientos_cartera'] || [])
-      .filter(m => m.fecha === hoy && (m.tipo === 'gasto_admin' || m.tipo === 'retiro'))
-      .reduce((s, m) => s + Number(m.monto || 0), 0);
-    totalGastos = gastosRuta + gastosMovsCartera;
+      totalYape = cuadresCobradores.reduce((s, c) => s + c.yape, 0);
+      totalEfectivo = cuadresCobradores.reduce((s, c) => s + c.efectivo, 0);
+      totalTransferencia = cuadresCobradores.reduce((s, c) => s + c.transferencia, 0);
+      totalRecaudado = totalYape + totalEfectivo + totalTransferencia;
 
-    totalPrestado = cobradores_admin.reduce((s, u) => s + getCajaChicaDelDia(u.id, hoy).totalPrestadoHoy, 0);
-  }
+      totalObjetivo = cobradores_admin.reduce((s, u) => s + calcularMetaReal(u.id, hoy).metaTotal, 0);
+      porcentaje = totalObjetivo > 0 ? Math.round((totalRecaudado / totalObjetivo) * 100) : 0;
 
-  return `
+      totalSeguros = creditos
+        .filter(cr => cr.fechaInicio === hoy)
+        .reduce((s, cr) => s + Number(cr.montoSeguro || 0), 0);
+
+      const gastosRuta = cobradores_admin.reduce((s, u) => s + getCajaChicaDelDia(u.id, hoy).totalGastos, 0);
+      const gastosMovsCartera = (DB._cache['movimientos_cartera'] || [])
+        .filter(m => m.fecha === hoy && (m.tipo === 'gasto_admin' || m.tipo === 'retiro'))
+        .reduce((s, m) => s + Number(m.monto || 0), 0);
+      totalGastos = gastosRuta + gastosMovsCartera;
+
+      totalPrestado = cobradores_admin.reduce((s, u) => s + getCajaChicaDelDia(u.id, hoy).totalPrestadoHoy, 0);
+    }
+
+    return `
 <!-- PANEL PRINCIPAL -->
 <div style="background:#0f172a; background-image:
               radial-gradient(circle at 15% 50%, rgba(37,99,235,0.2) 0%, transparent 55%),
@@ -352,8 +356,8 @@ window.renderPanelCartera = function () {
       ⏳ ${pendientes.length} depósito${pendientes.length > 1 ? 's' : ''} pendiente${pendientes.length > 1 ? 's' : ''} de confirmar
     </div>
     ${pendientes.map(m => {
-    const cob = (DB._cache['users'] || []).find(u => u.id === m.cobradorId);
-    return `
+      const cob = (DB._cache['users'] || []).find(u => u.id === m.cobradorId);
+      return `
       <div style="display:flex; justify-content:space-between; align-items:center;
                   padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.06)">
         <div>
@@ -373,7 +377,7 @@ window.renderPanelCartera = function () {
           </button>
         </div>
       </div>`;
-  }).join('')}
+    }).join('')}
   </div>` : ''}
 
 </div>
@@ -389,22 +393,22 @@ window.renderPanelCartera = function () {
     </button>
   </div>
   ${movs.length === 0
-    ? `<div style="text-align:center; color:var(--muted); font-size:13px; padding:16px 0">Sin movimientos</div>`
-    : (mostrarMovs
-        ? (DB._cache['movimientos_cartera'] || []).slice().sort((a,b) => b.fecha.localeCompare(a.fecha))
-        : movs
-      ).map(m => {
-        const cob = (DB._cache['users'] || []).find(u => u.id === m.cobradorId);
-        const labels = {
-          inyeccion:        { icon: '➕', color: '#16a34a', label: 'Inyección' },
-          envio_cobrador:   { icon: '💰', color: '#1d4ed8', label: `Envío → ${cob?.nombre || '—'}` },
-          gasto_admin:      { icon: '💸', color: '#9f1239', label: 'Gasto Admin' },
-          retiro:           { icon: '🏠', color: '#92400e', label: 'Retiro Personal' },
-          confirmar_yape:   { icon: '✅', color: '#16a34a', label: `Depósito de ${cob?.nombre || '—'}` },
-          deposito_cobrador:{ icon: '📤', color: '#92400e', label: `Envío de ${cob?.nombre || '—'}` },
-        };
-        const cfg = labels[m.tipo] || { icon: '📌', color: 'var(--muted)', label: m.tipo };
-        return `
+        ? `<div style="text-align:center; color:var(--muted); font-size:13px; padding:16px 0">Sin movimientos</div>`
+        : (mostrarMovs
+          ? (DB._cache['movimientos_cartera'] || []).slice().sort((a, b) => b.fecha.localeCompare(a.fecha))
+          : movs
+        ).map(m => {
+          const cob = (DB._cache['users'] || []).find(u => u.id === m.cobradorId);
+          const labels = {
+            inyeccion: { icon: '➕', color: '#16a34a', label: 'Inyección' },
+            envio_cobrador: { icon: '💰', color: '#1d4ed8', label: `Envío → ${cob?.nombre || '—'}` },
+            gasto_admin: { icon: '💸', color: '#9f1239', label: 'Gasto Admin' },
+            retiro: { icon: '🏠', color: '#92400e', label: 'Retiro Personal' },
+            confirmar_yape: { icon: '✅', color: '#16a34a', label: `Depósito de ${cob?.nombre || '—'}` },
+            deposito_cobrador: { icon: '📤', color: '#92400e', label: `Envío de ${cob?.nombre || '—'}` },
+          };
+          const cfg = labels[m.tipo] || { icon: '📌', color: 'var(--muted)', label: m.tipo };
+          return `
         <div style="display:flex; justify-content:space-between; align-items:center;
                     padding:10px 0; border-bottom:1px solid var(--border)">
           <div style="display:flex; align-items:center; gap:10px">
@@ -420,20 +424,20 @@ window.renderPanelCartera = function () {
             ${formatMoney(m.monto)}
           </div>
         </div>`;
-      }).join('')}
+        }).join('')}
 </div>
 
 <!-- MOCHILAS -->
 <div class="card" style="margin-bottom:12px">
   <div class="card-title">Dinero en caja de cobradores</div>
   ${cobradores.length === 0
-      ? `<div style="text-align:center; color:var(--muted); font-size:13px; padding:16px 0">
+        ? `<div style="text-align:center; color:var(--muted); font-size:13px; padding:16px 0">
          Sin cobradores registrados
        </div>`
-      : cobradores.map(u => {
-        const sm = getSaldoMochila(u.id);
-        const ok = sm >= 0;
-        return `
+        : cobradores.map(u => {
+          const sm = getSaldoMochila(u.id);
+          const ok = sm >= 0;
+          return `
         <div style="display:flex; justify-content:space-between; align-items:center;
                     padding:10px 0; border-bottom:1px solid var(--border)">
           <div style="display:flex; align-items:center; gap:10px">
@@ -460,7 +464,7 @@ window.renderPanelCartera = function () {
             </button>
           </div>
         </div>`;
-      }).join('')}
+        }).join('')}
 </div>
 
 <!-- RENDIMIENTO POR COBRADOR -->
@@ -471,17 +475,17 @@ ${isAdmin ? `
 </div>
 
 ${cobradores_admin.map(u => {
-        const c = getCuadreDelDia(u.id, hoy);
-        const meta = calcularMetaReal(u.id, hoy);
-        const caja = getCajaChicaDelDia(u.id, hoy);
-        const expandido = state._expandCobrador === u.id;
-        const pct = meta.metaTotal > 0 ? Math.min(100, Math.round((meta.pagadoHoy / meta.metaTotal) * 100)) : 0;
-        const saldoOk = caja.saldo >= 0;
-        const segCob = creditos
-          .filter(cr => cr.fechaInicio === hoy && cr.cobradorId === u.id)
-          .reduce((s, cr) => s + Number(cr.montoSeguro || 0), 0);
+          const c = getCuadreDelDia(u.id, hoy);
+          const meta = calcularMetaReal(u.id, hoy);
+          const caja = getCajaChicaDelDia(u.id, hoy);
+          const expandido = state._expandCobrador === u.id;
+          const pct = meta.metaTotal > 0 ? Math.min(100, Math.round((meta.pagadoHoy / meta.metaTotal) * 100)) : 0;
+          const saldoOk = caja.saldo >= 0;
+          const segCob = creditos
+            .filter(cr => cr.fechaInicio === hoy && cr.cobradorId === u.id)
+            .reduce((s, cr) => s + Number(cr.montoSeguro || 0), 0);
 
-        return `
+          return `
   <div style="background:white; border-radius:10px; margin-bottom:10px; overflow:hidden;
             box-shadow:var(--shadow)">
 
@@ -522,10 +526,10 @@ ${cobradores_admin.map(u => {
         <div style="font-size:10.5px; font-weight:700;
             color:${!esDiaLaboral(hoy) ? '#a855f7' : meta.pendiente > 0 ? 'var(--danger)' : '#16a34a'}">
   ${!esDiaLaboral(hoy)
-            ? '🎉 Día no laborable'
-            : meta.pendiente > 0
-              ? 'Faltan ' + formatMoney(meta.pendiente)
-              : '✅ Meta cumplida'}
+              ? '🎉 Día no laborable'
+              : meta.pendiente > 0
+                ? 'Faltan ' + formatMoney(meta.pendiente)
+                : '✅ Meta cumplida'}
 </div>
       </div>
     </div>
@@ -581,156 +585,156 @@ ${cobradores_admin.map(u => {
       </div>
     </div>` : ''}
   </div>`;
-      }).join('')}
+        }).join('')}
 ` : ''}`;
-};
-
-window.abrirMovimientoCartera = function (tipo, cobradorIdPreseleccionado) {
-  state._movCarteraTipo = tipo;
-  state._movCarteraCobrador = cobradorIdPreseleccionado || null;
-  state.modal = 'movimiento-cartera';
-  render();
-};
-
-window.abrirEnviarCobrador = function (cobradorId) {
-  abrirMovimientoCartera('envio_cobrador', cobradorId);
-};
-
-window.abrirInyectarCapital = () => abrirMovimientoCartera('inyeccion');
-window.abrirGastoAdminPropio = () => abrirMovimientoCartera('gasto_admin');
-window.abrirRetiroHipoteca = () => abrirMovimientoCartera('retiro');
-
-window.abrirDepositoCobrador = function () {
-  state.modal = 'deposito-cobrador';
-  render();
-};
-
-window.confirmarDeposito = async function (movId) {
-  if (!confirm('¿Confirmar que recibiste este dinero? Se sumará a tu cartera.')) return;
-  try {
-    await DB.update('movimientos_cartera', movId, {
-      confirmado: true,
-      tipo: 'confirmar_yape'
-    });
-    const idx = (DB._cache['movimientos_cartera'] || []).findIndex(m => m.id === movId);
-    if (idx !== -1) {
-      DB._cache['movimientos_cartera'][idx].confirmado = true;
-      DB._cache['movimientos_cartera'][idx].tipo = 'confirmar_yape';
-    }
-    showToast('✅ Depósito confirmado — sumado a tu cartera');
-    render();
-  } catch (e) {
-    alert('Error: ' + e.message);
-  }
-};
-
-window.guardarMovimientoCartera = async function () {
-  const tipo = state._movCarteraTipo;
-  const monto = parseMonto(document.getElementById('mcMonto').value);
-  const descripcion = document.getElementById('mcDescripcion').value.trim();
-  const fecha = document.getElementById('mcFecha').value;
-  const cobradorEl = document.getElementById('mcCobrador');
-  const cobradorId = tipo === 'envio_cobrador' ? cobradorEl?.value : null;
-
-  if (!monto || monto <= 0) { alert('Ingresa un monto válido'); return; }
-  if (!fecha) { alert('Selecciona una fecha'); return; }
-  if (tipo === 'envio_cobrador' && !cobradorId) { alert('Selecciona el cobrador'); return; }
-
-  const id = genId();
-  const nuevo = {
-    id, tipo, monto, descripcion, fecha,
-    cobradorId: cobradorId || null,
-    registradoPor: state.currentUser.id
   };
 
-  try {
-    await DB.set('movimientos_cartera', id, nuevo);
-    state.modal = null;
-    state._movCarteraTipo = null;
-    state._movCarteraCobrador = null;
-    const labels = {
-      inyeccion: `➕ ${formatMoney(monto)} inyectados`,
-      envio_cobrador: `💰 Caja asignada — ${formatMoney(monto)}`,
-      gasto_admin: `💸 Gasto de ${formatMoney(monto)} registrado`,
-      retiro: `🏦 Retiro de ${formatMoney(monto)} registrado`,
-    };
-    showToast(labels[tipo] || 'Movimiento registrado');
+  window.abrirMovimientoCartera = function (tipo, cobradorIdPreseleccionado) {
+    state._movCarteraTipo = tipo;
+    state._movCarteraCobrador = cobradorIdPreseleccionado || null;
+    state.modal = 'movimiento-cartera';
     render();
-  } catch (e) {
-    alert('Error: ' + e.message);
-  }
-};
+  };
 
-window.guardarDepositoCobrador = async function () {
-  const monto = parseMonto(document.getElementById('dcMonto').value);
-  const descripcion = document.getElementById('dcDescripcion').value.trim();
-  const fecha = document.getElementById('dcFecha').value;
+  window.abrirEnviarCobrador = function (cobradorId) {
+    abrirMovimientoCartera('envio_cobrador', cobradorId);
+  };
 
-  if (!monto || monto <= 0) { alert('Ingresa un monto válido'); return; }
-  if (!fecha) { alert('Selecciona una fecha'); return; }
+  window.abrirInyectarCapital = () => abrirMovimientoCartera('inyeccion');
+  window.abrirGastoAdminPropio = () => abrirMovimientoCartera('gasto_admin');
+  window.abrirRetiroHipoteca = () => abrirMovimientoCartera('retiro');
 
-  const id = genId();
-  await DB.set('movimientos_cartera', id, {
-    id,
-    tipo: 'deposito_cobrador',
-    monto,
-    descripcion: descripcion || 'Depósito al admin',
-    fecha,
-    cobradorId: state.currentUser.id,
-    registradoPor: state.currentUser.id,
-    confirmado: false
-  });
+  window.abrirDepositoCobrador = function () {
+    state.modal = 'deposito-cobrador';
+    render();
+  };
 
-  state.modal = null;
-  showToast('📲 Depósito registrado — esperando confirmación');
-  render();
-};
+  window.confirmarDeposito = async function (movId) {
+    if (!confirm('¿Confirmar que recibiste este dinero? Se sumará a tu cartera.')) return;
+    try {
+      await DB.update('movimientos_cartera', movId, {
+        confirmado: true,
+        tipo: 'confirmar_yape'
+      });
+      const idx = (DB._cache['movimientos_cartera'] || []).findIndex(m => m.id === movId);
+      if (idx !== -1) {
+        DB._cache['movimientos_cartera'][idx].confirmado = true;
+        DB._cache['movimientos_cartera'][idx].tipo = 'confirmar_yape';
+      }
+      showToast('✅ Depósito confirmado — sumado a tu cartera');
+      render();
+    } catch (e) {
+      alert('Error: ' + e.message);
+    }
+  };
 
-// ============================================================
-// MODALES
-// ============================================================
+  window.guardarMovimientoCartera = async function () {
+    const tipo = state._movCarteraTipo;
+    const monto = parseMonto(document.getElementById('mcMonto').value);
+    const descripcion = document.getElementById('mcDescripcion').value.trim();
+    const fecha = document.getElementById('mcFecha').value;
+    const cobradorEl = document.getElementById('mcCobrador');
+    const cobradorId = tipo === 'envio_cobrador' ? cobradorEl?.value : null;
 
-window.renderModalMovimientoCartera = function () {
-  const tipo = state._movCarteraTipo;
-  const cobradores = (DB._cache['users'] || []).filter(u => u.role === 'cobrador');
-  const presel = state._movCarteraCobrador || '';
+    if (!monto || monto <= 0) { alert('Ingresa un monto válido'); return; }
+    if (!fecha) { alert('Selecciona una fecha'); return; }
+    if (tipo === 'envio_cobrador' && !cobradorId) { alert('Selecciona el cobrador'); return; }
 
-  const cfg = {
-    inyeccion: {
-      titulo: 'Inyectar Capital',
-      color: 'var(--success)',
-      bg: '#f0fdf4',
-      border: '#bbf7d0',
-      desc: '💡 Dinero propio que destinas al negocio. Suma a tu cartera disponible.',
-      placeholder: 'Ej: Ahorros, quincena, venta de activo...',
-    },
-    envio_cobrador: {
-      titulo: 'Asignar Caja',
-      color: 'var(--primary)',
-      bg: '#eff6ff',
-      border: '#bfdbfe',
-      desc: '💡 Sale de tu cartera y entra a la caja del cobrador seleccionado.',
-      placeholder: 'Ej: Caja inicial, refuerzo de ruta...',
-    },
-    gasto_admin: {
-      titulo: 'Gasto Administrativo',
-      color: 'var(--danger)',
-      bg: '#fff1f2',
-      border: '#fecdd3',
-      desc: '💡 Gastos del negocio: internet, papelería, impuestos. Resta de tu cartera.',
-      placeholder: 'Ej: Internet, papelería, impuesto...',
-    },
-    retiro: {
-      titulo: 'Retiro de Utilidades',
-      color: 'var(--warning)',
-      bg: '#fffbeb',
-      border: '#fde68a',
-      desc: '💡 Retiras ganancias del negocio para uso personal. Resta de tu cartera.',
-      placeholder: 'Ej: Retiro mensual, retiro de utilidades...',
-    },
-  }[tipo] || { titulo: 'Movimiento', color: 'var(--muted)', bg: 'var(--bg)', border: 'var(--border)', desc: '', placeholder: '' };
+    const id = genId();
+    const nuevo = {
+      id, tipo, monto, descripcion, fecha,
+      cobradorId: cobradorId || null,
+      registradoPor: state.currentUser.id
+    };
 
-  return `
+    try {
+      await DB.set('movimientos_cartera', id, nuevo);
+      state.modal = null;
+      state._movCarteraTipo = null;
+      state._movCarteraCobrador = null;
+      const labels = {
+        inyeccion: `➕ ${formatMoney(monto)} inyectados`,
+        envio_cobrador: `💰 Caja asignada — ${formatMoney(monto)}`,
+        gasto_admin: `💸 Gasto de ${formatMoney(monto)} registrado`,
+        retiro: `🏦 Retiro de ${formatMoney(monto)} registrado`,
+      };
+      showToast(labels[tipo] || 'Movimiento registrado');
+      render();
+    } catch (e) {
+      alert('Error: ' + e.message);
+    }
+  };
+
+  window.guardarDepositoCobrador = async function () {
+    const monto = parseMonto(document.getElementById('dcMonto').value);
+    const descripcion = document.getElementById('dcDescripcion').value.trim();
+    const fecha = document.getElementById('dcFecha').value;
+
+    if (!monto || monto <= 0) { alert('Ingresa un monto válido'); return; }
+    if (!fecha) { alert('Selecciona una fecha'); return; }
+
+    const id = genId();
+    await DB.set('movimientos_cartera', id, {
+      id,
+      tipo: 'deposito_cobrador',
+      monto,
+      descripcion: descripcion || 'Depósito al admin',
+      fecha,
+      cobradorId: state.currentUser.id,
+      registradoPor: state.currentUser.id,
+      confirmado: false
+    });
+
+    state.modal = null;
+    showToast('📲 Depósito registrado — esperando confirmación');
+    render();
+  };
+
+  // ============================================================
+  // MODALES
+  // ============================================================
+
+  window.renderModalMovimientoCartera = function () {
+    const tipo = state._movCarteraTipo;
+    const cobradores = (DB._cache['users'] || []).filter(u => u.role === 'cobrador');
+    const presel = state._movCarteraCobrador || '';
+
+    const cfg = {
+      inyeccion: {
+        titulo: 'Inyectar Capital',
+        color: 'var(--success)',
+        bg: '#f0fdf4',
+        border: '#bbf7d0',
+        desc: '💡 Dinero propio que destinas al negocio. Suma a tu cartera disponible.',
+        placeholder: 'Ej: Ahorros, quincena, venta de activo...',
+      },
+      envio_cobrador: {
+        titulo: 'Asignar Caja',
+        color: 'var(--primary)',
+        bg: '#eff6ff',
+        border: '#bfdbfe',
+        desc: '💡 Sale de tu cartera y entra a la caja del cobrador seleccionado.',
+        placeholder: 'Ej: Caja inicial, refuerzo de ruta...',
+      },
+      gasto_admin: {
+        titulo: 'Gasto Administrativo',
+        color: 'var(--danger)',
+        bg: '#fff1f2',
+        border: '#fecdd3',
+        desc: '💡 Gastos del negocio: internet, papelería, impuestos. Resta de tu cartera.',
+        placeholder: 'Ej: Internet, papelería, impuesto...',
+      },
+      retiro: {
+        titulo: 'Retiro de Utilidades',
+        color: 'var(--warning)',
+        bg: '#fffbeb',
+        border: '#fde68a',
+        desc: '💡 Retiras ganancias del negocio para uso personal. Resta de tu cartera.',
+        placeholder: 'Ej: Retiro mensual, retiro de utilidades...',
+      },
+    }[tipo] || { titulo: 'Movimiento', color: 'var(--muted)', bg: 'var(--bg)', border: 'var(--border)', desc: '', placeholder: '' };
+
+    return `
 <div class="modal-handle"></div>
 <div class="modal-title">${cfg.titulo}</div>
 
@@ -797,10 +801,10 @@ ${tipo === 'retiro' ? `
   onclick="guardarMovimientoCartera()">
   ${cfg.titulo}
 </button>`;
-};
+  };
 
-window.renderModalDepositoCobrador = function () {
-  return `
+  window.renderModalDepositoCobrador = function () {
+    return `
   <div class="modal-handle"></div>
   <div class="modal-title">Registrar Envío</div>
 
@@ -834,19 +838,19 @@ window.renderModalDepositoCobrador = function () {
     onclick="guardarDepositoCobrador()">
     Registrar Envío
   </button>`;
-};
+  };
 
-window.abrirRetirarCobrador = function(cobradorIdPresel) {
-  state._retiroCobrador = cobradorIdPresel || null;
-  state.modal = 'retiro-cobrador';
-  render();
-};
+  window.abrirRetirarCobrador = function (cobradorIdPresel) {
+    state._retiroCobrador = cobradorIdPresel || null;
+    state.modal = 'retiro-cobrador';
+    render();
+  };
 
-window.renderModalRetiroCobrador = function() {
-  const cobradores = (DB._cache['users'] || []).filter(u => u.role === 'cobrador');
-  const presel = state._retiroCobrador || '';
+  window.renderModalRetiroCobrador = function () {
+    const cobradores = (DB._cache['users'] || []).filter(u => u.role === 'cobrador');
+    const presel = state._retiroCobrador || '';
 
-  return `
+    return `
   <div class="modal-handle"></div>
   <div class="modal-title">💼 Retirar de Cobrador</div>
 
@@ -861,11 +865,11 @@ window.renderModalRetiroCobrador = function() {
     <select class="form-control" id="rcCobrador">
       <option value="">Selecciona cobrador...</option>
       ${cobradores.map(u => {
-        const saldo = getSaldoMochila(u.id);
-        return `<option value="${u.id}" ${u.id === presel ? 'selected' : ''}>
+      const saldo = getSaldoMochila(u.id);
+      return `<option value="${u.id}" ${u.id === presel ? 'selected' : ''}>
           ${u.nombre} — ${formatMoney(saldo)} en caja
         </option>`;
-      }).join('')}
+    }).join('')}
     </select>
   </div>
 
@@ -894,39 +898,39 @@ window.renderModalRetiroCobrador = function() {
            border-radius:10px; width:100%">
     Confirmar Retiro
   </button>`;
-};
-
-window.guardarRetiroCobrador = async function() {
-  const cobradorId = document.getElementById('rcCobrador').value;
-  const monto = parseMonto(document.getElementById('rcMonto').value);
-  const descripcion = document.getElementById('rcDescripcion').value.trim();
-  const fecha = document.getElementById('rcFecha').value;
-
-  if (!cobradorId) { alert('Selecciona un cobrador'); return; }
-  if (!monto || monto <= 0) { alert('Ingresa un monto válido'); return; }
-  if (!fecha) { alert('Selecciona una fecha'); return; }
-
-  const id = genId();
-  const nuevo = {
-    id,
-    tipo: 'confirmar_yape',
-    monto,
-    descripcion: descripcion || 'Retiro de cobrador',
-    fecha,
-    cobradorId,
-    confirmado: true,
-    registradoPor: state.currentUser.id
   };
 
-  try {
-    await DB.set('movimientos_cartera', id, nuevo);
-    if (!DB._cache['movimientos_cartera']) DB._cache['movimientos_cartera'] = [];
-    DB._cache['movimientos_cartera'].push(nuevo);
-    state.modal = null;
-    state._retiroCobrador = null;
-    showToast(`💼 Retiro de ${formatMoney(monto)} registrado`);
-    render();
-  } catch(e) {
-    alert('Error: ' + e.message);
-  }
-};
+  window.guardarRetiroCobrador = async function () {
+    const cobradorId = document.getElementById('rcCobrador').value;
+    const monto = parseMonto(document.getElementById('rcMonto').value);
+    const descripcion = document.getElementById('rcDescripcion').value.trim();
+    const fecha = document.getElementById('rcFecha').value;
+
+    if (!cobradorId) { alert('Selecciona un cobrador'); return; }
+    if (!monto || monto <= 0) { alert('Ingresa un monto válido'); return; }
+    if (!fecha) { alert('Selecciona una fecha'); return; }
+
+    const id = genId();
+    const nuevo = {
+      id,
+      tipo: 'confirmar_yape',
+      monto,
+      descripcion: descripcion || 'Retiro de cobrador',
+      fecha,
+      cobradorId,
+      confirmado: true,
+      registradoPor: state.currentUser.id
+    };
+
+    try {
+      await DB.set('movimientos_cartera', id, nuevo);
+      if (!DB._cache['movimientos_cartera']) DB._cache['movimientos_cartera'] = [];
+      DB._cache['movimientos_cartera'].push(nuevo);
+      state.modal = null;
+      state._retiroCobrador = null;
+      showToast(`💼 Retiro de ${formatMoney(monto)} registrado`);
+      render();
+    } catch (e) {
+      alert('Error: ' + e.message);
+    }
+  };
