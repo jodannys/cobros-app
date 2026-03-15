@@ -44,7 +44,7 @@ window.calcularMetaReal = function (cobradorId, fecha) {
     .filter(c => c.cobradorId === cobradorId)
     .map(c => c.id);
 
-  // ✅ FIX Bug 3: esDiaLaboral va FUERA del filter, como guard global
+  // Si es feriado o domingo → meta cero
   if (!esDiaLaboral(fecha)) {
     return { metaTotal: 0, pagadoHoy: 0, pendiente: 0, detalle: [], totalVencidos: 0, clientesVencidos: 0 };
   }
@@ -60,18 +60,19 @@ window.calcularMetaReal = function (cobradorId, fecha) {
   const detalle = [];
 
   creditosTodos.forEach(cr => {
-    const cliente  = clientes.find(c => c.id === cr.clienteId);
-    const cuota    = Number(cr.cuotaDiaria) || 0;
+    const cliente = clientes.find(c => c.id === cr.clienteId);
+    const cuota   = Number(cr.cuotaDiaria) || 0;
 
     const pagosNoEliminados = pagos.filter(p => p.creditoId === cr.id && !p.eliminado);
     const pagosHoy          = pagosNoEliminados.filter(p => p.fecha === fecha);
     const montoPagadoHoy    = pagosHoy.reduce((s, p) => s + Number(p.monto), 0);
     const totalPagado       = pagosNoEliminados.reduce((s, p) => s + Number(p.monto), 0);
 
-    // ✅ FIX Bug 1: si el crédito ya está saldado, no suma a la meta
+    // Crédito ya saldado → no cuenta
     const saldoRestante = Number(cr.total) - totalPagado;
     if (saldoRestante <= 0) return;
 
+    // Día de gracia: prestado hoy no cobra hasta mañana
     const diasTranscurridos = Math.max(0, contarDiasHabiles(cr.fechaInicio, fecha) - 1);
     const cuotasDebidas     = Math.min(diasTranscurridos, cr.diasTotal);
     const montoDebido       = cuotasDebidas * cuota;
@@ -79,15 +80,16 @@ window.calcularMetaReal = function (cobradorId, fecha) {
     const deudaAcumulada    = Math.max(0, montoDebido - totalPagado);
     const atrasado          = !alDia && deudaAcumulada > 0 && diasTranscurridos <= cr.diasTotal;
 
-    metaTotal += cuota;
-
-    // ✅ FIX Bug 2: pagadoHoy sin recorte — refleja lo real cobrado hoy
-    pagadoHoy += montoPagadoHoy;
-
-    if (montoPagadoHoy < cuota) {
-      pendiente += cuota - montoPagadoHoy;
+    // Meta = solo clientes al día (no atrasados)
+    if (!atrasado) {
+      metaTotal  += cuota;
+      pagadoHoy  += montoPagadoHoy;
+      if (montoPagadoHoy < cuota) {
+        pendiente += cuota - montoPagadoHoy;
+      }
     }
 
+    // Atrasados → solo bloque naranja
     if (atrasado) {
       totalVencidos += deudaAcumulada;
       clientesVencidos++;
