@@ -87,26 +87,29 @@ window.calcularMetaReal = function (cobradorId, fecha) {
         pendiente += (cuota - montoPagadoHoy);
       }
     }
+// TRIÁNGULO ATRASADOS
+const cuotasDebidas   = Math.min(diasTranscurridos, cr.diasTotal);
+const cuotasCubiertas = Math.floor(totalPagado / cuota);
+const atrasado        = cuotasCubiertas < cuotasDebidas && diasTranscurridos > 0;
 
-    // TRIÁNGULO ATRASADOS
-    const cuotasDebidas   = Math.min(diasTranscurridos, cr.diasTotal);
-    const cuotasCubiertas = Math.floor(totalPagado / cuota);
-    const atrasado        = cuotasCubiertas < cuotasDebidas && diasTranscurridos > 0;
-    const deudaAcumulada  = atrasado ? Math.max(0, (cuotasDebidas - cuotasCubiertas) * cuota) : 0;
+// Deuda de días ANTERIORES a hoy (sin incluir la cuota de hoy)
+const cuotasDebidasAyer = Math.max(0, cuotasDebidas - 1);
+const deudaAcumulada    = atrasado 
+  ? Math.max(0, (cuotasDebidasAyer - cuotasCubiertas) * cuota) 
+  : 0;
 
-    if (atrasado) {
-      totalVencidos += deudaAcumulada;
-      clientesVencidos++;
-    }
+if (atrasado) {
+  totalVencidos += deudaAcumulada;
+  clientesVencidos++;
+}
 
-    detalle.push({
-      cliente, cr, cuota, montoPagadoHoy,
-      completo: !leTocaHoy || yaCubrioHoy,
-      deudaAcumulada,
-      atrasado
-    });
-  }); // ← este cierre faltaba
-
+detalle.push({
+  cliente, cr, cuota, montoPagadoHoy,
+  completo: !leTocaHoy || yaCubrioHoy,
+  deudaAcumulada,
+  atrasado
+});
+}); // cierre forEach
   return {
     metaTotal: Math.round(metaTotal),
     pagadoHoy,
