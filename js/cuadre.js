@@ -64,23 +64,27 @@ window.calcularMetaReal = function (cobradorId, fecha) {
     const montoPagadoHoy    = pagosHoy.reduce((s, p) => s + Number(p.monto), 0);
     const totalPagado       = pagosNoEliminados.reduce((s, p) => s + Number(p.monto), 0);
 
-    const diasTranscurridos = Math.max(0, contarDiasHabiles(cr.fechaInicio, fecha));
+    const diasTranscurridos = Math.max(0, contarDiasHabiles(cr.fechaInicio, fecha) - 1);
     const cuotasDebidas     = Math.min(diasTranscurridos, cr.diasTotal);
     const montoDebido       = cuotasDebidas * cuota;
     const alDia             = totalPagado >= (montoDebido - 0.5);
     const deudaAcumulada    = Math.max(0, montoDebido - totalPagado);
     const atrasado          = !alDia && deudaAcumulada > 0 && diasTranscurridos <= cr.diasTotal;
 
-    // Atrasado: suma su deuda al bloque naranja
+    // Meta diaria: todos los créditos vigentes suman
+    metaTotal += cuota;
+    pagadoHoy += Math.min(montoPagadoHoy, cuota);
+
+    // Pendiente: lo que falta cobrar hoy
+    if (montoPagadoHoy < cuota) {
+      pendiente += cuota - montoPagadoHoy;
+    }
+
+    // Atrasados: deuda acumulada para el bloque naranja
     if (atrasado) {
       totalVencidos += deudaAcumulada;
       clientesVencidos++;
     }
-
-    // Todos los créditos vigentes suman a la meta diaria
-    metaTotal += cuota;
-    pagadoHoy += Math.min(montoPagadoHoy, cuota);
-    if (!alDia && !atrasado) pendiente += cuota;
 
     detalle.push({ cliente, cr, cuota, montoPagadoHoy, completo: alDia, deudaAcumulada, atrasado });
   });
