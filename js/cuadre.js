@@ -81,10 +81,10 @@ window.calcularMetaReal = function (cobradorId, fecha) {
     const atrasado = !alDia && deudaAcumulada > 0 && diasTranscurridos <= cr.diasTotal;
 
     // Meta = solo clientes al día (no atrasados)
-   if (!atrasado) {
-  metaTotal += cuota;
+  if (!atrasado) {
   pagadoHoy += montoPagadoHoy;
   if (montoPagadoHoy < cuota) {
+    metaTotal += cuota;        // ← solo suma si NO pagó hoy
     pendiente += cuota - montoPagadoHoy;
   }
 }
