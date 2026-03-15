@@ -39,7 +39,7 @@ window.getCuadreDelDia = function (cobradorId, fecha) {
 window.calcularMetaReal = function (cobradorId, fecha) {
   const creditos = DB._cache['creditos'] || [];
   const clientes = DB._cache['clientes'] || [];
-  const pagos    = DB._cache['pagos']    || [];
+  const pagos = DB._cache['pagos'] || [];
 
   const misClientesIds = clientes
     .filter(c => c.cobradorId === cobradorId)
@@ -61,14 +61,14 @@ window.calcularMetaReal = function (cobradorId, fecha) {
 
   creditosTodos.forEach(cr => {
     const cliente = clientes.find(c => c.id === cr.clienteId);
-    const cuota   = Number(cr.cuotaDiaria) || 0;
+    const cuota = Number(cr.cuotaDiaria) || 0;
 
     const pagosNoEliminados = pagos.filter(p => p.creditoId === cr.id && !p.eliminado);
-    const pagosHoy          = pagosNoEliminados.filter(p => p.fecha === fecha);
-    const montoPagadoHoy    = pagosHoy.reduce((s, p) => s + Number(p.monto), 0);
-    const totalPagado       = pagosNoEliminados.reduce((s, p) => s + Number(p.monto), 0);
+    const pagosHoy = pagosNoEliminados.filter(p => p.fecha === fecha);
+    const montoPagadoHoy = pagosHoy.reduce((s, p) => s + Number(p.monto), 0);
+    const totalPagado = pagosNoEliminados.reduce((s, p) => s + Number(p.monto), 0);
 
-    const pagadoAntesDeHoy  = totalPagado - montoPagadoHoy;
+    const pagadoAntesDeHoy = totalPagado - montoPagadoHoy;
 
     const saldoRestante = Number(cr.total) - totalPagado;
     if (saldoRestante <= 0) return;
@@ -77,8 +77,8 @@ window.calcularMetaReal = function (cobradorId, fecha) {
 
     // META DE HOY
     const montoEsperadoHoy = Math.min(Number(cr.total), diasTranscurridos * cuota);
-    const yaCubrioHoy      = pagadoAntesDeHoy >= (montoEsperadoHoy - 0.5);
-    const leTocaHoy        = diasTranscurridos >= 1 && diasTranscurridos <= cr.diasTotal;
+    const yaCubrioHoy = pagadoAntesDeHoy >= (montoEsperadoHoy - 0.5);
+    const leTocaHoy = diasTranscurridos >= 1 && diasTranscurridos <= cr.diasTotal;
 
     if (leTocaHoy && !yaCubrioHoy) {
       metaTotal += cuota;
@@ -87,29 +87,29 @@ window.calcularMetaReal = function (cobradorId, fecha) {
         pendiente += (cuota - montoPagadoHoy);
       }
     }
-// TRIÁNGULO ATRASADOS
-const cuotasDebidas   = Math.min(diasTranscurridos, cr.diasTotal);
-const cuotasCubiertas = Math.floor(pagadoAntesDeHoy / cuota);
-const atrasado = (cuotasDebidas - cuotasCubiertas) > 1 && diasTranscurridos > 0;
+    // TRIÁNGULO ATRASADOS
+    const cuotasDebidas = Math.min(diasTranscurridos, cr.diasTotal);
+    const cuotasCubiertas = Math.floor(pagadoAntesDeHoy / cuota);
+    const atrasado = (cuotasDebidas - cuotasCubiertas) > 1 && diasTranscurridos > 0;
 
-// Deuda de días ANTERIORES a hoy (sin incluir la cuota de hoy)
-const cuotasDebidasAyer = Math.max(0, cuotasDebidas - 1);
-const deudaAcumulada    = atrasado 
-  ? Math.max(0, (cuotasDebidasAyer - cuotasCubiertas) * cuota) 
-  : 0;
+    // Deuda de días ANTERIORES a hoy (sin incluir la cuota de hoy)
+    const cuotasDebidasAyer = Math.max(0, cuotasDebidas - 1);
+    const deudaAcumulada = atrasado
+      ? Math.max(0, (cuotasDebidasAyer - cuotasCubiertas) * cuota)
+      : 0;
 
-if (atrasado) {
-  totalVencidos += deudaAcumulada;
-  clientesVencidos++;
-}
+    if (atrasado) {
+      totalVencidos += deudaAcumulada;
+      clientesVencidos++;
+    }
 
-detalle.push({
-  cliente, cr, cuota, montoPagadoHoy,
- completo: !atrasado && (!leTocaHoy || yaCubrioHoy),
-  deudaAcumulada,
-  atrasado
-});
-}); // cierre forEach
+    detalle.push({
+      cliente, cr, cuota, montoPagadoHoy,
+      completo: !atrasado && (!leTocaHoy || yaCubrioHoy),
+      deudaAcumulada,
+      atrasado
+    });
+  }); // cierre forEach
   return {
     metaTotal: Math.round(metaTotal),
     pagadoHoy,
@@ -151,7 +151,7 @@ window.guardarNota = async function () {
 };
 
 // ── Helper: caja chica profesional (cobrador) ─────────────────
-window._renderCajaChicaPro = function(caja, cuadre) {
+window._renderCajaChicaPro = function (caja, cuadre) {
   const saldoPositivo = caja.saldo >= 0;
   const saldoColor = saldoPositivo ? '#4ade80' : '#f87171';
 
@@ -288,7 +288,7 @@ window.renderCuadre = function () {
   const meta = calcularMetaReal(userId, hoyC);
   const caja = getCajaChicaDelDia(userId, hoyC);
 
- // ── Exponer detalle para el mapa ──
+  // ── Exponer detalle para el mapa ──
   window._metaDetalle = meta.detalle;
 
   // ── Ordenar clientes por distancia o por nombre ──
@@ -462,8 +462,8 @@ window.renderCuadre = function () {
         </div>
         <div style="font-size:11px; color:var(--muted); margin-top:2px">
           ${state.rutaActiva
-            ? 'GPS activo · lista ordenada por cercanía'
-            : 'Presiona para activar el GPS y optimizar la ruta'}
+      ? 'GPS activo · lista ordenada por cercanía'
+      : 'Presiona para activar el GPS y optimizar la ruta'}
         </div>
       </div>
       <button onclick="toggleRuta()"
@@ -493,19 +493,19 @@ window.renderCuadre = function () {
       <!-- Lista -->
       <div style="padding:0 16px 8px">
         ${clientesPendientes.length === 0
-          ? `<div style="text-align:center; padding:28px 0">
+      ? `<div style="text-align:center; padding:28px 0">
                <div style="font-size:28px; margin-bottom:8px">✅</div>
                <p style="color:#16a34a; font-weight:700; margin:0; font-size:13.5px">¡Ruta completada!</p>
              </div>`
-          : clientesPendientes.map(d => {
-              const dist = state.miUbicacion
-                ? calcularDistancia(
-                    state.miUbicacion.lat, state.miUbicacion.lng,
-                    d.cliente?.lat, d.cliente?.lng)
-                : null;
-              const distLabel = dist !== null ? _fmtDistancia(dist) : null;
+      : clientesPendientes.map(d => {
+        const dist = state.miUbicacion
+          ? calcularDistancia(
+            state.miUbicacion.lat, state.miUbicacion.lng,
+            d.cliente?.lat, d.cliente?.lng)
+          : null;
+        const distLabel = dist !== null ? _fmtDistancia(dist) : null;
 
-              return `
+        return `
               <div style="display:flex; justify-content:space-between; align-items:center;
                           padding:11px 0; border-bottom:1px solid var(--border)">
                 <div>
@@ -519,11 +519,11 @@ window.renderCuadre = function () {
                                    font-weight:700; padding:1px 6px; border-radius:4px">
                         📍 a ${distLabel}
                       </span>` : ''}
-                    ${d.deudaAcumulada > d.cuota + 0.5 ? `
-                      <span style="background:#fff1f2; color:#9f1239; font-size:10px;
-                                   font-weight:700; padding:1px 6px; border-radius:4px">
-                        ⚠️ Debe ${formatMoney(d.deudaAcumulada)}
-                      </span>` : ''}
+                    ${d.deudaAcumulada > 0.5 ? `
+  <span style="background:#fff1f2; color:#9f1239; font-size:10px;
+               font-weight:700; padding:1px 6px; border-radius:4px">
+    ⚠️ Debe ${formatMoney(d.deudaAcumulada)}
+  </span>` : ''}
                   </div>
                 </div>
                 <button
@@ -538,7 +538,7 @@ window.renderCuadre = function () {
                   </span>
                 </button>
               </div>`;
-            }).join('')}
+      }).join('')}
       </div>
     </div>
 
