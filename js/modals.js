@@ -1,7 +1,9 @@
 // Fallback por si mapa_patch.js no cargó aún
+// Fallback por si mapa_patch.js no cargó aún
 if (typeof window.renderMapaSelector !== 'function') {
   window.renderMapaSelector = function(lat, lng) {
     const tiene = lat && lng;
+    window._coordsSeleccionadas = tiene ? { lat, lng } : null;  // ← AÑADIR ESTO
     return `
     <div class="form-group">
       <label>📍 Ubicación</label>
@@ -9,14 +11,12 @@ if (typeof window.renderMapaSelector !== 'function') {
         ${tiene ? `<div style="font-size:13px;color:var(--success);font-weight:700;margin-bottom:8px">
           ✅ Ubicación guardada (${Number(lat).toFixed(4)}, ${Number(lng).toFixed(4)})
         </div>` : ''}
-        <button type="button" onclick="obtenerUbicacion()"
+        <button type="button" onclick="obtenerUbicacionGPS()"
           style="background:var(--primary);color:white;border:none;padding:10px 20px;
                  border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">
           📍 ${tiene ? 'Actualizar ubicación' : 'Obtener mi ubicación GPS'}
         </button>
-        <div id="ubicacion-status" style="font-size:12px;color:var(--muted);margin-top:8px"></div>
-        <input type="hidden" id="latInput" value="${lat || ''}">
-        <input type="hidden" id="lngInput" value="${lng || ''}">
+        <div id="gps-status" style="font-size:12px;color:var(--muted);margin-top:8px"></div>
       </div>
     </div>`;
   };
