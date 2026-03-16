@@ -55,14 +55,17 @@ window.renderClientes = function () {
   ];
 
   return `
-  <div>
-    <div class="topbar">
-      <h2>Clientes</h2>
+ <div>
+  <div class="topbar">
+    <h2>Clientes</h2>
+    <div style="display:flex; align-items:center; gap:8px;">
       <div class="topbar-user">
         <strong>${state.currentUser.nombre}</strong>
         <span>${isAdmin ? 'Administrador' : 'Cobrador'}</span>
       </div>
+      ${!isAdmin ? renderBtnAyudaCobrador() : ''}
     </div>
+  </div>
     <div class="page">
 
       <div style="position:relative; display:flex; align-items:center; margin-bottom:4px">
@@ -112,7 +115,7 @@ window.renderClientes = function () {
 // ============================================================
 window._ordenarClientes = function (lista, filtro, creditos, pagos) {
   const todosCreditos = creditos || DB._cache['creditos'] || [];
-  const todosPagos    = pagos    || DB._cache['pagos']    || [];
+  const todosPagos = pagos || DB._cache['pagos'] || [];
 
   if (filtro === 'todos') {
     // Prioridad: vencidos → atrasados → activos al día → sin crédito
@@ -298,7 +301,7 @@ window.renderEsquemaCuotas = function (cr) {
     cursor.setDate(cursor.getDate() + 1);
   }
 
-  const pagadas  = celdas.filter(d => d.estado === 'pagada').length;
+  const pagadas = celdas.filter(d => d.estado === 'pagada').length;
   const atrasadas = celdas.filter(d => d.estado === 'atrasada').length;
   const pendientes = celdas.filter(d => d.estado === 'pendiente').length;
 
@@ -319,9 +322,9 @@ window.renderEsquemaCuotas = function (cr) {
     </div>`;
 
     const estilos = {
-      pagada:   { bg: '#f0fdf4', num: '#16a34a', fecha: '#86efac', punto: '#22c55e' },
+      pagada: { bg: '#f0fdf4', num: '#16a34a', fecha: '#86efac', punto: '#22c55e' },
       atrasada: { bg: '#fff1f2', num: '#e11d48', fecha: '#fda4af', punto: '#f43f5e' },
-      pendiente:{ bg: '#f8fafc', num: '#94a3b8', fecha: '#cbd5e1', punto: 'transparent' },
+      pendiente: { bg: '#f8fafc', num: '#94a3b8', fecha: '#cbd5e1', punto: 'transparent' },
     };
     const s = estilos[d.estado];
 
@@ -400,10 +403,10 @@ window._renderListaClientes = function () {
 
   const clientes = DB._cache['clientes'] || [];
   const creditos = DB._cache['creditos'] || [];
-  const users    = DB._cache['users']    || [];
-  const pagos    = DB._cache['pagos']    || [];
-  const isAdmin  = state.currentUser.role === 'admin';
-  const filtro   = state.filtroClientes || 'todos';
+  const users = DB._cache['users'] || [];
+  const pagos = DB._cache['pagos'] || [];
+  const isAdmin = state.currentUser.role === 'admin';
+  const filtro = state.filtroClientes || 'todos';
 
   let lista = isAdmin
     ? clientes

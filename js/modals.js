@@ -115,6 +115,7 @@ window.renderModal = function renderModal() {
   else if (m === 'deposito-cobrador') content = renderModalDepositoCobrador();
   else if (m === 'agregar-feriado') content = renderModalAgregarFeriado();
   else if (m === 'retiro-cobrador') content = renderModalRetiroCobrador();
+  else if (m === 'ayuda-cobrador') content = renderModalAyudaCobrador();
 
 
   return `

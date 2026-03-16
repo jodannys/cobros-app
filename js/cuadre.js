@@ -381,11 +381,13 @@ window.renderCuadre = function () {
   const hayMas = gastos.length > 3;
 
   return `
-  <div class="topbar">
-    <h2>Mi Cuadre</h2>
+ <div class="topbar">
+  <h2>Mi Cuadre</h2>
+  <div style="display:flex; align-items:center; gap:8px;">
     <div class="topbar-user"><strong>${state.currentUser.nombre}</strong></div>
+    ${state.currentUser.role === 'cobrador' ? renderBtnAyudaCobrador() : ''}
   </div>
-  <div class="page">
+</div>
 
     ${_renderCajaChicaPro(caja, cuadreHoy)}
 
