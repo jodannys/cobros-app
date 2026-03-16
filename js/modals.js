@@ -21,6 +21,37 @@ if (typeof window.renderMapaSelector !== 'function') {
     </div>`;
   };
 }
+// Fallback por si mapa_patch.js no terminó de cargar aún
+if (typeof window.obtenerUbicacionGPS !== 'function') {
+  window.obtenerUbicacionGPS = function() {
+    const btn    = document.getElementById('btn-obtener-gps');
+    const status = document.getElementById('gps-status');
+
+    if (!navigator.geolocation) {
+      if (status) { status.textContent = '❌ GPS no soportado'; status.style.color = 'var(--danger)'; }
+      return;
+    }
+
+    if (btn)    { btn.textContent = '⏳ Obteniendo GPS...'; btn.disabled = true; }
+    if (status) { status.textContent = 'Buscando señal GPS...'; status.style.color = 'var(--muted)'; }
+
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        window._coordsSeleccionadas = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        if (btn)    { btn.textContent = '✅ Ubicación obtenida'; btn.style.background = 'var(--success)'; btn.disabled = false; }
+        if (status) { status.innerHTML = `<span style="color:var(--success);font-weight:700">
+          📍 ${pos.coords.latitude.toFixed(6)}, ${pos.coords.longitude.toFixed(6)}
+        </span>`; }
+      },
+      err => {
+        if (btn) { btn.textContent = '📍 Obtener mi ubicación GPS'; btn.disabled = false; }
+        const msgs = { 1: 'Permiso denegado. Actívalo en ajustes.', 2: 'No se pudo obtener ubicación.', 3: 'Tiempo agotado.' };
+        if (status) { status.textContent = '❌ ' + (msgs[err.code] || 'Error'); status.style.color = 'var(--danger)'; }
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    );
+  };
+}
 
 window.comprimirImagen = function comprimirImagen(base64, maxWidth = 600, calidad = 0.6) {
   return new Promise((resolve) => {
