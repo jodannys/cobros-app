@@ -315,20 +315,20 @@ window.renderCuadre = function () {
   // ════════════════════════════════════════════════════════
   // VISTA ADMIN
   // ════════════════════════════════════════════════════════
-  if (isAdmin) {
-    return `
+ if (isAdmin) {
+  return `
   <div class="topbar">
     <h2>Cuadre General</h2>
     <div style="display:flex; align-items:center; gap:8px">
       ${renderIndicadorVivo()}
       <div class="topbar-user"><strong>Admin</strong></div>
+      ${renderBtnAyudaAdmin()}
     </div>
   </div>
   <div class="page">
     ${renderPanelCartera()}
   </div>`;
-  }
-
+}
   // ════════════════════════════════════════════════════════
   // VISTA COBRADOR
   // ════════════════════════════════════════════════════════

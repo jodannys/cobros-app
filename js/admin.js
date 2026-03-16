@@ -1,3 +1,11 @@
+// Fallback por si infoAdmin.js no cargó aún
+if (typeof window.renderBtnAyudaAdmin !== 'function') {
+  window.renderBtnAyudaAdmin = function () { return ''; };
+}
+if (typeof window.renderBtnAyudaCobrador !== 'function') {
+  window.renderBtnAyudaCobrador = function () { return ''; };
+}
+
 window.renderAdmin = function renderAdmin() {
   if (state.selectedCobrador) return renderAdminCobrador();
 
@@ -10,10 +18,13 @@ window.renderAdmin = function renderAdmin() {
 
   return `
   <div>
-    <div class="topbar">
-      <h2>Administración</h2>
-      <div class="topbar-user"><strong>${state.currentUser.nombre}</strong><span>Admin</span></div>
-    </div>
+   <div class="topbar">
+  <h2>Administración</h2>
+  <div style="display:flex; align-items:center; gap:8px;">
+    <div class="topbar-user"><strong>${state.currentUser.nombre}</strong><span>Admin</span></div>
+    ${renderBtnAyudaAdmin()}
+  </div>
+</div>
     <div class="page">
 
       ${alertas.length > 0 ? `
@@ -158,12 +169,12 @@ ${alertasVisible.map(a => `
           <button class="btn btn-primary btn-sm" onclick="abrirAgregarFeriado()">+ Agregar</button>
         </div>
         ${(() => {
-          const fechas = getDiasNoLaborables().sort();
-          if (fechas.length === 0) return `
+      const fechas = getDiasNoLaborables().sort();
+      if (fechas.length === 0) return `
             <div style="text-align:center; color:var(--muted); font-size:13px; padding:16px 0">
               Sin fechas bloqueadas
             </div>`;
-          return fechas.map(f => `
+      return fechas.map(f => `
             <div style="display:flex; justify-content:space-between; align-items:center;
                         padding:10px 0; border-bottom:1px solid var(--border)">
               <div style="font-weight:700; font-size:14px; color:var(--text)">${formatDate(f)}</div>
@@ -174,7 +185,7 @@ ${alertasVisible.map(a => `
                 Eliminar
               </button>
             </div>`).join('');
-        })()}
+    })()}
       </div>
     </div>
   </div>`;
@@ -194,7 +205,7 @@ window.abrirEditarAdmin = function abrirEditarAdmin(id) {
 };
 
 window.renderAdminCobrador = function renderAdminCobrador() {
-  const users    = DB._cache['users']    || [];
+  const users = DB._cache['users'] || [];
   const creditos = DB._cache['creditos'] || [];
   const pagosCache = DB._cache['pagos'] || [];
   const clientes = (DB._cache['clientes'] || []).filter(c => c.cobradorId === state.selectedCobrador);
@@ -202,7 +213,7 @@ window.renderAdminCobrador = function renderAdminCobrador() {
   if (!cobrador) { state.selectedCobrador = null; render(); return ''; }
 
   const fechaVer = state._fechaCobrador || today();
-  const c    = getCuadreDelDia(state.selectedCobrador, fechaVer);
+  const c = getCuadreDelDia(state.selectedCobrador, fechaVer);
   const caja = getCajaChicaDelDia(state.selectedCobrador, fechaVer);
   const gastos = caja.gastos;
   const mostrarTodos = state[`_verGastosAdmin_${cobrador.id}`] || false;
@@ -234,9 +245,10 @@ window.renderAdminCobrador = function renderAdminCobrador() {
       <button class="back-btn" onclick="state.selectedCobrador=null;state._fechaCobrador=null;render()">←</button>
       <h2>${cobrador.nombre}</h2>
       <div style="display:flex; align-items:center; gap:8px">
-        ${renderIndicadorVivo()}
-        <button class="btn btn-sm btn-outline" onclick="openModal('editar-usuario')">✏️ Editar</button>
-      </div>
+  ${renderIndicadorVivo()}
+  <button class="btn btn-sm btn-outline" onclick="openModal('editar-usuario')">✏️ Editar</button>
+  ${renderBtnAyudaAdmin()}
+</div>
     </div>
     <div class="page">
 
@@ -283,8 +295,8 @@ window.renderAdminCobrador = function renderAdminCobrador() {
               onclick="abrirNuevoGastoAdmin('${cobrador.id}')">➕ Gasto</button>
           </div>
           ${gastos.length === 0
-            ? `<div style="font-size:13px; color:#94a3b8; text-align:center; padding:16px 0; font-style:italic">Sin gastos este día</div>`
-            : `${gastosVisible.map(g => `
+      ? `<div style="font-size:13px; color:#94a3b8; text-align:center; padding:16px 0; font-style:italic">Sin gastos este día</div>`
+      : `${gastosVisible.map(g => `
               <div style="display:flex; justify-content:space-between; align-items:center;
                 padding:10px 0; border-bottom:1px solid #f1f5f9">
                 <div style="flex:1; min-width:0">
@@ -336,11 +348,11 @@ window.renderAdminCobrador = function renderAdminCobrador() {
 
         <div class="filtros-scroll" style="margin-bottom:10px">
           ${[
-            { key: 'todos',       label: 'Todos' },
-            { key: 'activos',     label: '✅ Activos' },
-            { key: 'atrasados',   label: '🔴 Atrasados' },
-            { key: 'sin_credito', label: '🆕 Sin crédito' },
-          ].map(f => `
+      { key: 'todos', label: 'Todos' },
+      { key: 'activos', label: '✅ Activos' },
+      { key: 'atrasados', label: '🔴 Atrasados' },
+      { key: 'sin_credito', label: '🆕 Sin crédito' },
+    ].map(f => `
             <button onclick="state['${filtroKey}']='${f.key}'; render()"
               class="filtro-btn ${filtroAdminCob === f.key ? 'active' : ''}">
               ${f.label}
@@ -348,28 +360,28 @@ window.renderAdminCobrador = function renderAdminCobrador() {
         </div>
 
         ${listaClientes.length === 0
-          ? `<div class="empty-state" style="padding:20px 0">
+      ? `<div class="empty-state" style="padding:20px 0">
                <div class="icon">👤</div>
                <p>Sin clientes en este filtro</p>
              </div>`
-          : listaClientes.map(cl => {
-              const crs = creditos.filter(cr => cr.clienteId === cl.id && cr.activo);
-              const estadoAtraso = crs.length > 0
-                ? calcularEstadoAtraso(crs[0], pagosCache)
-                : { atrasado: false, cuotasAtraso: 0 };
-              const vencido = crs.length > 0 && crs[0].fechaFin && today() > crs[0].fechaFin;
+      : listaClientes.map(cl => {
+        const crs = creditos.filter(cr => cr.clienteId === cl.id && cr.activo);
+        const estadoAtraso = crs.length > 0
+          ? calcularEstadoAtraso(crs[0], pagosCache)
+          : { atrasado: false, cuotasAtraso: 0 };
+        const vencido = crs.length > 0 && crs[0].fechaFin && today() > crs[0].fechaFin;
 
-              let badge, badgeStyle;
-              if (estadoAtraso.atrasado) {
-                badge    = vencido ? '🔴 Vencido' : `⚠️ Atrasado ${estadoAtraso.cuotasAtraso}`;
-                badgeStyle = vencido ? 'background:#fff1f2;color:#9f1239' : 'background:#fff7ed;color:#c2410c';
-              } else if (crs.length > 0) {
-                badge = '● Activo'; badgeStyle = 'background:#f0fdf4;color:#166534';
-              } else {
-                badge = 'Sin crédito'; badgeStyle = 'background:#f8fafc;color:#64748b';
-              }
+        let badge, badgeStyle;
+        if (estadoAtraso.atrasado) {
+          badge = vencido ? '🔴 Vencido' : `⚠️ Atrasado ${estadoAtraso.cuotasAtraso}`;
+          badgeStyle = vencido ? 'background:#fff1f2;color:#9f1239' : 'background:#fff7ed;color:#c2410c';
+        } else if (crs.length > 0) {
+          badge = '● Activo'; badgeStyle = 'background:#f0fdf4;color:#166534';
+        } else {
+          badge = 'Sin crédito'; badgeStyle = 'background:#f8fafc;color:#64748b';
+        }
 
-              return `
+        return `
               <div class="client-item" onclick="selectClient('${cl.id}')" style="cursor:pointer">
                 <div class="client-avatar"
                   style="background:linear-gradient(135deg,#1a56db,#0ea96d);color:white;font-weight:800">
@@ -384,7 +396,7 @@ window.renderAdminCobrador = function renderAdminCobrador() {
                   ${badge}
                 </span>
               </div>`;
-            }).join('')}
+      }).join('')}
       </div>
     </div>
   </div>`;
@@ -422,7 +434,7 @@ window.eliminarCobrador = async function eliminarCobrador(id) {
 };
 
 window.abrirGestionCredito = function abrirGestionCredito(crId, clienteId) {
-  state.selectedClient  = (DB._cache['clientes'] || []).find(x => x.id === clienteId);
+  state.selectedClient = (DB._cache['clientes'] || []).find(x => x.id === clienteId);
   state.selectedCredito = (DB._cache['creditos'] || []).find(x => x.id === crId);
   state.modal = 'gestionar-credito';
   render();
@@ -439,10 +451,10 @@ window.guardarUsuario = async function guardarUsuario() {
   const btn = document.querySelector('[onclick="guardarUsuario()"]');
   if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
   try {
-    const nombre   = document.getElementById('uNombre').value.trim();
-    const user     = document.getElementById('uUser').value.trim();
-    const pass     = document.getElementById('uPass').value.trim();
-    const role     = document.getElementById('uRol').value;
+    const nombre = document.getElementById('uNombre').value.trim();
+    const user = document.getElementById('uUser').value.trim();
+    const pass = document.getElementById('uPass').value.trim();
+    const role = document.getElementById('uRol').value;
     const telefono = document.getElementById('uTelefono').value.replace(/\D/g, '').trim();
     if (!nombre || !user || !pass) { alert('Todos los campos son obligatorios'); return; }
     const users = DB._cache['users'] || [];
@@ -484,10 +496,10 @@ window.actualizarUsuario = async function actualizarUsuario() {
     const users = DB._cache['users'] || [];
     const u = users.find(x => x.id === state.selectedCobrador);
     if (!u) return;
-    const nombre   = document.getElementById('euNombre').value.trim();
-    const user     = document.getElementById('euUser').value.trim();
-    const pass     = document.getElementById('euPass').value.trim();
-    const role     = document.getElementById('euRol').value;
+    const nombre = document.getElementById('euNombre').value.trim();
+    const user = document.getElementById('euUser').value.trim();
+    const pass = document.getElementById('euPass').value.trim();
+    const role = document.getElementById('euRol').value;
     const telefono = document.getElementById('euTelefono').value.replace(/\D/g, '').trim();
     if (!nombre || !user) { alert('Nombre y usuario son obligatorios'); return; }
     if (users.find(x => x.user === user && x.id !== u.id)) { alert('Ese usuario ya existe'); return; }

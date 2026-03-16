@@ -201,7 +201,10 @@ window.renderHistorial = function renderHistorial() {
   return `
   <div class="topbar">
     <h2>Historial</h2>
-    <div class="topbar-user"><strong>Admin</strong></div>
+    <div style="display:flex; align-items:center; gap:8px;">
+      <div class="topbar-user"><strong>Admin</strong></div>
+      ${renderBtnAyudaAdmin()}
+    </div>
   </div>
   <div class="page">
 

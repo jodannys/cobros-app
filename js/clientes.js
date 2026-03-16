@@ -56,16 +56,16 @@ window.renderClientes = function () {
 
   return `
  <div>
-  <div class="topbar">
-    <h2>Clientes</h2>
-    <div style="display:flex; align-items:center; gap:8px;">
-      <div class="topbar-user">
-        <strong>${state.currentUser.nombre}</strong>
-        <span>${isAdmin ? 'Administrador' : 'Cobrador'}</span>
-      </div>
-      ${!isAdmin ? renderBtnAyudaCobrador() : ''}
+ <div class="topbar">
+  <h2>Clientes</h2>
+  <div style="display:flex; align-items:center; gap:8px;">
+    <div class="topbar-user">
+      <strong>${state.currentUser.nombre}</strong>
+      <span>${isAdmin ? 'Administrador' : 'Cobrador'}</span>
     </div>
+    ${isAdmin ? renderBtnAyudaAdmin() : renderBtnAyudaCobrador()}
   </div>
+</div>
     <div class="page">
 
       <div style="position:relative; display:flex; align-items:center; margin-bottom:4px">
