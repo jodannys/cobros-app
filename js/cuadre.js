@@ -38,15 +38,17 @@ window.getCuadreDelDia = function (cobradorId, fecha) {
 window.calcularMetaReal = function (cobradorId, fecha) {
   const creditos = DB._cache['creditos'] || [];
   const clientes = DB._cache['clientes'] || [];
-  const pagos    = DB._cache['pagos']    || [];
+  const pagos = DB._cache['pagos'] || [];
 
   const misClientesIds = clientes
     .filter(c => c.cobradorId === cobradorId)
     .map(c => c.id);
 
   if (!esDiaLaboral(fecha)) {
-    return { metaTotal: 0, pagadoHoy: 0, pendiente: 0,
-             detalle: [], totalVencidos: 0, clientesVencidos: 0 };
+    return {
+      metaTotal: 0, pagadoHoy: 0, pendiente: 0,
+      detalle: [], totalVencidos: 0, clientesVencidos: 0
+    };
   }
 
   const creditosTodos = creditos.filter(cr =>
@@ -61,7 +63,7 @@ window.calcularMetaReal = function (cobradorId, fecha) {
 
   creditosTodos.forEach(cr => {
     const cliente = clientes.find(c => c.id === cr.clienteId);
-    const cuota   = Number(cr.cuotaDiaria) || 0;
+    const cuota = Number(cr.cuotaDiaria) || 0;
     if (cuota <= 0) return;
 
     const pagosNoEliminados = pagos.filter(p => p.creditoId === cr.id && !p.eliminado);
@@ -94,7 +96,7 @@ window.calcularMetaReal = function (cobradorId, fecha) {
     // ── ¿Le toca cobro hoy? ───────────────────────────────────
     // Le toca si han transcurrido entre 1 y diasTotal días hábiles
     const leTocaHoy = diasTranscurridos >= 1 &&
-                      diasTranscurridos <= Number(cr.diasTotal);
+      diasTranscurridos <= Number(cr.diasTotal);
 
     // ── ¿Ya cubrió el cobro de hoy? ───────────────────────────
     // Cuotas esperadas hasta ayer = diasTranscurridos (tope diasTotal)
@@ -133,7 +135,7 @@ window.calcularMetaReal = function (cobradorId, fecha) {
     const deudaAcumulada = Math.round(estado.cuotasAtraso * cuota * 100) / 100;
 
     if (estado.atrasado) {
-      totalVencidos  += deudaAcumulada;
+      totalVencidos += deudaAcumulada;
       clientesVencidos++;
     }
 
@@ -161,11 +163,11 @@ window.calcularMetaReal = function (cobradorId, fecha) {
   });
 
   return {
-    metaTotal:       Math.round(metaTotal * 100) / 100,
-    pagadoHoy:       Math.round(pagadoHoy * 100) / 100,
-    pendiente:       Math.round(pendiente * 100) / 100,
+    metaTotal: Math.round(metaTotal * 100) / 100,
+    pagadoHoy: Math.round(pagadoHoy * 100) / 100,
+    pendiente: Math.round(pendiente * 100) / 100,
     detalle,
-    totalVencidos:   Math.round(totalVencidos * 100) / 100,
+    totalVencidos: Math.round(totalVencidos * 100) / 100,
     clientesVencidos
   };
 };
@@ -315,8 +317,8 @@ window.renderCuadre = function () {
   // ════════════════════════════════════════════════════════
   // VISTA ADMIN
   // ════════════════════════════════════════════════════════
- if (isAdmin) {
-  return `
+  if (isAdmin) {
+    return `
   <div class="topbar">
     <h2>Cuadre General</h2>
     <div style="display:flex; align-items:center; gap:8px">
@@ -328,7 +330,7 @@ window.renderCuadre = function () {
   <div class="page">
     ${renderPanelCartera()}
   </div>`;
-}
+  }
   // ════════════════════════════════════════════════════════
   // VISTA COBRADOR
   // ════════════════════════════════════════════════════════
@@ -388,6 +390,7 @@ window.renderCuadre = function () {
     ${state.currentUser.role === 'cobrador' ? renderBtnAyudaCobrador() : ''}
   </div>
 </div>
+<div class="page">
 
     ${_renderCajaChicaPro(caja, cuadreHoy)}
 
