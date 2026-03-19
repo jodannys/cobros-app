@@ -922,8 +922,6 @@ window.guardarRetiroCobrador = async function () {
 
   try {
     await DB.set('movimientos_cartera', id, nuevo);
-    if (!DB._cache['movimientos_cartera']) DB._cache['movimientos_cartera'] = [];
-    DB._cache['movimientos_cartera'].push(nuevo);
     state.modal = null;
     state._retiroCobrador = null;
     showToast(`💼 Retiro de ${formatMoney(monto)} registrado`);

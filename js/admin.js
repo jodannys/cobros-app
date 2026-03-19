@@ -473,20 +473,6 @@ window.guardarUsuario = async function guardarUsuario() {
   }
 };
 
-window.openRegistrarPago = function (crId) {
-  if (state.modal && state.modal !== 'registrar-pago') state.modal = null;
-  const cr = (DB._cache['creditos'] || []).find(x => x.id === crId);
-  if (!cr) {
-    console.error('❌ Crédito no encontrado');
-    state._pagoProcesando = false;
-    deshabilitarBotonesPago(false);
-    return;
-  }
-  state.selectedCredito = cr;
-  state.modal = 'registrar-pago';
-  render();
-};
-
 window.actualizarUsuario = async function actualizarUsuario() {
   if (window._actualizandoUsuario) return;
   window._actualizandoUsuario = true;

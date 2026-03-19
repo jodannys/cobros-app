@@ -401,8 +401,6 @@ window.guardarCredito = async function () {
     };
 
     await DB.set('creditos', id, nuevoCredito);
-    if (!DB._cache['creditos']) DB._cache['creditos'] = [];
-    DB._cache['creditos'].push(nuevoCredito);
 
     state.modal = null;
     showToast('✅ Crédito creado con éxito');
@@ -449,16 +447,13 @@ window.eliminarCredito = async function (crId) {
     // 1. Marcar pagos como eliminados
     for (const p of pagos) {
       await DB.update('pagos', p.id, { eliminado: true });
-      const idx = (DB._cache['pagos'] || []).findIndex(x => x.id === p.id);
-      if (idx !== -1) DB._cache['pagos'][idx].eliminado = true;
     }
 
     // 2. Eliminar el crédito
     await DB.delete('creditos', crId);
-    DB._cache['creditos'] = (DB._cache['creditos'] || []).filter(c => c.id !== crId);
 
     const cobradorId = cliente?.cobradorId || null;
-    const fechaAjuste = cr.fechaInicio;
+    const fechaAjuste = today();
 
     // 3. Ajuste cartera admin: devolver monto + seguro
     if (montoTotal > 0) {
@@ -470,8 +465,6 @@ window.eliminarCredito = async function (crId) {
         registradoPor: state.currentUser.id
       };
       await DB.set('movimientos_cartera', idAdmin, ajusteAdmin);
-      if (!DB._cache['movimientos_cartera']) DB._cache['movimientos_cartera'] = [];
-      DB._cache['movimientos_cartera'].push(ajusteAdmin);
     }
 
     showToast('✅ Crédito eliminado y caja ajustada');
@@ -499,8 +492,6 @@ window.cerrarCredito = async function (crId) {
 
   try {
     await DB.update('creditos', crId, { activo: false });
-    const idx = (DB._cache['creditos'] || []).findIndex(c => c.id === crId);
-    if (idx !== -1) DB._cache['creditos'][idx].activo = false;
     showToast('✅ Crédito cerrado');
     render();
   } catch (e) {
@@ -640,17 +631,14 @@ window.guardarPagoEditado = async function () {
     const diferencia  = Math.round((montoNuevo - montoViejo) * 100) / 100;
 
     // 1. Actualizar el pago
-    const updates = { monto: montoNuevo, tipo };
-    await DB.update('pagos', p.id, updates);
-    const idx = (DB._cache['pagos'] || []).findIndex(x => x.id === p.id);
-    if (idx !== -1) DB._cache['pagos'][idx] = { ...DB._cache['pagos'][idx], ...updates };
+    await DB.update('pagos', p.id, { monto: montoNuevo, tipo });
 
     // 2. Ajustar mochila del cobrador si el monto cambió
     if (Math.abs(diferencia) >= 0.01 && p.cobradorId) {
       const idAjuste = genId();
       // diferencia > 0 → cobrador cobró MÁS de lo que se registró → sumar (cobro_ajuste)
       // diferencia < 0 → cobrador cobró MENOS de lo que se registró → restar (gasto_cobrador)
-      const ajuste = {
+      await DB.set('movimientos_cartera', idAjuste, {
         id: idAjuste,
         tipo: diferencia > 0 ? 'cobro_ajuste' : 'gasto_cobrador',
         monto: Math.abs(diferencia),
@@ -658,10 +646,7 @@ window.guardarPagoEditado = async function () {
         fecha: p.fecha,
         cobradorId: p.cobradorId,
         registradoPor: state.currentUser.id
-      };
-      await DB.set('movimientos_cartera', idAjuste, ajuste);
-      if (!DB._cache['movimientos_cartera']) DB._cache['movimientos_cartera'] = [];
-      DB._cache['movimientos_cartera'].push(ajuste);
+      });
     }
 
     state._editandoPago = null;
@@ -686,22 +671,17 @@ window.eliminarPago = async function (pagoId) {
   try {
     // Marcar como eliminado (NO borrar — preserva cuadre histórico)
     await DB.update('pagos', pagoId, { eliminado: true });
-    const idx = (DB._cache['pagos'] || []).findIndex(x => x.id === pagoId);
-    if (idx !== -1) DB._cache['pagos'][idx].eliminado = true;
 
     // Ajuste mochila cobrador: quitar ese cobro
     if (p.cobradorId && p.monto > 0) {
       const idAjuste = genId();
-      const ajuste = {
+      await DB.set('movimientos_cartera', idAjuste, {
         id: idAjuste, tipo: 'gasto_cobrador', monto: Number(p.monto),
         descripcion: `Baja pago`,
         fecha: p.fecha,
         cobradorId: p.cobradorId,
         registradoPor: state.currentUser.id
-      };
-      await DB.set('movimientos_cartera', idAjuste, ajuste);
-      if (!DB._cache['movimientos_cartera']) DB._cache['movimientos_cartera'] = [];
-      DB._cache['movimientos_cartera'].push(ajuste);
+      });
     }
 
     state._editandoPago = null;
@@ -717,8 +697,6 @@ window.eliminarPago = async function (pagoId) {
 window.reabrirCredito = async function (crId) {
   if (!confirm('¿Reabrir este crédito? Volverá a estar activo y aparecerá en los cobros.')) return;
   await DB.update('creditos', crId, { activo: true });
-  const idx = (DB._cache['creditos'] || []).findIndex(c => c.id === crId);
-  if (idx !== -1) DB._cache['creditos'][idx].activo = true;
   showToast('✅ Crédito reabierto');
   render();
 };
@@ -731,29 +709,3 @@ window.nuevoCreditoRapido = function (clienteId) {
   render();
 };
 
-window.ejecutarPagoProtegido = function (btn, creditoId) {
-  if (btn.disabled || btn.dataset.procesando === "true") return;
-
-  btn.disabled = true;
-  btn.dataset.procesando = "true";
-
-  const icon = document.getElementById(`icon-${creditoId}`);
-  const text = document.getElementById(`text-${creditoId}`);
-  if (icon) icon.innerHTML = "⏳";
-  if (text) text.innerText = "Procesando...";
-  btn.style.opacity = "0.7";
-
-  if (typeof openRegistrarPago === 'function') {
-    openRegistrarPago(creditoId);
-  } else {
-    console.error("CRÍTICO: No existe la función openRegistrarPago");
-  }
-
-  setTimeout(() => {
-    btn.disabled = false;
-    btn.dataset.procesando = "false";
-    btn.style.opacity = "1";
-    if (icon) icon.innerHTML = "💰";
-    if (text) text.innerText = "Registrar pago";
-  }, 3000);
-};

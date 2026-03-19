@@ -397,7 +397,7 @@ window.renderBusquedaClientes = function renderBusquedaClientes() {
   }
 
   contenedor.innerHTML = clientesBuscados.map(c => {
-    const pagosCliente = pagos.filter(p => p.clienteId === c.id);
+    const pagosCliente = pagos.filter(p => p.clienteId === c.id && !p.eliminado);
     const totalPagado = pagosCliente.reduce((s, p) => s + p.monto, 0);
     const creditoActivo = creditos.filter(cr => cr.clienteId === c.id).find(cr => cr.activo);
     const saldo = creditoActivo
@@ -428,7 +428,7 @@ window.verHistorialCliente = function verHistorialCliente(clienteId) {
   const c = (DB._cache['clientes'] || []).find(x => x.id === clienteId);
   if (!c) return;
   const creditos = (DB._cache['creditos'] || []).filter(cr => cr.clienteId === clienteId);
-  const pagos = (DB._cache['pagos'] || []).filter(p => p.clienteId === clienteId);
+  const pagos = (DB._cache['pagos'] || []).filter(p => p.clienteId === clienteId && !p.eliminado);
   const totalPagado = pagos.reduce((s, p) => s + p.monto, 0);
   const cobrador = (DB._cache['users'] || []).find(u => u.id === c.cobradorId);
 

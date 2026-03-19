@@ -24,6 +24,7 @@ window.esDiaLaboral = function(fechaStr) {
 };
 // ── DÍAS HÁBILES (sin domingos) ──────────────────────────────
 window.sumarDiasHabiles = function(fechaStr, dias) {
+  const diasNoLaborables = getDiasNoLaborables();
   const parts = fechaStr.split('-');
   const fecha = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
   let contados = 0;
@@ -32,7 +33,7 @@ window.sumarDiasHabiles = function(fechaStr, dias) {
     const y = fecha.getFullYear();
     const m = String(fecha.getMonth() + 1).padStart(2, '0');
     const d = String(fecha.getDate()).padStart(2, '0');
-    if (esDiaLaboral(`${y}-${m}-${d}`)) contados++;
+    if (fecha.getDay() !== 0 && !diasNoLaborables.includes(`${y}-${m}-${d}`)) contados++;
   }
   const y = fecha.getFullYear();
   const m = String(fecha.getMonth() + 1).padStart(2, '0');
@@ -41,6 +42,7 @@ window.sumarDiasHabiles = function(fechaStr, dias) {
 };
 
 window.contarDiasHabiles = function(fechaInicioStr, fechaFinStr) {
+  const diasNoLaborables = getDiasNoLaborables();
   const p1 = fechaInicioStr.split('-');
   const p2 = fechaFinStr.split('-');
   const inicio = new Date(parseInt(p1[0]), parseInt(p1[1]) - 1, parseInt(p1[2]));
@@ -52,7 +54,7 @@ window.contarDiasHabiles = function(fechaInicioStr, fechaFinStr) {
     const y = cursor.getFullYear();
     const m = String(cursor.getMonth() + 1).padStart(2, '0');
     const d = String(cursor.getDate()).padStart(2, '0');
-    if (esDiaLaboral(`${y}-${m}-${d}`)) count++;
+    if (cursor.getDay() !== 0 && !diasNoLaborables.includes(`${y}-${m}-${d}`)) count++;
     cursor.setDate(cursor.getDate() + 1);
   }
   return count;

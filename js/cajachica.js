@@ -475,8 +475,6 @@ window.guardarCajaChica = async function () {
       const id = genId();
       const nuevaCaja = { id, cobradorId: u.id, monto, fecha, asignadoPor: state.currentUser.id };
       await DB.set('cajas', id, nuevaCaja);
-      if (!DB._cache['cajas']) DB._cache['cajas'] = [];
-      DB._cache['cajas'].push(nuevaCaja);
     }
     state.modal = null;
     state._cajaCobrador = null;

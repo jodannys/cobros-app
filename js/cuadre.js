@@ -191,8 +191,6 @@ window.guardarNota = async function () {
       const id = genId();
       const nueva = { id, cobradorId: state.currentUser.id, fecha: hoy, nota };
       await DB.set('notas_cuadre', id, nueva);
-      if (!DB._cache['notas_cuadre']) DB._cache['notas_cuadre'] = [];
-      DB._cache['notas_cuadre'].push(nueva);
     }
     showToast('Nota guardada');
     render();
@@ -295,12 +293,6 @@ window._renderCajaChicaPro = function (caja, cuadre) {
   </div>`;
 }
 
-window.abrirNuevoGastoAdmin = function (cobradorId) {
-  state._gastoCobradorId = cobradorId;
-  state.modal = 'nuevo-gasto';
-  render();
-};
-
 window.abrirEditarGasto = function (id) {
   state._editGastoId = id;
   state.modal = 'editar-gasto';
@@ -373,8 +365,11 @@ window.renderCuadre = function () {
 
   const metaAlcanzada = meta.pagadoHoy >= meta.metaTotal;
 
+  const misClientesIds = new Set(
+    (DB._cache['clientes'] || []).filter(c => c.cobradorId === userId).map(c => c.id)
+  );
   const segurosHoy = (DB._cache['creditos'] || [])
-    .filter(cr => cr.fechaInicio === hoyC && cr.cobradorId === userId)
+    .filter(cr => cr.fechaInicio === hoyC && misClientesIds.has(cr.clienteId))
     .reduce((s, cr) => s + Number(cr.montoSeguro || 0), 0);
 
   const gastos = caja.gastos || [];

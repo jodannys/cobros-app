@@ -76,8 +76,11 @@ window.DB = {
     return this._cache[colName];
   },
 
-  async query(colName, field, value) {
-    return await fbQuery(colName, field, value);
+  query(colName, field, value) {
+    if (this._cache[colName]) {
+      return this._cache[colName].filter(x => x[field] === value);
+    }
+    return fbQuery(colName, field, value);
   },
 
   // ── Init: carga todo una vez, arranca polling ────────────
@@ -151,18 +154,20 @@ window.DB = {
   },
 
   // ── Refresco manual: al volver de segundo plano ──────────
+  // Solo recarga las colecciones dinámicas — las estáticas
+  // (users, clientes, creditos, configuracion) no cambian
+  // mientras la app está en segundo plano.
   async refrescarTodo() {
-    const estaticas = ['users', 'clientes', 'creditos', 'configuracion'];
     const dinamicas = ['pagos', 'movimientos_cartera', 'gastos', 'cajas', 'notas_cuadre'];
 
     try {
-      await Promise.all([...estaticas, ...dinamicas].map(async col => {
+      await Promise.all(dinamicas.map(async col => {
         try {
           this._cache[col] = await fbGetAll(col);
         } catch (e) {}
       }));
       _renderSeguro();
-      console.log('✅ Datos refrescados al volver');
+      console.log('✅ Datos dinámicos refrescados al volver');
     } catch (e) {
       console.warn('Error al refrescar:', e);
     }
@@ -200,7 +205,7 @@ window.DB = {
         const fInicio = new Date(cr.fechaInicio + 'T00:00:00');
         fInicio.setDate(fInicio.getDate() + Number(cr.diasTotal || 0));
         const nuevaFechaFin = fInicio.toISOString().split('T')[0];
-        window.fbUpdate('creditos', cr.id, { fechaFin: nuevaFechaFin }).catch(e => console.error(e));
+        DB.update('creditos', cr.id, { fechaFin: nuevaFechaFin }).catch(e => console.error(e));
       }
 
       if (cr.activo === true) {
@@ -208,7 +213,7 @@ window.DB = {
         const totalPagado = pagosCr.reduce((s, p) => s + (Number(p.monto) || 0), 0);
         const totalDeberia = Number(cr.total || 0);
         if (totalPagado >= totalDeberia && totalDeberia > 0) {
-          window.fbUpdate('creditos', cr.id, { activo: false }).catch(e => console.error(e));
+          DB.update('creditos', cr.id, { activo: false }).catch(e => console.error(e));
         }
       }
     });
@@ -226,22 +231,19 @@ window.DB = {
 
     gastos.forEach(g => {
       if (!users.find(u => u.id === g.cobradorId)) {
-        window.fbDelete('gastos', g.id).catch(e => console.error(e));
-        this._cache['gastos'] = this._cache['gastos'].filter(x => x.id !== g.id);
+        DB.delete('gastos', g.id).catch(e => console.error(e));
       }
     });
 
     pagos.forEach(p => {
       if (!clientes.find(c => c.id === p.clienteId)) {
-        window.fbDelete('pagos', p.id).catch(e => console.error(e));
-        this._cache['pagos'] = this._cache['pagos'].filter(x => x.id !== p.id);
+        DB.delete('pagos', p.id).catch(e => console.error(e));
       }
     });
 
     creditos.forEach(cr => {
       if (!clientes.find(c => c.id === cr.clienteId)) {
-        window.fbDelete('creditos', cr.id).catch(e => console.error(e));
-        this._cache['creditos'] = this._cache['creditos'].filter(x => x.id !== cr.id);
+        DB.delete('creditos', cr.id).catch(e => console.error(e));
       }
     });
 
