@@ -16,7 +16,7 @@ window.guardarUbicacionCliente = function () {
     if (status) { status.textContent = '⚠️ No se ha seleccionado ubicación'; status.style.color = 'var(--danger)'; }
     return;
   }
-  _coordsSeleccionadas = { lat: parseFloat(lat), lng: parseFloat(lng) };
+  window._coordsSeleccionadas = { lat: parseFloat(lat), lng: parseFloat(lng) };
   const status = document.getElementById('ubicacion-status');
   if (status) { status.textContent = '✅ Ubicación guardada'; status.style.color = 'var(--success)'; }
 };
@@ -140,14 +140,24 @@ window.abrirMapaRuta = function () {
     </div>`;
   document.body.appendChild(modal);
 
+  // Definir _cerrarMapaRuta de inmediato para que el overlay
+  // funcione incluso antes de que el mapa Leaflet termine de iniciar
+  window._cerrarMapaRuta = () => {
+    if (window._mapaRutaPopState) {
+      window.removeEventListener('popstate', window._mapaRutaPopState);
+      window._mapaRutaPopState = null;
+    }
+    const m = document.getElementById('modal-mapa-ruta');
+    if (m) m.remove();
+  };
+
   // ── FIX 3: cerrar el modal si el usuario toca el overlay oscuro ──
-  // (el overlay es el propio #modal-mapa-ruta, el contenido está en el div hijo)
   modal.addEventListener('click', e => {
-    if (e.target === modal) _cerrarMapaRuta(null);
+    if (e.target === modal) window._cerrarMapaRuta();
   });
 
   // ── FIX 3: cerrar con botón atrás del navegador ──
-  window._mapaRutaPopState = () => _cerrarMapaRuta(null);
+  window._mapaRutaPopState = () => window._cerrarMapaRuta();
   window.history.pushState({ mapaRuta: true }, '');
   window.addEventListener('popstate', window._mapaRutaPopState, { once: true });
 
@@ -275,12 +285,9 @@ window.abrirMapaRuta = function () {
       }
     };
 
-    // ── FIX 3: función única de cierre que limpia TODO ──
-    window._cerrarMapaRuta = (watchId) => {
-      const w = watchId ?? watchIdMapa;
-      if (w != null) navigator.geolocation.clearWatch(w);
-      watchIdMapa = null;
-      // Limpiar listener de popstate si aún no se disparó
+    // ── FIX 3: redefinir con limpieza de GPS una vez que el mapa está listo ──
+    window._cerrarMapaRuta = () => {
+      if (watchIdMapa != null) { navigator.geolocation.clearWatch(watchIdMapa); watchIdMapa = null; }
       if (window._mapaRutaPopState) {
         window.removeEventListener('popstate', window._mapaRutaPopState);
         window._mapaRutaPopState = null;
@@ -290,7 +297,7 @@ window.abrirMapaRuta = function () {
     };
 
     document.getElementById('btn-cerrar-mapa').onclick = () => {
-      window._cerrarMapaRuta(watchIdMapa);
+      window._cerrarMapaRuta();
     };
 
   }, 150);
@@ -310,7 +317,7 @@ window.obtenerUbicacion = function () {
 
   navigator.geolocation.getCurrentPosition(
     pos => {
-      _coordsSeleccionadas = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      window._coordsSeleccionadas = { lat: pos.coords.latitude, lng: pos.coords.longitude };
       const latInput = document.getElementById('latInput');
       const lngInput = document.getElementById('lngInput');
       if (latInput) latInput.value = pos.coords.latitude;
