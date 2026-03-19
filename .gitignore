@@ -5,3 +5,4 @@ dist/
 *.tmp.driveupload
 .vercel
 .env*.local
+.clauderules

@@ -41,19 +41,19 @@ window.iniciarMapaCliente = function iniciarMapaCliente(lat, lng, nombre) {
 // ============================================================
 // Haversine: distancia entre dos puntos en metros
 // ============================================================
-window.calcularDistancia = function(lat1, lon1, lat2, lon2) {
+window.calcularDistancia = function (lat1, lon1, lat2, lon2) {
   if (!lat1 || !lon1 || !lat2 || !lon2) return 999999;
   const R = 6371e3;
   const phi1 = lat1 * Math.PI / 180;
   const phi2 = lat2 * Math.PI / 180;
   const dPhi = (lat2 - lat1) * Math.PI / 180;
   const dLam = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(dPhi/2)**2 + Math.cos(phi1)*Math.cos(phi2)*Math.sin(dLam/2)**2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  const a = Math.sin(dPhi / 2) ** 2 + Math.cos(phi1) * Math.cos(phi2) * Math.sin(dLam / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 };
 
 // ── Helper: formatea metros para mostrar en pantalla ──
-window._fmtDistancia = function(metros) {
+window._fmtDistancia = function (metros) {
   if (metros >= 999990) return null;
   if (metros < 1000) return `${Math.round(metros)}m`;
   return `${(metros / 1000).toFixed(1)}km`;
@@ -62,7 +62,7 @@ window._fmtDistancia = function(metros) {
 // ============================================================
 // GPS continuo para Mi Cuadre (umbral 18 metros)
 // ============================================================
-window.iniciarGPSCuadre = function() {
+window.iniciarGPSCuadre = function () {
   if (!navigator.geolocation) return;
   if (state._gpsWatchId != null) return;
 
@@ -88,7 +88,7 @@ window.iniciarGPSCuadre = function() {
   );
 };
 
-window.detenerGPSCuadre = function() {
+window.detenerGPSCuadre = function () {
   if (state._gpsWatchId != null) {
     navigator.geolocation.clearWatch(state._gpsWatchId);
     state._gpsWatchId = null;
@@ -98,7 +98,7 @@ window.detenerGPSCuadre = function() {
 // ============================================================
 // Mapa de ruta con Leaflet
 // ============================================================
-window.abrirMapaRuta = function() {
+window.abrirMapaRuta = function () {
   const anterior = document.getElementById('modal-mapa-ruta');
   if (anterior) anterior.remove();
 
@@ -177,15 +177,15 @@ window.abrirMapaRuta = function() {
     }).addTo(mapa);
 
     // ── FIX 1: separar clientes con y sin coordenadas ──
-    const conCoords    = pendientes.filter(d => d.cliente?.lat && d.cliente?.lng);
-    const sinCoords    = pendientes.filter(d => !d.cliente?.lat || !d.cliente?.lng);
+    const conCoords = pendientes.filter(d => d.cliente?.lat && d.cliente?.lng);
+    const sinCoords = pendientes.filter(d => !d.cliente?.lat || !d.cliente?.lng);
 
     // Clientes con coords → puntos rojos en el mapa
     conCoords.forEach((d, i) => {
       const dist = state.miUbicacion
         ? _fmtDistancia(calcularDistancia(
-            state.miUbicacion.lat, state.miUbicacion.lng,
-            d.cliente.lat, d.cliente.lng))
+          state.miUbicacion.lat, state.miUbicacion.lng,
+          d.cliente.lat, d.cliente.lng))
         : null;
       L.circleMarker([d.cliente.lat, d.cliente.lng], {
         radius: 9, fillColor: '#e11d48', color: 'white',
@@ -226,8 +226,8 @@ window.abrirMapaRuta = function() {
 
     // ── GPS dentro del mapa ──
     let watchIdMapa = null;
-    let marcadorYo  = null;
-    let gpsActivo   = false;
+    let marcadorYo = null;
+    let gpsActivo = false;
 
     const actualizarPosicion = (lat, lng) => {
       if (marcadorYo) {
