@@ -41,6 +41,11 @@ window.fbQuery = async function(colName, field, value) {
   return snap.docs.map(d => ({ ...d.data(), id: d.id }));
 };
 
+window.fbGetSince = async function(colName, desde) {
+  const snap = await fsdb.collection(colName).where('updatedAt', '>', desde).get();
+  return snap.docs.map(d => ({ ...d.data(), id: d.id }));
+};
+
 window.fbEscuchar = function(colName, callback) {
   return fsdb.collection(colName).onSnapshot(snap => {
     const datos = snap.docs.map(d => ({ ...d.data(), id: d.id }));

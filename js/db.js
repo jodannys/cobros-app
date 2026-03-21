@@ -28,6 +28,7 @@ window.DB = {
   _isLoading: false,
   _pollingTimer: null,
   _INTERVALO_POLLING: 45000, // 45 segundos
+  _ultimaSync: null,
 
   _cache: {
     users: [],
@@ -43,20 +44,22 @@ window.DB = {
 
   // ── Escritura ────────────────────────────────────────────
   async set(colName, id, data) {
-    await fbSet(colName, id, { ...data, id });
+    const dataConTs = { ...data, updatedAt: new Date() };
+    await fbSet(colName, id, { ...dataConTs, id });
     if (this._cache[colName]) {
       const idx = this._cache[colName].findIndex(x => x.id === id);
-      if (idx !== -1) this._cache[colName][idx] = { ...data, id };
-      else this._cache[colName].push({ ...data, id });
+      if (idx !== -1) this._cache[colName][idx] = { ...dataConTs, id };
+      else this._cache[colName].push({ ...dataConTs, id });
     }
   },
 
   async update(colName, id, data) {
-    await fbUpdate(colName, id, data);
+    const dataConTs = { ...data, updatedAt: new Date() };
+    await fbUpdate(colName, id, dataConTs);
     if (this._cache[colName]) {
       const idx = this._cache[colName].findIndex(x => x.id === id);
       if (idx !== -1) {
-        this._cache[colName][idx] = { ...this._cache[colName][idx], ...data };
+        this._cache[colName][idx] = { ...this._cache[colName][idx], ...dataConTs };
       }
     }
   },
@@ -101,6 +104,7 @@ window.DB = {
       }
     }));
 
+    this._ultimaSync = new Date();
     console.log('✅ Datos cargados. Iniciando polling cada 45s...');
     this._arrancarPolling();
   },
@@ -118,23 +122,27 @@ window.DB = {
 
       try {
         let huboCambios = false;
+        const desde = this._ultimaSync || new Date(0);
+        const ahora = new Date();
 
         await Promise.all(dinamicas.map(async col => {
           try {
-            const nuevos = await fbGetAll(col);
-            // Detectar si hubo cambios comparando longitud y último id
-            const actual = this._cache[col] || [];
-            const cambio = nuevos.length !== actual.length ||
-              (nuevos.length > 0 && actual.length > 0 &&
-               nuevos[nuevos.length - 1]?.id !== actual[actual.length - 1]?.id);
-            if (cambio) {
-              this._cache[col] = nuevos;
+            const nuevos = await fbGetSince(col, desde);
+            if (nuevos.length > 0) {
+              // Merge: actualizar docs existentes o agregar nuevos
+              nuevos.forEach(doc => {
+                const idx = (this._cache[col] || []).findIndex(x => x.id === doc.id);
+                if (idx !== -1) this._cache[col][idx] = doc;
+                else this._cache[col].push(doc);
+              });
               huboCambios = true;
             }
           } catch (e) {
             console.warn(`Polling error en ${col}:`, e);
           }
         }));
+
+        this._ultimaSync = ahora;
 
         if (huboCambios) {
           console.log('🔄 Datos actualizados (polling)');
@@ -161,11 +169,23 @@ window.DB = {
     const dinamicas = ['pagos', 'movimientos_cartera', 'gastos', 'cajas', 'notas_cuadre'];
 
     try {
+      const desde = this._ultimaSync || new Date(0);
+      const ahora = new Date();
+
       await Promise.all(dinamicas.map(async col => {
         try {
-          this._cache[col] = await fbGetAll(col);
+          const nuevos = await fbGetSince(col, desde);
+          if (nuevos.length > 0) {
+            nuevos.forEach(doc => {
+              const idx = (this._cache[col] || []).findIndex(x => x.id === doc.id);
+              if (idx !== -1) this._cache[col][idx] = doc;
+              else this._cache[col].push(doc);
+            });
+          }
         } catch (e) {}
       }));
+
+      this._ultimaSync = ahora;
       _renderSeguro();
       console.log('✅ Datos dinámicos refrescados al volver');
     } catch (e) {
