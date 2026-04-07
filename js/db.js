@@ -86,6 +86,31 @@ window.DB = {
     return fbQuery(colName, field, value);
   },
 
+  // ── Persistencia de cache en localStorage ────────────────
+  _CACHE_KEY: 'cobrosapp_cache_v1',
+  _CACHE_TTL: 5 * 60 * 1000, // 5 minutos
+
+  _guardarCacheLocal() {
+    try {
+      localStorage.setItem(this._CACHE_KEY, JSON.stringify({
+        ts: Date.now(),
+        data: this._cache
+      }));
+    } catch (e) { /* localStorage lleno — ignorar */ }
+  },
+
+  _cargarCacheLocal() {
+    try {
+      const raw = localStorage.getItem(this._CACHE_KEY);
+      if (!raw) return false;
+      const { ts, data } = JSON.parse(raw);
+      if (Date.now() - ts > this._CACHE_TTL) return false;
+      this._cache = { ...this._cache, ...data };
+      this._ultimaSync = new Date(ts);
+      return true;
+    } catch (e) { return false; }
+  },
+
   // ── Init: carga todo una vez, arranca polling ────────────
   async init() {
     console.log('🚀 Cargando datos...');
@@ -94,6 +119,13 @@ window.DB = {
       'users', 'clientes', 'creditos', 'configuracion',
       'pagos', 'movimientos_cartera', 'gastos', 'cajas', 'notas_cuadre'
     ];
+
+    // Si el cache local es reciente (< 5 min), usarlo y solo hacer polling
+    if (this._cargarCacheLocal()) {
+      console.log('⚡ Cache local válido — sin lecturas a Firebase');
+      this._arrancarPolling();
+      return;
+    }
 
     await Promise.all(todas.map(async col => {
       try {
@@ -105,6 +137,7 @@ window.DB = {
     }));
 
     this._ultimaSync = new Date();
+    this._guardarCacheLocal();
     console.log('✅ Datos cargados. Iniciando polling cada 45s...');
     this._arrancarPolling();
   },
@@ -143,6 +176,7 @@ window.DB = {
         }));
 
         this._ultimaSync = ahora;
+        this._guardarCacheLocal();
 
         if (huboCambios) {
           console.log('🔄 Datos actualizados (polling)');
