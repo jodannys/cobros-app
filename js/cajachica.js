@@ -48,13 +48,24 @@ window.getCajaChicaDelDia = function (cobradorId, fecha) {
     .reduce((s, m) => s + (Number(m.monto) || 0), 0);
 
   // Ajustes negativos del día (bajas de pago, eliminación de créditos, etc.)
-  const ajustesHoy = movimientos
-    .filter(m =>
-      m.cobradorId === cobradorId &&
-      m.fecha === fecha &&
-      m.tipo === 'gasto_cobrador'
-    )
-    .reduce((s, m) => s + (Number(m.monto) || 0), 0);
+  const ajustesDelDia = movimientos.filter(m =>
+    m.cobradorId === cobradorId &&
+    m.fecha === fecha &&
+    m.tipo === 'gasto_cobrador'
+  );
+  const ajustesHoy = ajustesDelDia.reduce((s, m) => s + (Number(m.monto) || 0), 0);
+
+  // Gastos visibles = gastos normales + ajustes del sistema
+  const gastosUnificados = [
+    ...gastosDelDia,
+    ...ajustesDelDia.map(m => ({
+      id: m.id,
+      descripcion: `⚙️ ${m.descripcion || 'Ajuste sistema'}`,
+      monto: m.monto,
+      fecha: m.fecha,
+      _esAjuste: true
+    }))
+  ];
 
   // 6. SALDO FINAL
   const saldo = cajaInicial + cobrosDelDia - totalPrestadoHoy - totalGastos - entregadoHoy - ajustesHoy;
@@ -64,11 +75,11 @@ window.getCajaChicaDelDia = function (cobradorId, fecha) {
     arrastreAnterior,
     enviadoHoy,
     cobrosDelDia,
-    totalGastos,
+    totalGastos: totalGastos + ajustesHoy,
     totalPrestadoHoy,
-    entregadoHoy, // Añadido para que puedas verlo en el objeto si quieres
+    entregadoHoy,
     saldo,
-    gastos: gastosDelDia
+    gastos: gastosUnificados
   };
 };
 // ── Render panel caja chica (cobrador) ────────────────────────────
