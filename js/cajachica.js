@@ -38,6 +38,13 @@ window.getCajaChicaDelDia = function (cobradorId, fecha) {
   });
   const totalPrestadoHoy = prestamosHoy.reduce((s, cr) => s + Number(cr.monto), 0);
 
+  // Seguros del día
+  const segurosDelDia = creditos.filter(cr => {
+    const cliente = clientes.find(c => c.id === cr.clienteId);
+    return cr.fechaInicio === fecha && cliente?.cobradorId === cobradorId && cr.seguro && cr.montoSeguro > 0;
+  });
+  const totalSeguros = segurosDelDia.reduce((s, cr) => s + Number(cr.montoSeguro || 0), 0);
+
   // 5. Restar lo que el cobrador DEVOLVIÓ al Admin hoy
   const entregadoHoy = movimientos
     .filter(m =>
@@ -77,6 +84,8 @@ window.getCajaChicaDelDia = function (cobradorId, fecha) {
     cobrosDelDia,
     totalGastos: totalGastos + ajustesHoy,
     totalPrestadoHoy,
+    totalSeguros,
+    segurosDelDia,
     entregadoHoy,
     saldo,
     gastos: gastosUnificados

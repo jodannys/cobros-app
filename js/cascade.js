@@ -98,17 +98,22 @@ window.eliminarCobradorCascade = async function (cobradorId) {
 
   await _borrarLote('gastos', gastos);
 
+  // Eliminar cada cliente en cascada (créditos, pagos, ajustes contables)
   for (const c of clientes) {
-    await DB.update('clientes', c.id, { cobradorId: null });
-    c.cobradorId = null;
+    await eliminarClienteCascade(c.id);
   }
+
+  // Limpiar movimientos_cartera del cobrador
+  const movsDelCobrador = (DB._cache['movimientos_cartera'] || []).filter(m => m.cobradorId === cobradorId);
+  await _borrarLote('movimientos_cartera', movsDelCobrador);
 
   await DB.delete('users', cobradorId);
 
-  DB._cache['gastos'] = (DB._cache['gastos'] || []).filter(x => x.cobradorId !== cobradorId);
-  DB._cache['users']  = (DB._cache['users']  || []).filter(x => x.id !== cobradorId);
+  DB._cache['gastos']               = (DB._cache['gastos']               || []).filter(x => x.cobradorId !== cobradorId);
+  DB._cache['movimientos_cartera']  = (DB._cache['movimientos_cartera']  || []).filter(x => x.cobradorId !== cobradorId);
+  DB._cache['users']                = (DB._cache['users']                || []).filter(x => x.id !== cobradorId);
 
-  console.log(`✅ Cobrador ${cobradorId} eliminado.`);
+  console.log(`✅ Cobrador ${cobradorId} eliminado con todos sus datos.`);
 };
 
 // ============================================================
@@ -127,12 +132,11 @@ window.limpiarHuerfanos = async function () {
 
   let borrados = 0;
 
-  for (const p of pagos.filter(x => !clienteIds.has(x.clienteId))) {
-    await DB.delete('pagos', p.id); borrados++;
-  }
-  for (const p of pagos.filter(x => x.creditoId && !creditoIds.has(x.creditoId))) {
-    await DB.delete('pagos', p.id); borrados++;
-  }
+  const pagosHuerfanos = pagos.filter(x =>
+    !clienteIds.has(x.clienteId) || (x.creditoId && !creditoIds.has(x.creditoId))
+  );
+  await _marcarEliminados(pagosHuerfanos);
+  borrados += pagosHuerfanos.length;
   for (const cr of creditos.filter(x => !clienteIds.has(x.clienteId))) {
     await DB.delete('creditos', cr.id); borrados++;
   }

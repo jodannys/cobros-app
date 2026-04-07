@@ -61,7 +61,7 @@ window.toggleHistorial = function () {
 
 window.renderCreditoCard = function (cr) {
   const pagos = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id && !p.eliminado);
-  const totalPagado = pagos.reduce((s, p) => s + p.monto, 0);
+  const totalPagado = pagos.reduce((s, p) => s + (Number(p.monto) || 0), 0);
   const saldo = Math.max(0, cr.total - totalPagado);
   const pagadoReal = saldo <= 0;
   const progreso = Math.min(100, Math.round((totalPagado / cr.total) * 100));
@@ -381,7 +381,7 @@ window.guardarCredito = async function () {
     if (monto <= 0 || !fechaInicio) { alert('Datos incompletos'); return; }
 
     const total = monto * (1 + pctInteres);
-    const cuotaDiaria = total / diasTotal;
+    const cuotaDiaria = Math.round((total / diasTotal) * 100) / 100;
     const fechaFin = sumarDiasHabiles(fechaInicio, diasTotal);
 
     const seguroActivo = state._crSeguro !== false;
@@ -467,6 +467,17 @@ window.eliminarCredito = async function (crId) {
       await DB.set('movimientos_cartera', idAdmin, ajusteAdmin);
     }
 
+    // 4. Quitar cuotas ya cobradas de la mochila del cobrador
+    if (totalPagado > 0 && cobradorId) {
+      const idCob = genId();
+      await DB.set('movimientos_cartera', idCob, {
+        id: idCob, tipo: 'gasto_cobrador', monto: totalPagado,
+        descripcion: 'Baja crédito',
+        fecha: fechaAjuste, cobradorId,
+        registradoPor: state.currentUser.id
+      });
+    }
+
     showToast('✅ Crédito eliminado y caja ajustada');
     render();
   } catch (e) {
@@ -481,7 +492,7 @@ window.cerrarCredito = async function (crId) {
   if (!cr) return;
 
   const pagos = (DB._cache['pagos'] || []).filter(p => p.creditoId === crId && !p.eliminado);
-  const totalPagado = pagos.reduce((s, p) => s + p.monto, 0);
+  const totalPagado = pagos.reduce((s, p) => s + (Number(p.monto) || 0), 0);
   const saldo = cr.total - totalPagado;
 
   if (saldo > 0) {

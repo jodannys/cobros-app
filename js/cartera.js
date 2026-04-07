@@ -118,7 +118,7 @@ window.renderPanelCartera = function () {
   const pendientes = getDepositosPendientes();
   const cobradores = (DB._cache['users'] || []).filter(u => u.role === 'cobrador');
   const movs = (DB._cache['movimientos_cartera'] || [])
-    .slice().sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 5);
+    .slice().sort((a, b) => (b.fecha || '').localeCompare(a.fecha || '')).slice(0, 5);
   const saldoOk = saldo >= 0;
   const menuAbierto = state._menuCarteraAbierto || false;
   const mostrarMovs = state._verMovsCartera || false;
