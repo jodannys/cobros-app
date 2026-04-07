@@ -117,13 +117,18 @@ window.guardarPago = async function () {
     let aplicadoMora = Math.min(monto, moraActual);
     let aplicadoSaldo = Math.min(monto - aplicadoMora, saldoRestante);
 
+    const clienteDePago = (DB._cache['clientes'] || []).find(c => c.id === cr.clienteId);
+    const cobradorDelPago = state.currentUser.role === 'admin'
+      ? (clienteDePago?.cobradorId || state.currentUser.id)
+      : state.currentUser.id;
+
     const id = genId();
     const nuevoPago = {
       id,
       creditoId: cr.id,
       clienteId: cr.clienteId,
       registradoPor: state.currentUser.id,
-      cobradorId: state.currentUser.role === 'admin' ? (cr.cobradorId || state.currentUser.id) : state.currentUser.id,
+      cobradorId: cobradorDelPago,
       monto,
       aplicadoSaldo,
       aplicadoMora,
