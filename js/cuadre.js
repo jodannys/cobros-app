@@ -545,108 +545,120 @@ window.renderCuadre = function () {
         ${state.rutaActiva ? '⏸️ Pausar' : '▶️ Empezar Ruta'}
       </button>
     </div>
-    <!-- CLIENTES POR COBRAR -->
-    <div class="card" style="margin-bottom:12px; padding:0; overflow:hidden">
-
-      <!-- Encabezado -->
-      <div style="padding:14px 16px; border-bottom:1px solid var(--border);
-                  display:flex; justify-content:space-between; align-items:center">
-        <div style="display:flex; align-items:center; gap:8px">
-          <div class="card-title" style="margin:0">Clientes por Cobrar</div>
-          ${indicadorGPS}
-        </div>
-        <span style="font-size:10.5px; background:var(--bg); padding:3px 10px;
-                     border-radius:20px; color:var(--muted); font-weight:700">
-          ${clientesPendientes.length} restantes
-        </span>
-      </div>
-
-      <!-- Lista -->
-      <div style="padding:0 16px 8px">
-        ${clientesPendientes.length === 0
-      ? `<div style="text-align:center; padding:28px 0">
-               <div style="font-size:28px; margin-bottom:8px">✅</div>
-               <p style="color:#16a34a; font-weight:700; margin:0; font-size:13.5px">¡Ruta completada!</p>
-             </div>`
-      : clientesPendientes.map(d => {
-        const dist = state.miUbicacion
-          ? calcularDistancia(
-            state.miUbicacion.lat, state.miUbicacion.lng,
-            d.cliente?.lat, d.cliente?.lng)
-          : null;
-        const distLabel = dist !== null ? _fmtDistancia(dist) : null;
-
-        return `
-              <div style="display:flex; justify-content:space-between; align-items:center;
-                          padding:11px 0; border-bottom:1px solid var(--border)">
-                <div>
-                  <div style="font-weight:700; font-size:14px; color:var(--text)">
-                    ${d.cliente?.nombre || 'Sin nombre'}
-                  </div>
-                  <div style="font-size:11.5px; color:var(--muted); margin-top:2px;
-                              display:flex; align-items:center; gap:6px; flex-wrap:wrap">
-                    ${distLabel ? `
-                      <span style="background:#eff6ff; color:#1d4ed8; font-size:10px;
-                                   font-weight:700; padding:1px 6px; border-radius:4px">
-                        📍 a ${distLabel}
-                      </span>` : ''}
-                    ${d.deudaAcumulada > 0.5 ? `
-  <span style="background:#fff1f2; color:#9f1239; font-size:10px;
-               font-weight:700; padding:1px 6px; border-radius:4px">
-    ⚠️ Debe ${formatMoney(d.deudaAcumulada)}
-  </span>` : ''}
-                  </div>
-                </div>
-                <button
-                  onclick="if(this.getAttribute('data-loading')) return;
-                           this.setAttribute('data-loading','true');
-                           this.style.opacity='0.5';
-                           pagoRapido('${d.cr.id}');"
-                  style="cursor:pointer; border:none; padding:0; background:none; outline:none">
-                  <span style="font-size:10.5px; font-weight:700; padding:5px 12px; border-radius:6px;
-                               background:#fff1f2; color:#9f1239; display:inline-block; white-space:nowrap">
-                    ⏳ ${formatMoney(d.cuota)}
-                  </span>
-                </button>
-              </div>`;
-      }).join('')}
-      </div>
+   <!-- CLIENTES POR COBRAR -->
+<div class="card" style="margin-bottom:12px; padding:0; overflow:hidden">
+  <div
+    onclick="state._clientesPendientesOpen = !state._clientesPendientesOpen; render()"
+    style="padding:14px 16px; border-bottom:1px solid var(--border);
+           display:flex; justify-content:space-between; align-items:center; cursor:pointer;
+           user-select:none">
+    <div style="display:flex; align-items:center; gap:8px">
+      <div class="card-title" style="margin:0">Clientes por Cobrar</div>
+      ${indicadorGPS}
     </div>
+    <div style="display:flex; align-items:center; gap:8px">
+      <span style="font-size:10.5px; background:var(--bg); padding:3px 10px;
+                   border-radius:20px; color:var(--muted); font-weight:700">
+        ${clientesPendientes.length} restantes
+      </span>
+      <span style="font-size:12px; color:var(--muted)">
+        ${state._clientesPendientesOpen ? '▲' : '▼'}
+      </span>
+    </div>
+  </div>
+
+  ${state._clientesPendientesOpen ? `
+  <div style="padding:0 16px 8px">
+    ${clientesPendientes.length === 0
+        ? `<div style="text-align:center; padding:28px 0">
+           <div style="font-size:28px; margin-bottom:8px">✅</div>
+           <p style="color:#16a34a; font-weight:700; margin:0; font-size:13.5px">¡Ruta completada!</p>
+         </div>`
+        : clientesPendientes.map(d => {
+          const dist = state.miUbicacion
+            ? calcularDistancia(state.miUbicacion.lat, state.miUbicacion.lng, d.cliente?.lat, d.cliente?.lng)
+            : null;
+          const distLabel = dist !== null ? _fmtDistancia(dist) : null;
+          return `
+            <div style="display:flex; justify-content:space-between; align-items:center;
+                        padding:11px 0; border-bottom:1px solid var(--border)">
+              <div>
+                <div style="font-weight:700; font-size:14px; color:var(--text)">
+                  ${d.cliente?.nombre || 'Sin nombre'}
+                </div>
+                <div style="font-size:11.5px; color:var(--muted); margin-top:2px;
+                            display:flex; align-items:center; gap:6px; flex-wrap:wrap">
+                  ${distLabel ? `
+                    <span style="background:#eff6ff; color:#1d4ed8; font-size:10px;
+                                 font-weight:700; padding:1px 6px; border-radius:4px">
+                      📍 a ${distLabel}
+                    </span>` : ''}
+                  ${d.deudaAcumulada > 0.5 ? `
+                    <span style="background:#fff1f2; color:#9f1239; font-size:10px;
+                                 font-weight:700; padding:1px 6px; border-radius:4px">
+                      ⚠️ Debe ${formatMoney(d.deudaAcumulada)}
+                    </span>` : ''}
+                </div>
+              </div>
+              <button
+                onclick="if(this.getAttribute('data-loading')) return;
+                         this.setAttribute('data-loading','true');
+                         this.style.opacity='0.5';
+                         pagoRapido('${d.cr.id}');"
+                style="cursor:pointer; border:none; padding:0; background:none; outline:none">
+                <span style="font-size:10.5px; font-weight:700; padding:5px 12px; border-radius:6px;
+                             background:#fff1f2; color:#9f1239; display:inline-block; white-space:nowrap">
+                  ⏳ ${formatMoney(d.cuota)}
+                </span>
+              </button>
+            </div>`;
+        }).join('')}
+  </div>` : ''}
+</div>
 
     <!-- COBROS EXTRA (créditos vencidos/inactivos) -->
-    ${meta.cobrosExtra && meta.cobrosExtra.length > 0 ? `
-    <div class="card" style="margin-bottom:12px; padding:0; overflow:hidden; border:1.5px solid #fde68a">
-      <div style="padding:12px 16px; background:#fffbeb; border-bottom:1px solid #fde68a;
-                  display:flex; justify-content:space-between; align-items:center">
-        <div style="font-size:11px; font-weight:700; color:#92400e; text-transform:uppercase; letter-spacing:0.5px">
-          📋 Cobros extra
+   ${meta.cobrosExtra && meta.cobrosExtra.length > 0 ? `
+<div class="card" style="margin-bottom:12px; padding:0; overflow:hidden; border:1.5px solid #fde68a">
+  <div
+    onclick="state._cobrosExtraOpen = !state._cobrosExtraOpen; render()"
+    style="padding:12px 16px; background:#fffbeb; border-bottom:1px solid #fde68a;
+           display:flex; justify-content:space-between; align-items:center; cursor:pointer;
+           user-select:none">
+    <div style="font-size:11px; font-weight:700; color:#92400e; text-transform:uppercase; letter-spacing:0.5px">
+      📋 Cobros extra
+    </div>
+    <div style="display:flex; align-items:center; gap:8px">
+      <span style="font-size:11px; font-weight:800; color:#92400e">
+        ${formatMoney(meta.cobrosExtra.reduce((s, x) => s + Number(x.pago.monto), 0))}
+      </span>
+      <span style="font-size:12px; color:#92400e">
+        ${state._cobrosExtraOpen ? '▲' : '▼'}
+      </span>
+    </div>
+  </div>
+  ${state._cobrosExtraOpen ? `
+  <div style="padding:0 16px 8px; background:white">
+    ${meta.cobrosExtra.map(x => `
+      <div style="display:flex; justify-content:space-between; align-items:center;
+                  padding:10px 0; border-bottom:1px solid var(--border)">
+        <div>
+          <div style="font-weight:700; font-size:14px; color:var(--text)">
+            ${x.cliente?.nombre || '—'}
+          </div>
+          <div style="display:flex; gap:6px; margin-top:3px; flex-wrap:wrap">
+            <span style="background:#fff1f2; color:#9f1239; font-size:10px;
+                         font-weight:700; padding:1px 7px; border-radius:4px">
+              🔴 Crédito cerrado
+            </span>
+            <span style="font-size:11px; color:var(--muted)">${x.pago.tipo || 'efectivo'}</span>
+          </div>
         </div>
-        <span style="font-size:11px; font-weight:800; color:#92400e">
-          ${formatMoney(meta.cobrosExtra.reduce((s, x) => s + Number(x.pago.monto), 0))}
-        </span>
-      </div>
-      <div style="padding:0 16px 8px; background:white">
-        ${meta.cobrosExtra.map(x => `
-          <div style="display:flex; justify-content:space-between; align-items:center;
-                      padding:10px 0; border-bottom:1px solid var(--border)">
-            <div>
-              <div style="font-weight:700; font-size:14px; color:var(--text)">
-                ${x.cliente?.nombre || '—'}
-              </div>
-              <div style="display:flex; gap:6px; margin-top:3px; flex-wrap:wrap">
-                <span style="background:#fff1f2; color:#9f1239; font-size:10px;
-                             font-weight:700; padding:1px 7px; border-radius:4px">
-                  🔴 Crédito cerrado
-                </span>
-                <span style="font-size:11px; color:var(--muted)">${x.pago.tipo || 'efectivo'}</span>
-              </div>
-            </div>
-            <div style="font-weight:800; color:#16a34a; font-size:15px">
-              +${formatMoney(x.pago.monto)}
-            </div>
-          </div>`).join('')}
-      </div>
-    </div>` : ''}
+        <div style="font-weight:800; color:#16a34a; font-size:15px">
+          +${formatMoney(x.pago.monto)}
+        </div>
+      </div>`).join('')}
+  </div>` : ''}
+</div>` : ''}
 
     <!-- NOTA DEL DÍA -->
     <div style="background:#fefce8; border-radius:10px; padding:16px; margin-bottom:12px;

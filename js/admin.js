@@ -320,39 +320,48 @@ window.renderAdminCobrador = function renderAdminCobrador() {
               </button>` : ''}`}
         </div>
 
-        ${meta.cobrosExtra && meta.cobrosExtra.length > 0 ? `
-        <div class="card" style="padding:0; overflow:hidden; border:1.5px solid #fde68a; border-radius:12px">
-          <div style="padding:12px 16px; background:#fffbeb; border-bottom:1px solid #fde68a;
-                      display:flex; justify-content:space-between; align-items:center">
-            <div style="font-size:10px; font-weight:700; color:#92400e; text-transform:uppercase; letter-spacing:0.5px">
-              📋 Cobros extra
-            </div>
-            <span style="font-size:12px; font-weight:800; color:#92400e">
-              ${formatMoney(meta.cobrosExtra.reduce((s, x) => s + Number(x.pago.monto), 0))}
+       ${meta.cobrosExtra && meta.cobrosExtra.length > 0 ? `
+<div class="card" style="padding:0; overflow:hidden; border:1.5px solid #fde68a; border-radius:12px">
+  <div
+    onclick="state['_cobrosExtraAdminOpen_${cobrador.id}']=!state['_cobrosExtraAdminOpen_${cobrador.id}']; render()"
+    style="padding:12px 16px; background:#fffbeb; border-bottom:1px solid #fde68a;
+           display:flex; justify-content:space-between; align-items:center;
+           cursor:pointer; user-select:none">
+    <div style="font-size:10px; font-weight:700; color:#92400e; text-transform:uppercase; letter-spacing:0.5px">
+      📋 Cobros extra
+    </div>
+    <div style="display:flex; align-items:center; gap:8px">
+      <span style="font-size:12px; font-weight:800; color:#92400e">
+        ${formatMoney(meta.cobrosExtra.reduce((s, x) => s + Number(x.pago.monto), 0))}
+      </span>
+      <span style="font-size:12px; color:#92400e">
+        ${state[`_cobrosExtraAdminOpen_${cobrador.id}`] ? '▲' : '▼'}
+      </span>
+    </div>
+  </div>
+  ${state[`_cobrosExtraAdminOpen_${cobrador.id}`] ? `
+  <div style="padding:0 16px 8px; background:white">
+    ${meta.cobrosExtra.map(x => `
+      <div style="display:flex; justify-content:space-between; align-items:center;
+                  padding:10px 0; border-bottom:1px solid #f1f5f9">
+        <div>
+          <div style="font-size:14px; font-weight:700; color:#1e293b">
+            ${x.cliente?.nombre || '—'}
+          </div>
+          <div style="display:flex; gap:6px; margin-top:3px">
+            <span style="background:#fff1f2; color:#9f1239; font-size:10px;
+                         font-weight:700; padding:1px 7px; border-radius:4px">
+              🔴 Crédito cerrado
             </span>
+            <span style="font-size:11px; color:#94a3b8">${x.pago.tipo || 'efectivo'}</span>
           </div>
-          <div style="padding:0 16px 8px; background:white">
-            ${meta.cobrosExtra.map(x => `
-              <div style="display:flex; justify-content:space-between; align-items:center;
-                          padding:10px 0; border-bottom:1px solid #f1f5f9">
-                <div>
-                  <div style="font-size:14px; font-weight:700; color:#1e293b">
-                    ${x.cliente?.nombre || '—'}
-                  </div>
-                  <div style="display:flex; gap:6px; margin-top:3px">
-                    <span style="background:#fff1f2; color:#9f1239; font-size:10px;
-                                 font-weight:700; padding:1px 7px; border-radius:4px">
-                      🔴 Crédito cerrado
-                    </span>
-                    <span style="font-size:11px; color:#94a3b8">${x.pago.tipo || 'efectivo'}</span>
-                  </div>
-                </div>
-                <div style="font-weight:800; color:#16a34a; font-size:15px">
-                  +${formatMoney(x.pago.monto)}
-                </div>
-              </div>`).join('')}
-          </div>
-        </div>` : ''}
+        </div>
+        <div style="font-weight:800; color:#16a34a; font-size:15px">
+          +${formatMoney(x.pago.monto)}
+        </div>
+      </div>`).join('')}
+  </div>` : ''}
+</div>` : ''}
 
         <div class="card" style="padding:0; overflow:hidden; border-radius:12px">
           <!-- Header ruta -->
@@ -384,13 +393,13 @@ window.renderAdminCobrador = function renderAdminCobrador() {
           ${state[`_verRutaAdmin_${cobrador.id}`] ? `
           <div style="border-top:1px solid #f1f5f9; padding:0 16px 8px; background:white">
             ${meta.detalle.length === 0
-              ? `<div style="text-align:center; padding:20px 0; color:#94a3b8; font-size:13px">Sin clientes en ruta</div>`
-              : meta.detalle.filter(d => !d.completo).length === 0
-                ? `<div style="text-align:center; padding:20px 0">
+        ? `<div style="text-align:center; padding:20px 0; color:#94a3b8; font-size:13px">Sin clientes en ruta</div>`
+        : meta.detalle.filter(d => !d.completo).length === 0
+          ? `<div style="text-align:center; padding:20px 0">
                      <div style="font-size:22px">✅</div>
                      <div style="color:#16a34a; font-weight:700; font-size:13px; margin-top:4px">¡Ruta completada!</div>
                    </div>`
-                : meta.detalle.filter(d => !d.completo).map(d => `
+          : meta.detalle.filter(d => !d.completo).map(d => `
                   <div style="display:flex; justify-content:space-between; align-items:center;
                               padding:10px 0; border-bottom:1px solid #f8fafc">
                     <div>
@@ -412,7 +421,7 @@ window.renderAdminCobrador = function renderAdminCobrador() {
                       💰 Cobrar
                     </button>
                   </div>`).join('')
-            }
+      }
           </div>` : ''}
         </div>
 
@@ -423,25 +432,25 @@ window.renderAdminCobrador = function renderAdminCobrador() {
         </div>` : ''}
 
         <!-- CLIENTES CON FILTROS -->
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px; margin-bottom:8px">
-          <div class="card-title" style="margin:0">👥 Clientes</div>
-          <span style="font-size:11px; color:var(--muted); font-weight:600">
-            ${listaClientes.length} / ${clientes.length}
-          </span>
-        </div>
+<div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px; margin-bottom:8px">
+  <div class="card-title" style="margin:0">👥 Clientes</div>
+  <span style="font-size:11px; color:var(--muted); font-weight:600">
+    ${listaClientes.length} / ${clientes.length}
+  </span>
+</div>
 
-        <div class="filtros-scroll" style="margin-bottom:10px">
-          ${[
-      { key: 'todos', label: 'Todos' },
-      { key: 'activos', label: '✅ Activos' },
-      { key: 'atrasados', label: '🔴 Atrasados' },
-      { key: 'sin_credito', label: '🆕 Sin crédito' },
-    ].map(f => `
-            <button onclick="state['${filtroKey}']='${f.key}'; render()"
-              class="filtro-btn ${filtroAdminCob === f.key ? 'active' : ''}">
-              ${f.label}
-            </button>`).join('')}
-        </div>
+<div class="filtros-scroll" style="margin-bottom:10px">
+  ${[
+    { key: 'todos', label: 'Todos' },
+    { key: 'activos', label: '✅ Activos' },
+    { key: 'atrasados', label: '🔴 Atrasados' },
+    { key: 'sin_credito', label: '🆕 Sin crédito' },
+  ].map(f => `
+    <button onclick="state['${filtroKey}']='${f.key}'; render()"
+      class="filtro-btn ${filtroAdminCob === f.key ? 'active' : ''}">
+      ${f.label}
+    </button>`).join('')}
+</div>
 
         ${listaClientes.length === 0
       ? `<div class="empty-state" style="padding:20px 0">
