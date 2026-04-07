@@ -386,7 +386,7 @@ window.renderPanelCartera = function () {
 
 <!-- ÚLTIMOS MOVIMIENTOS -->
 <div class="card" style="margin-bottom:12px">
-  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
     <div class="card-title" style="margin:0">📒 Movimientos</div>
     <button onclick="state._verMovsCartera=!state._verMovsCartera; render()"
       style="font-size:11px; font-weight:700; background:var(--bg); border:none;
@@ -394,12 +394,23 @@ window.renderPanelCartera = function () {
       ${mostrarMovs ? 'Ver menos' : 'Ver todos'}
     </button>
   </div>
-  ${movs.length === 0
+  <div style="display:flex; gap:8px; margin-bottom:12px; align-items:center">
+    <input type="date" value="${state._filtroFechaMovs || ''}"
+      onchange="state._filtroFechaMovs=this.value||null; state._verMovsCartera=true; render()"
+      style="flex:1; padding:7px 10px; border:1px solid #e2e8f0; border-radius:8px;
+             font-size:13px; font-weight:600; color:#1e293b; background:white">
+    ${state._filtroFechaMovs ? `
+    <button onclick="state._filtroFechaMovs=null; render()"
+      style="padding:7px 12px; border-radius:8px; border:1px solid #e2e8f0;
+             background:white; font-size:12px; cursor:pointer; color:#94a3b8; font-weight:700">✕</button>` : ''}
+  </div>
+  ${(() => {
+    const todos = (DB._cache['movimientos_cartera'] || []).slice().sort((a, b) => b.fecha.localeCompare(a.fecha));
+    const filtrados = state._filtroFechaMovs ? todos.filter(m => m.fecha === state._filtroFechaMovs) : todos;
+    const lista = (mostrarMovs || state._filtroFechaMovs) ? filtrados : filtrados.slice(0, 5);
+    return lista.length === 0
       ? `<div style="text-align:center; color:var(--muted); font-size:13px; padding:16px 0">Sin movimientos</div>`
-      : (mostrarMovs
-        ? (DB._cache['movimientos_cartera'] || []).slice().sort((a, b) => b.fecha.localeCompare(a.fecha))
-        : movs
-      ).map(m => {
+      : lista.map(m => {
         const cob = (DB._cache['users'] || []).find(u => u.id === m.cobradorId);
         const labels = {
           inyeccion: { icon: '➕', color: '#16a34a', label: 'Inyección' },
@@ -426,7 +437,8 @@ window.renderPanelCartera = function () {
             ${formatMoney(m.monto)}
           </div>
         </div>`;
-      }).join('')}
+      }).join('');
+  })()}
 </div>
 
 <!-- MOCHILAS -->
