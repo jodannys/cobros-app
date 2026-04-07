@@ -283,7 +283,7 @@ window.renderAdminCobrador = function renderAdminCobrador() {
           </div>
         </div>
 
-        ${_renderCajaChicaPro(caja, c)}
+        ${_renderCajaChicaPro(caja, c, fechaVer)}
 
         <div class="card" style="padding:16px; background:white; border-radius:12px">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px">

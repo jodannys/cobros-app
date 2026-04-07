@@ -201,7 +201,7 @@ window.guardarNota = async function () {
 };
 
 // ── Helper: caja chica profesional (cobrador) ─────────────────
-window._renderCajaChicaPro = function (caja, cuadre) {
+window._renderCajaChicaPro = function (caja, cuadre, fecha) {
   const saldoPositivo = caja.saldo >= 0;
   const saldoColor = saldoPositivo ? '#4ade80' : '#f87171';
 
@@ -218,7 +218,7 @@ window._renderCajaChicaPro = function (caja, cuadre) {
                     text-transform:uppercase; letter-spacing:1px">Caja Chica</div>
         <div style="font-size:11px; font-weight:600; background:rgba(255,255,255,0.08);
                     color:rgba(255,255,255,0.6); padding:3px 12px; border-radius:20px">
-          ${formatDate(today())}
+          ${formatDate(fecha || today())}
         </div>
       </div>
 
