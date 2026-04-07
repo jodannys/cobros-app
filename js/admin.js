@@ -354,17 +354,66 @@ window.renderAdminCobrador = function renderAdminCobrador() {
           </div>
         </div>` : ''}
 
-        <div class="card" style="padding:14px 16px; background:white; border-radius:12px">
-          <div style="display:flex; justify-content:space-between; align-items:center">
-            <div style="font-size:10px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.5px">
-              🗺️ Ruta del día
+        <div class="card" style="padding:0; overflow:hidden; border-radius:12px">
+          <!-- Header ruta -->
+          <div style="padding:14px 16px; display:flex; justify-content:space-between; align-items:center;
+                      cursor:pointer; background:white"
+               onclick="state['_verRutaAdmin_${cobrador.id}']=!state['_verRutaAdmin_${cobrador.id}']; render()">
+            <div style="display:flex; align-items:center; gap:8px">
+              <div style="font-size:10px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.5px">
+                ✅ Ruta del día
+              </div>
+              <span style="font-size:10px; background:#f1f5f9; padding:2px 8px; border-radius:10px;
+                           color:#64748b; font-weight:700">
+                ${meta.detalle.filter(d => !d.completo).length} pendientes
+              </span>
             </div>
-            <button onclick="abrirMapaRutaCobrador('${cobrador.id}', '${fechaVer}')"
-              style="border:none; border-radius:8px; padding:8px 16px;
-                     background:#0f172a; color:white; font-size:12px; font-weight:700; cursor:pointer">
-              Ver mapa
-            </button>
+            <div style="display:flex; align-items:center; gap:8px">
+              <button onclick="event.stopPropagation(); abrirMapaRutaCobrador('${cobrador.id}', '${fechaVer}')"
+                style="border:none; border-radius:8px; padding:6px 14px;
+                       background:#0f172a; color:white; font-size:12px; font-weight:700; cursor:pointer">
+                🗺️ Mapa
+              </button>
+              <span style="font-size:16px; color:#94a3b8">
+                ${state[`_verRutaAdmin_${cobrador.id}`] ? '▲' : '▼'}
+              </span>
+            </div>
           </div>
+
+          <!-- Lista desplegable -->
+          ${state[`_verRutaAdmin_${cobrador.id}`] ? `
+          <div style="border-top:1px solid #f1f5f9; padding:0 16px 8px; background:white">
+            ${meta.detalle.length === 0
+              ? `<div style="text-align:center; padding:20px 0; color:#94a3b8; font-size:13px">Sin clientes en ruta</div>`
+              : meta.detalle.filter(d => !d.completo).length === 0
+                ? `<div style="text-align:center; padding:20px 0">
+                     <div style="font-size:22px">✅</div>
+                     <div style="color:#16a34a; font-weight:700; font-size:13px; margin-top:4px">¡Ruta completada!</div>
+                   </div>`
+                : meta.detalle.filter(d => !d.completo).map(d => `
+                  <div style="display:flex; justify-content:space-between; align-items:center;
+                              padding:10px 0; border-bottom:1px solid #f8fafc">
+                    <div>
+                      <div style="font-size:14px; font-weight:700; color:#1e293b">
+                        ${d.cliente?.nombre || '—'}
+                      </div>
+                      <div style="display:flex; gap:6px; margin-top:3px; flex-wrap:wrap">
+                        ${d.deudaAcumulada > 0.5 ? `
+                        <span style="background:#fff1f2; color:#9f1239; font-size:10px;
+                                     font-weight:700; padding:1px 6px; border-radius:4px">
+                          ⚠️ Debe ${formatMoney(d.deudaAcumulada)}
+                        </span>` : ''}
+                        <span style="font-size:11px; color:#94a3b8">Cuota ${formatMoney(d.cuota)}</span>
+                      </div>
+                    </div>
+                    <button onclick="pagoRapido('${d.cr.id}')"
+                      style="border:none; padding:6px 14px; border-radius:8px; cursor:pointer;
+                             background:#f0fdf4; color:#16a34a; font-size:12px; font-weight:700">
+                      💰 Cobrar
+                    </button>
+                  </div>`).join('')
+            }
+          </div>` : ''}
         </div>
 
         ${c.nota ? `
