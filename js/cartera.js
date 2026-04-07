@@ -47,6 +47,10 @@ function _calcularMochila(cobradorId, fechaLimite) {
     .filter(g => g.cobradorId === cobradorId && antes(g.fecha))
     .reduce((s, g) => s + Number(g.monto || 0), 0);
 
+  const cajasAsignadas = (DB._cache['cajas'] || [])
+    .filter(c => c.cobradorId === cobradorId && antes(c.fecha))
+    .reduce((s, c) => s + Number(c.monto || 0), 0);
+
   const devuelto = movs
     .filter(m => {
       const esMio = m.cobradorId === cobradorId;
@@ -57,7 +61,7 @@ function _calcularMochila(cobradorId, fechaLimite) {
     })
     .reduce((s, m) => s + Number(m.monto || 0), 0);
 
-  return enviado + cobros + ajustesCobros + seguros - prestamos - totalGastos - devuelto;
+  return enviado + cobros + ajustesCobros + seguros + cajasAsignadas - prestamos - totalGastos - devuelto;
 }
 
 // ── CARTERA: Saldo del admin ──────────────────────────────────
