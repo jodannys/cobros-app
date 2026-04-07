@@ -224,7 +224,7 @@ window.DB = {
       if (cr.activo && (!cr.fechaFin || cr.fechaFin === 'undefined')) {
         const fInicio = new Date(cr.fechaInicio + 'T00:00:00');
         fInicio.setDate(fInicio.getDate() + Number(cr.diasTotal || 0));
-        const nuevaFechaFin = fInicio.toISOString().split('T')[0];
+        const nuevaFechaFin = fInicio.toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
         DB.update('creditos', cr.id, { fechaFin: nuevaFechaFin }).catch(e => console.error(e));
       }
 

@@ -114,7 +114,7 @@ window.diasSinPagar = function(creditoId) {
   const pagosCr = pagos.filter(p => p.creditoId === creditoId && !p.eliminado);
   if (pagosCr.length === 0) return null;
   const ultimo = pagosCr.map(p => p.fecha).sort((a, b) => b.localeCompare(a))[0];
-  const hoyStr = hoyPeru().toISOString().split('T')[0];
+  const hoyStr = today();
   return contarDiasHabiles(ultimo, hoyStr);
 };
 
@@ -173,7 +173,7 @@ window.getAlertasCreditos = function() {
 function calcularFechaFinSimple(inicio, dias) {
     const d = new Date(inicio + 'T00:00:00');
     d.setDate(d.getDate() + Number(dias));
-    return d.toISOString().split('T')[0];
+    return d.toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
 }
 
 window.obtenerDatosMora = function(credito, pagos) {
@@ -198,8 +198,8 @@ window.obtenerDatosMora = function(credito, pagos) {
     if (fechas.length > 0) fechaRef = fechas.sort((a, b) => b.localeCompare(a))[0];
   }
 
-  const finStr = fFin.toISOString().split('T')[0];
-  const hoyStr = hoy.toISOString().split('T')[0];
+  const finStr = fFin.toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
+  const hoyStr = today();
 
   const esVencido = hoy > fFin;
   const diasDeMora = esVencido ? contarDiasHabiles(finStr, hoyStr) : 0;
