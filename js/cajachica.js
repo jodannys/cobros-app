@@ -38,8 +38,7 @@ window.getCajaChicaDelDia = function (cobradorId, fecha) {
   });
   const totalPrestadoHoy = prestamosHoy.reduce((s, cr) => s + Number(cr.monto), 0);
 
-  // 5. 🔥 EL CAMBIO CLAVE: Restar lo que el cobrador DEVOLVIÓ al Admin hoy
-  // Solo restamos si ya le diste al botón de "Confirmar" (confirmado: true)
+  // 5. Restar lo que el cobrador DEVOLVIÓ al Admin hoy
   const entregadoHoy = movimientos
     .filter(m =>
       m.cobradorId === cobradorId &&
@@ -48,9 +47,17 @@ window.getCajaChicaDelDia = function (cobradorId, fecha) {
     )
     .reduce((s, m) => s + (Number(m.monto) || 0), 0);
 
+  // Ajustes negativos del día (bajas de pago, eliminación de créditos, etc.)
+  const ajustesHoy = movimientos
+    .filter(m =>
+      m.cobradorId === cobradorId &&
+      m.fecha === fecha &&
+      m.tipo === 'gasto_cobrador'
+    )
+    .reduce((s, m) => s + (Number(m.monto) || 0), 0);
 
-  // 6. SALDO FINAL (Ahora restando entregadoHoy)
-  const saldo = cajaInicial + cobrosDelDia - totalPrestadoHoy - totalGastos - entregadoHoy;
+  // 6. SALDO FINAL
+  const saldo = cajaInicial + cobrosDelDia - totalPrestadoHoy - totalGastos - entregadoHoy - ajustesHoy;
 
   return {
     cajaInicial,
