@@ -162,13 +162,34 @@ window.calcularMetaReal = function (cobradorId, fecha) {
     });
   });
 
+  // ── Cobros extra: pagos de hoy de créditos inactivos/vencidos ──
+  const creditosInactivosIds = new Set(
+    creditos
+      .filter(cr => misClientesIds.includes(cr.clienteId) && cr.activo === false)
+      .map(cr => cr.id)
+  );
+  const cobrosExtra = (pagos
+    .filter(p =>
+      !p.eliminado &&
+      p.fecha === fecha &&
+      p.cobradorId === cobradorId &&
+      creditosInactivosIds.has(p.creditoId)
+    )
+    .map(p => {
+      const cr = creditos.find(c => c.id === p.creditoId);
+      const cliente = clientes.find(c => c.id === p.clienteId);
+      return { pago: p, cr, cliente };
+    })
+  );
+
   return {
     metaTotal: Math.round(metaTotal * 100) / 100,
     pagadoHoy: Math.round(pagadoHoy * 100) / 100,
     pendiente: Math.round(pendiente * 100) / 100,
     detalle,
     totalVencidos: Math.round(totalVencidos * 100) / 100,
-    clientesVencidos
+    clientesVencidos,
+    cobrosExtra
   };
 };
 
@@ -591,6 +612,41 @@ window.renderCuadre = function () {
       }).join('')}
       </div>
     </div>
+
+    <!-- COBROS EXTRA (créditos vencidos/inactivos) -->
+    ${meta.cobrosExtra && meta.cobrosExtra.length > 0 ? `
+    <div class="card" style="margin-bottom:12px; padding:0; overflow:hidden; border:1.5px solid #fde68a">
+      <div style="padding:12px 16px; background:#fffbeb; border-bottom:1px solid #fde68a;
+                  display:flex; justify-content:space-between; align-items:center">
+        <div style="font-size:11px; font-weight:700; color:#92400e; text-transform:uppercase; letter-spacing:0.5px">
+          📋 Cobros extra
+        </div>
+        <span style="font-size:11px; font-weight:800; color:#92400e">
+          ${formatMoney(meta.cobrosExtra.reduce((s, x) => s + Number(x.pago.monto), 0))}
+        </span>
+      </div>
+      <div style="padding:0 16px 8px; background:white">
+        ${meta.cobrosExtra.map(x => `
+          <div style="display:flex; justify-content:space-between; align-items:center;
+                      padding:10px 0; border-bottom:1px solid var(--border)">
+            <div>
+              <div style="font-weight:700; font-size:14px; color:var(--text)">
+                ${x.cliente?.nombre || '—'}
+              </div>
+              <div style="display:flex; gap:6px; margin-top:3px; flex-wrap:wrap">
+                <span style="background:#fff1f2; color:#9f1239; font-size:10px;
+                             font-weight:700; padding:1px 7px; border-radius:4px">
+                  🔴 Crédito cerrado
+                </span>
+                <span style="font-size:11px; color:var(--muted)">${x.pago.tipo || 'efectivo'}</span>
+              </div>
+            </div>
+            <div style="font-weight:800; color:#16a34a; font-size:15px">
+              +${formatMoney(x.pago.monto)}
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>` : ''}
 
     <!-- NOTA DEL DÍA -->
     <div style="background:#fefce8; border-radius:10px; padding:16px; margin-bottom:12px;
