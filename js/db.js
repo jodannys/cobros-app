@@ -27,7 +27,7 @@ function _renderSeguro() {
 window.DB = {
   _isLoading: false,
   _pollingTimer: null,
-  _INTERVALO_POLLING: 45000, // 45 segundos
+  _INTERVALO_POLLING: 120000, // 2 minutos
   _ultimaSync: null,
 
   _cache: {
@@ -88,7 +88,7 @@ window.DB = {
 
   // ── Persistencia de cache en localStorage ────────────────
   _CACHE_KEY: 'cobrosapp_cache_v1',
-  _CACHE_TTL: 5 * 60 * 1000, // 5 minutos
+  _CACHE_TTL: 10 * 60 * 1000, // 10 minutos
 
   _guardarCacheLocal() {
     try {
