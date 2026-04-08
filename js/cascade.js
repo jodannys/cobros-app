@@ -66,6 +66,14 @@ window.eliminarClienteCascade = async function (clienteId) {
 
   // Borrar créditos y cliente
   await _borrarLote('creditos', creditos);
+  // Eliminar foto de Storage si existe
+  if (cliente?.foto && cliente.foto.includes('firebasestorage')) {
+    try {
+      const ref = firebase.storage().ref(`clientes/${clienteId}.jpg`);
+      await ref.delete();
+    } catch (e) {}
+  }
+
   await DB.delete('clientes', clienteId);
 
   // Actualizar cache
