@@ -83,11 +83,13 @@ window.renderClientes = function () {
           placeholder="Buscar por nombre, DNI o negocio..."
           value="${state.search || ''}"
           oninput="updateSearch(this.value)">
-        ${state.search ? `
-          <span onclick="updateSearch(''); render()"
-            style="position:absolute; right:14px; cursor:pointer; color:#a0aec0; font-size:13px; font-weight:700; line-height:1">
-            ✕
-          </span>` : ''}
+        <span id="btn-clear-search"
+  onclick="updateSearch(''); document.getElementById('search-clientes').value=''; render()"
+  style="position:absolute; right:14px; cursor:pointer; color:#a0aec0;
+         font-size:13px; font-weight:700; line-height:1;
+         display:${state.search ? 'block' : 'none'}">
+  ✕
+</span>
       </div>
 
       <div class="filtros-scroll">
@@ -400,6 +402,10 @@ window.setFiltroClientes = function (f) {
 window.updateSearch = function (v) {
   state.search = v;
   _renderListaClientes();
+
+  // ← NUEVO: mostrar/ocultar X sin redibujar todo
+  const btn = document.getElementById('btn-clear-search');
+  if (btn) btn.style.display = v ? 'block' : 'none';
 };
 
 window._renderListaClientes = function () {

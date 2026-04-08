@@ -218,16 +218,22 @@ window.renderHistorial = function renderHistorial() {
         </svg>
       </span>
       <input
-        style="width:100%; border:none; background:#ffffff; border-radius:20px;
-               padding:9px 36px 9px 40px; font-size:13.5px; color:#2d3748;
-               font-weight:500; outline:none; box-shadow:0 2px 8px rgba(0,0,0,0.08)"
-        placeholder="Buscar cliente por nombre..."
-        value="${filtroBusqueda}"
-        oninput="state._hBusqueda=this.value; renderBusquedaClientes()">
-      ${filtroBusqueda ? `
-        <span onclick="state._hBusqueda=''; render()"
-          style="position:absolute; right:14px; cursor:pointer; color:#a0aec0;
-                 font-size:13px; font-weight:700; line-height:1">✕</span>` : ''}
+  style="width:100%; border:none; background:#ffffff; border-radius:20px;
+         padding:9px 36px 9px 40px; font-size:13.5px; color:#2d3748;
+         font-weight:500; outline:none; box-shadow:0 2px 8px rgba(0,0,0,0.08)"
+  placeholder="Buscar cliente por nombre..."
+  value="${filtroBusqueda}"
+  oninput="state._hBusqueda=this.value; renderBusquedaClientes();
+           document.getElementById('btn-clear-historial').style.display=this.value?'block':'none';">
+<span id="btn-clear-historial"
+  onclick="state._hBusqueda=''; renderBusquedaClientes();
+           document.getElementById('btn-clear-historial').style.display='none';
+           document.querySelector('#busquedaResultados').innerHTML='';"
+  style="position:absolute; right:14px; cursor:pointer; color:#a0aec0;
+         font-size:13px; font-weight:700; line-height:1;
+         display:${filtroBusqueda ? 'block' : 'none'}">
+  ✕
+</span>
     </div>
     <div id="busquedaResultados" style="margin-bottom:${filtroBusqueda ? '14px' : '0'}"></div>
 
