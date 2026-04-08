@@ -197,7 +197,7 @@ window._renderClienteItem = function (c, creditos, users, pagos, isAdmin) {
 
   return `
 <div class="client-item" onclick="selectClient('${c.id}')"
-  style="position:relative; background:white; display:flex; align-items:flex-start; gap:10px">
+  style="position:relative; background:white; display:flex; align-items:center; gap:10px">
 
     <div class="client-avatar" style="flex-shrink:0; width:42px; height:42px; font-size:16px">
       ${c.nombre.charAt(0)}
