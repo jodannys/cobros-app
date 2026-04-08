@@ -59,8 +59,8 @@ window.renderClientes = function () {
  <div class="topbar">
   <h2>Clientes</h2>
   <div style="display:flex; align-items:center; gap:8px;">
-    <div class="topbar-user">
-      <strong>${state.currentUser.nombre}</strong>
+  <div class="topbar-user">
+  <strong>${state.currentUser.nombre}</strong>
       <span>${isAdmin ? 'Administrador' : 'Cobrador'}</span>
     </div>
     ${isAdmin ? renderBtnAyudaAdmin() : renderBtnAyudaCobrador()}
@@ -196,15 +196,21 @@ window._renderClienteItem = function (c, creditos, users, pagos, isAdmin) {
   const tieneTelefono = c.telefono && c.telefono.trim() !== "";
 
   return `
-  <div class="client-item" onclick="selectClient('${c.id}')"
-    style="position:relative; background:white">
+<div class="client-item" onclick="selectClient('${c.id}')"
+  style="position:relative; background:white; display:flex; align-items:flex-start; gap:10px">
 
     <div class="client-avatar" style="flex-shrink:0; width:42px; height:42px; font-size:16px">
       ${c.nombre.charAt(0)}
     </div>
 
-    <div class="client-info" style="flex:1; min-width:0">
-      <div class="client-name" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis">
+   <div class="client-info" style="flex:1; min-width:0; display:flex; flex-direction:column">
+    <div class="client-name" style="
+  white-space:normal;
+  overflow:visible;
+  text-overflow:unset;
+  line-height:1.2;
+  word-break:break-word;
+">
         ${c.nombre}
       </div>
       <div style="font-size:11.5px; color:var(--muted); display:flex; flex-direction:column; gap:1px; margin-top:2px">
@@ -604,6 +610,7 @@ window.enviarEstadoWhatsApp = function (clienteId) {
 };
 
 window.selectClient = function (id) {
+  state._scrollClientes = window.scrollY; // ← guardar antes de entrar
   state.selectedClient = (DB._cache['clientes'] || []).find(x => x.id === id);
   render();
   const c = state.selectedClient;
@@ -614,6 +621,9 @@ window.backFromClient = function () {
   state.selectedClient = null;
   state.search = "";
   render();
+  const scroll = state._scrollClientes || 0; // ← restaurar al volver
+  window.scrollTo({ top: scroll, behavior: 'instant' });
+  state._scrollClientes = 0;
 };
 
 // ============================================================

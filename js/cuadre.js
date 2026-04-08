@@ -1,39 +1,7 @@
 // ══════════════════════════════════════════════════════════════
 // GESTIÓN DE CUADRE Y RENDIMIENTO
 // ══════════════════════════════════════════════════════════════
-
-window.getCuadreDelDia = function (cobradorId, fecha) {
-  const pagos = DB._cache['pagos'] || [];
-  const creditos = DB._cache['creditos'] || [];
-  const clientes = DB._cache['clientes'] || [];
-
-  const pagosDia = pagos.filter(p => p.cobradorId === cobradorId && p.fecha === fecha && !p.eliminado);
-
-  let yape = pagosDia.filter(p => p.tipo === 'yape').reduce((s, p) => s + Number(p.monto), 0);
-  let efectivo = pagosDia.filter(p => p.tipo === 'efectivo').reduce((s, p) => s + Number(p.monto), 0);
-  let transferencia = pagosDia.filter(p => p.tipo === 'transferencia').reduce((s, p) => s + Number(p.monto), 0);
-
-  const misClientesIds = clientes.filter(c => c.cobradorId === cobradorId).map(c => c.id);
-  const prestamosHoy = creditos.filter(cr => cr.fechaInicio === fecha && misClientesIds.includes(cr.clienteId));
-
-  prestamosHoy.forEach(cr => {
-    const montoSeguro = Number(cr.montoSeguro || 0);
-    const metodo = (cr.metodoPago || 'Efectivo').toLowerCase();
-    if (metodo.includes('yape')) yape += montoSeguro;
-    else if (metodo.includes('transferencia')) transferencia += montoSeguro;
-    else efectivo += montoSeguro;
-  });
-
-  const notas = DB._cache['notas_cuadre'] || [];
-  const notaObj = notas.find(n => n.cobradorId === cobradorId && n.fecha === fecha);
-
-  return {
-    yape, efectivo, transferencia,
-    total: yape + efectivo + transferencia,
-    nota: notaObj ? notaObj.nota : '',
-    pagos: pagosDia
-  };
-};
+window.getCuadreDelDia = function (cobradorId, fecha) { const pagos = DB._cache['pagos'] || []; const creditos = DB._cache['creditos'] || []; const clientes = DB._cache['clientes'] || []; const pagosDia = pagos.filter(p => p.cobradorId === cobradorId && p.fecha === fecha && !p.eliminado); let yape = pagosDia.filter(p => p.tipo === 'yape').reduce((s, p) => s + Number(p.monto), 0); let efectivo = pagosDia.filter(p => p.tipo === 'efectivo').reduce((s, p) => s + Number(p.monto), 0); let transferencia = pagosDia.filter(p => p.tipo === 'transferencia').reduce((s, p) => s + Number(p.monto), 0); const misClientesIds = clientes.filter(c => c.cobradorId === cobradorId).map(c => c.id); const prestamosHoy = creditos.filter(cr => cr.fechaInicio === fecha && misClientesIds.includes(cr.clienteId)); prestamosHoy.forEach(cr => { const montoSeguro = Number(cr.montoSeguro || 0); const metodo = (cr.metodoPago || 'Efectivo').toLowerCase(); if (metodo.includes('yape')) yape += montoSeguro; else if (metodo.includes('transferencia')) transferencia += montoSeguro; else efectivo += montoSeguro; }); const notas = DB._cache['notas_cuadre'] || []; const notaObj = notas.find(n => n.cobradorId === cobradorId && n.fecha === fecha); return { yape, efectivo, transferencia, total: yape + efectivo + transferencia, nota: notaObj ? notaObj.nota : '', pagos: pagosDia }; };
 
 window.calcularMetaReal = function (cobradorId, fecha) {
   const creditos = DB._cache['creditos'] || [];
@@ -46,8 +14,13 @@ window.calcularMetaReal = function (cobradorId, fecha) {
 
   if (!esDiaLaboral(fecha)) {
     return {
-      metaTotal: 0, pagadoHoy: 0, pendiente: 0,
-      detalle: [], totalVencidos: 0, clientesVencidos: 0
+      metaTotal: 0,
+      pagadoHoy: 0,
+      pendiente: 0,
+      detalle: [],
+      totalVencidos: 0,
+      clientesVencidos: 0,
+      cobrosExtra: []
     };
   }
 
@@ -57,18 +30,26 @@ window.calcularMetaReal = function (cobradorId, fecha) {
     cr.fechaInicio <= fecha
   );
 
-  let metaTotal = 0, pagadoHoy = 0, pendiente = 0;
-  let totalVencidos = 0, clientesVencidos = 0;
+  let metaTotal = 0;
+  let pagadoHoy = 0;
+  let pendiente = 0;
+  let totalVencidos = 0;
+  let clientesVencidos = 0;
+
   const detalle = [];
 
+  // ─────────────────────────────────────────────
+  // RECORRER CRÉDITOS
+  // ─────────────────────────────────────────────
   creditosTodos.forEach(cr => {
     const cliente = clientes.find(c => c.id === cr.clienteId);
     const cuota = Number(cr.cuotaDiaria) || 0;
     if (cuota <= 0) return;
 
-    const pagosNoEliminados = pagos.filter(p => p.creditoId === cr.id && !p.eliminado);
+    const pagosNoEliminados = pagos.filter(p =>
+      p.creditoId === cr.id && !p.eliminado
+    );
 
-    // ── Totales de hoy y acumulados ───────────────────────────
     const montoPagadoHoy = pagosNoEliminados
       .filter(p => p.fecha === fecha)
       .reduce((s, p) => s + Number(p.monto), 0);
@@ -78,76 +59,68 @@ window.calcularMetaReal = function (cobradorId, fecha) {
 
     const saldoRestante = Number(cr.total) - totalPagado;
 
-    // Si ya liquidó, no aparece en ruta ni meta
     if (saldoRestante <= 0.5) return;
 
-    // ── Días hábiles transcurridos hasta ayer ─────────────────
     const diasTranscurridos = Math.max(
       0,
       contarDiasHabiles(cr.fechaInicio, fecha) - 1
     );
 
-    // ── Estado de atraso con función canónica ─────────────────
-    // Usamos calcularEstadoAtraso que incluye pagos de hoy en
-    // cuotasCubiertas, así un pago múltiple resuelve el atraso
-    // en el mismo instante.
     const estado = calcularEstadoAtraso(cr, pagosNoEliminados, fecha);
 
-    // ── ¿Le toca cobro hoy? ───────────────────────────────────
-    // Le toca si han transcurrido entre 1 y diasTotal días hábiles
-    const leTocaHoy = diasTranscurridos >= 1 &&
+    const leTocaHoy =
+      diasTranscurridos >= 1 &&
       diasTranscurridos <= Number(cr.diasTotal);
 
-    // ── ¿Ya cubrió el cobro de hoy? ───────────────────────────
-    // Cuotas esperadas hasta ayer = diasTranscurridos (tope diasTotal)
-    // Si cuotasCubiertas >= cuotasDebidas, ya está al día (incluyendo hoy)
-    // Nota: cuotasDebidas en estado ya viene tope en diasTotal
-    const alDia = estado.cuotasCubiertas >= estado.cuotasDebidas;
+    const alDia =
+      estado.cuotasCubiertas >= estado.cuotasDebidas;
 
-    // ── Meta del día ──────────────────────────────────────────
-    // Solo suma a meta si le toca hoy Y no estaba al día antes del
-    // pago de hoy (para no "resetear" la meta con pagos anticipados)
+    // ── META ──
     const totalPagadoSinHoy = totalPagado - montoPagadoHoy;
+
     const cuotasCubiertasSinHoy = Math.min(
       Math.floor((totalPagadoSinHoy + 0.5) / cuota),
       diasTranscurridos
     );
-    const estabaAlDiaSinHoy = cuotasCubiertasSinHoy >= diasTranscurridos;
+
+    const estabaAlDiaSinHoy =
+      cuotasCubiertasSinHoy >= diasTranscurridos;
 
     if (leTocaHoy && !estabaAlDiaSinHoy) {
       metaTotal += cuota;
-      // Cuánto de esa cuota ya entró hoy
+
       const cuotaPagadaHoy = Math.min(montoPagadoHoy, cuota);
       pagadoHoy += cuotaPagadaHoy;
+
       if (cuotaPagadaHoy < cuota) {
         pendiente += (cuota - cuotaPagadaHoy);
       }
     }
 
-    // ── Deuda acumulada de días ANTERIORES (sin hoy) ──────────
-    // Esto es lo que se muestra en la sección "Atrasados"
-    const cuotasAtrasoSinHoy = Math.max(
-      0,
-      Math.min(diasTranscurridos, Number(cr.diasTotal)) - cuotasCubiertasSinHoy
-    );
-    // Si pagó hoy cuotas atrasadas, deudaAcumulada refleja lo que
-    // AÚN falta después del pago (no la deuda pre-pago)
-    const deudaAcumulada = Math.round(estado.cuotasAtraso * cuota * 100) / 100;
+    // ── ESTADO VISUAL ──
+    let estadoVisual = 'pendiente';
+
+    if (montoPagadoHoy > 0 && montoPagadoHoy < cuota) {
+      estadoVisual = 'parcial';
+    } else if (montoPagadoHoy >= cuota) {
+      estadoVisual = 'pagado';
+    }
+
+    if (estado.atrasado) {
+      estadoVisual = 'atrasado';
+    }
+
+    const deudaAcumulada =
+      Math.round(estado.cuotasAtraso * cuota * 100) / 100;
 
     if (estado.atrasado) {
       totalVencidos += deudaAcumulada;
       clientesVencidos++;
     }
 
-    // ── completo: desaparece de la ruta ──────────────────────
-    // Un cliente está "completo" (sale de la lista pendientes) cuando:
-    //   a) No está atrasado (cuotasCubiertas >= cuotasDebidas), Y
-    //   b) O no le tocaba cobro hoy, O ya cubría el cobro de hoy antes de pagar
-    // Dicho de otro modo: está pendiente si tiene alguna cuota sin cubrir
-    // que ya debería haber pagado (incluyendo la de hoy si aplica).
     const pendienteEnRuta = leTocaHoy
-      ? !alDia                // le toca y no está al día → pendiente
-      : estado.atrasado;      // no le toca hoy pero igual debe días anteriores
+      ? !alDia
+      : estado.atrasado;
 
     detalle.push({
       cliente,
@@ -158,17 +131,24 @@ window.calcularMetaReal = function (cobradorId, fecha) {
       deudaAcumulada,
       atrasado: estado.atrasado,
       cuotasAtraso: estado.cuotasAtraso,
-      saldoRestante
+      saldoRestante,
+      estadoVisual
     });
   });
 
-  // ── Cobros extra: pagos de hoy de créditos inactivos/vencidos ──
+  // ─────────────────────────────────────────────
+  // COBROS EXTRA (FUERA DEL LOOP ✅)
+  // ─────────────────────────────────────────────
   const creditosInactivosIds = new Set(
     creditos
-      .filter(cr => misClientesIds.includes(cr.clienteId) && cr.activo === false)
+      .filter(cr =>
+        misClientesIds.includes(cr.clienteId) &&
+        cr.activo === false
+      )
       .map(cr => cr.id)
   );
-  const cobrosExtra = (pagos
+
+  const cobrosExtra = pagos
     .filter(p =>
       !p.eliminado &&
       p.fecha === fecha &&
@@ -176,12 +156,19 @@ window.calcularMetaReal = function (cobradorId, fecha) {
       creditosInactivosIds.has(p.creditoId)
     )
     .map(p => {
-      const cr = creditos.find(c => c.id === p.creditoId);
-      const cliente = clientes.find(c => c.id === p.clienteId);
-      return { pago: p, cr, cliente };
-    })
-  );
+      const crObj = creditos.find(c => c.id === p.creditoId);
+      const clienteObj = clientes.find(c => c.id === p.clienteId);
 
+      return {
+        pago: p,
+        cr: crObj,
+        cliente: clienteObj
+      };
+    });
+
+  // ─────────────────────────────────────────────
+  // RETURN FINAL (ÚNICO Y CORRECTO ✅)
+  // ─────────────────────────────────────────────
   return {
     metaTotal: Math.round(metaTotal * 100) / 100,
     pagadoHoy: Math.round(pagadoHoy * 100) / 100,
@@ -192,8 +179,6 @@ window.calcularMetaReal = function (cobradorId, fecha) {
     cobrosExtra
   };
 };
-
-
 window.guardarNota = async function () {
   const notaElement = document.getElementById('notaHoy');
   if (!notaElement) return;
@@ -587,7 +572,42 @@ window.renderCuadre = function () {
                   ${d.cliente?.nombre || 'Sin nombre'}
                 </div>
                 <div style="font-size:11.5px; color:var(--muted); margin-top:2px;
-                            display:flex; align-items:center; gap:6px; flex-wrap:wrap">
+            display:flex; align-items:center; gap:6px; flex-wrap:wrap">
+            ${d.estadoVisual === 'pagado' ? `
+  <span style="
+    background:#dcfce7;
+    color:#166534;
+    font-size:10px;
+    font-weight:700;
+    padding:2px 6px;
+    border-radius:4px">
+    ✅ Pagado
+  </span>
+` : ''}
+
+${d.estadoVisual === 'parcial' ? `
+  <span style="
+    background:#fef9c3;
+    color:#854d0e;
+    font-size:10px;
+    font-weight:700;
+    padding:2px 6px;
+    border-radius:4px">
+    🟡 Abonó ${formatMoney(d.montoPagadoHoy)}
+  </span>
+` : ''}
+
+${d.estadoVisual === 'atrasado' ? `
+  <span style="
+    background:#fee2e2;
+    color:#991b1b;
+    font-size:10px;
+    font-weight:700;
+    padding:2px 6px;
+    border-radius:4px">
+    🔴 Atrasado (${d.cuotasAtraso})
+  </span>
+` : ''}
                   ${distLabel ? `
                     <span style="background:#eff6ff; color:#1d4ed8; font-size:10px;
                                  font-weight:700; padding:1px 6px; border-radius:4px">

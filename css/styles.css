@@ -118,7 +118,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;  
   -webkit-backdrop-filter: blur(10px); /* Compatibilidad con iPhone/Safari */
   padding: 14px 20px;
   display: flex;
-  align-items: center;
+ align-items:flex-start;
   justify-content: space-between;
   position: sticky;
   top: 0;

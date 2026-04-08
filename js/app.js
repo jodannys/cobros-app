@@ -28,7 +28,6 @@ window.render = function render() {
 
   if (state.screen === 'login') { root.innerHTML = renderLogin(); bindLogin(); return; }
 
-  // Spinner mientras carga Firebase
   if (state._cargando) {
     root.innerHTML = `
       <div style="display:flex;align-items:center;justify-content:center;
@@ -42,6 +41,8 @@ window.render = function render() {
       </div>`;
     return;
   }
+
+  const scrollAntes = window.scrollY; // ← NUEVO
 
   const isAdmin = state.currentUser.role === 'admin';
   root.innerHTML = `
@@ -117,8 +118,9 @@ window.render = function render() {
     </nav>
     ` : ''}
   </div>`;
-};
 
+  window.scrollTo({ top: scrollAntes, behavior: 'instant' }); // ← NUEVO
+};
 // ── CONFIRMAR SALIDA (overlay custom) ────────────────────────
 window.confirmarSalida = function () {
   if (document.querySelector('[data-overlay="salida"]')) return;
