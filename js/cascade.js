@@ -144,9 +144,9 @@ window.limpiarHuerfanos = async function () {
     await DB.delete('gastos', g.id); borrados++;
   }
 
-  DB._cache['pagos']    = await DB.getAll('pagos');
-  DB._cache['creditos'] = await DB.getAll('creditos');
-  DB._cache['gastos']   = await DB.getAll('gastos');
+  DB._cache['pagos']    = await fbGetAll('pagos');
+DB._cache['creditos'] = await fbGetAll('creditos');
+DB._cache['gastos']   = await fbGetAll('gastos');
 
   console.log(`✅ Limpieza: ${borrados} documentos huérfanos eliminados.`);
   render();

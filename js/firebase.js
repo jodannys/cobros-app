@@ -9,44 +9,44 @@ const firebaseConfig = {
 };
 // Inicialización
 if (!firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);
+  firebase.initializeApp(firebaseConfig);
 }
 const fsdb = firebase.firestore();
 
 // EXPOSICIÓN GLOBAL (Para que db.js no dé error)
-window.fbGetAll = async function(colName) {
+window.fbGetAll = async function (colName) {
   const snap = await fsdb.collection(colName).get();
   return snap.docs.map(d => ({ ...d.data(), id: d.id }));
 };
 
-window.fbGet = async function(colName, id) {
+window.fbGet = async function (colName, id) {
   const snap = await fsdb.collection(colName).doc(id).get();
   return snap.exists ? { ...snap.data(), id: snap.id } : null;
 };
 
-window.fbSet = async function(colName, id, data) {
+window.fbSet = async function (colName, id, data) {
   await fsdb.collection(colName).doc(id).set(data);
 };
 
-window.fbUpdate = async function(colName, id, data) {
+window.fbUpdate = async function (colName, id, data) {
   await fsdb.collection(colName).doc(id).update(data);
 };
 
-window.fbDelete = async function(colName, id) {
+window.fbDelete = async function (colName, id) {
   await fsdb.collection(colName).doc(id).delete();
 };
 
-window.fbQuery = async function(colName, field, value) {
+window.fbQuery = async function (colName, field, value) {
   const snap = await fsdb.collection(colName).where(field, '==', value).get();
   return snap.docs.map(d => ({ ...d.data(), id: d.id }));
 };
 
-window.fbGetSince = async function(colName, desde) {
+window.fbGetSince = async function (colName, desde) {
   const snap = await fsdb.collection(colName).where('updatedAt', '>', desde).get();
   return snap.docs.map(d => ({ ...d.data(), id: d.id }));
 };
 
-window.fbEscuchar = function(colName, callback) {
+window.fbEscuchar = function (colName, callback) {
   return fsdb.collection(colName).onSnapshot(snap => {
     const datos = snap.docs.map(d => ({ ...d.data(), id: d.id }));
     callback(datos);
@@ -55,6 +55,12 @@ window.fbEscuchar = function(colName, callback) {
   });
 };
 
+// ── Firebase Storage ─────────────────────────────────────────
+window.subirFotoStorage = async function (base64, clienteId) {
+  const storageRef = firebase.storage().ref(`clientes/${clienteId}.jpg`);
+  await storageRef.putString(base64, 'data_url');
+  return await storageRef.getDownloadURL();
+};
 // ─── MODO LOCAL MOCK ─────────────────────────────────────────
 const USE_LOCAL_MOCK = false; // ← false para producción
 
@@ -62,6 +68,11 @@ if (USE_LOCAL_MOCK) {
   const _mockData = {};
   const _fbGetAllOriginal = window.fbGetAll;
 
+
+  window.subirFotoStorage = async (base64, clienteId) => {
+    console.log('📸 Mock: foto no subida a Storage');
+    return base64; // devuelve el base64 directamente para simular
+  };
   window.fbGetAll = async (col) => {
     const cached = localStorage.getItem(`mock_${col}`);
     if (cached) {
@@ -111,7 +122,7 @@ if (USE_LOCAL_MOCK) {
   window.fbEscuchar = (col, cb) => {
     _mockData[col] = JSON.parse(localStorage.getItem(`mock_${col}`) || '[]');
     cb(_mockData[col]);
-    return () => {};
+    return () => { };
   };
 
   console.warn("🟡 MODO LOCAL MOCK activo — sin lecturas a Firestore");

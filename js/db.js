@@ -1,17 +1,3 @@
-// ============================================================
-// DB.JS — Capa de datos con polling inteligente
-// Reemplaza onSnapshot permanente por polling cada 45s.
-// Lecturas estimadas: ~200-400/día vs ~5000-15000/día anterior.
-//
-// Estrategia:
-//   • Estáticas (users, clientes, creditos, configuracion):
-//     carga al init + recarga al volver de segundo plano
-//   • Dinámicas (pagos, movimientos_cartera, gastos, cajas, notas_cuadre):
-//     polling cada 45s mientras la app está visible
-//   • Escrituras propias: actualizan el cache local al instante
-//     sin necesitar releer Firebase
-// ============================================================
-
 const _MODALES_CON_FORMULARIO = [
   'nuevo-cliente', 'editar-cliente', 'nuevo-credito',
   'nuevo-usuario', 'editar-usuario', 'editar-admin',
@@ -25,11 +11,7 @@ function _renderSeguro() {
 }
 
 window.DB = {
-  _isLoading: false,
-  _pollingTimer: null,
-  _INTERVALO_POLLING: 120000, // 2 minutos
-  _ultimaSync: null,
-
+  _listeners: {},   // onSnapshot activos
   _cache: {
     users: [],
     clientes: [],
@@ -71,24 +53,13 @@ window.DB = {
     }
   },
 
-  async getAll(colName) {
-    if (this._cache[colName] && this._cache[colName].length > 0) {
-      return this._cache[colName];
-    }
-    this._cache[colName] = await fbGetAll(colName);
-    return this._cache[colName];
-  },
-
   query(colName, field, value) {
-    if (this._cache[colName]) {
-      return this._cache[colName].filter(x => x[field] === value);
-    }
-    return fbQuery(colName, field, value);
+    return (this._cache[colName] || []).filter(x => x[field] === value);
   },
 
-  // ── Persistencia de cache en localStorage ────────────────
+  // ── Cache local ──────────────────────────────────────────
   _CACHE_KEY: 'cobrosapp_cache_v1',
-  _CACHE_TTL: 10 * 60 * 1000, // 10 minutos
+  _CACHE_TTL: 60 * 60 * 1000, // 60 minutos
 
   _guardarCacheLocal() {
     try {
@@ -96,7 +67,7 @@ window.DB = {
         ts: Date.now(),
         data: this._cache
       }));
-    } catch (e) { /* localStorage lleno — ignorar */ }
+    } catch (e) {}
   },
 
   _cargarCacheLocal() {
@@ -106,141 +77,79 @@ window.DB = {
       const { ts, data } = JSON.parse(raw);
       if (Date.now() - ts > this._CACHE_TTL) return false;
       this._cache = { ...this._cache, ...data };
-      this._ultimaSync = new Date(ts);
       return true;
     } catch (e) { return false; }
   },
 
-  // ── Init: carga todo una vez, arranca polling ────────────
+  // ── Init ─────────────────────────────────────────────────
   async init() {
-    console.log('🚀 Cargando datos...');
+    console.log('🚀 Iniciando CobrosApp...');
 
-    const todas = [
-      'users', 'clientes', 'creditos', 'configuracion',
-      'pagos', 'movimientos_cartera', 'gastos', 'cajas', 'notas_cuadre'
-    ];
-
-    // Si el cache local es reciente (< 5 min), usarlo y solo hacer polling
-    if (this._cargarCacheLocal()) {
-      console.log('⚡ Cache local válido — sin lecturas a Firebase');
-      this._arrancarPolling();
-      return;
-    }
-
-    await Promise.all(todas.map(async col => {
-      try {
-        this._cache[col] = await fbGetAll(col);
-      } catch (e) {
-        console.error(`Error cargando ${col}:`, e);
-        this._cache[col] = [];
-      }
-    }));
-
-    this._ultimaSync = new Date();
-    this._guardarCacheLocal();
-    console.log('✅ Datos cargados. Iniciando polling cada 45s...');
-    this._arrancarPolling();
-  },
-
-  // ── Polling: refresca solo las colecciones dinámicas ─────
-  _arrancarPolling() {
-    this._detenerPolling();
+    // Colecciones estáticas — solo se cargan una vez
+    const estaticas = ['users', 'clientes', 'creditos', 'configuracion'];
+    // Colecciones dinámicas — se escuchan en tiempo real
     const dinamicas = ['pagos', 'movimientos_cartera', 'gastos', 'cajas', 'notas_cuadre'];
 
-    this._pollingTimer = setInterval(async () => {
-      // No actualizar si hay un modal de formulario abierto
-      if (state.modal && _MODALES_CON_FORMULARIO.includes(state.modal)) return;
-      // No actualizar si la app está en segundo plano
-      if (document.visibilityState === 'hidden') return;
-
-      try {
-        let huboCambios = false;
-        const desde = this._ultimaSync || new Date(0);
-        const ahora = new Date();
-
-        await Promise.all(dinamicas.map(async col => {
-          try {
-            const nuevos = await fbGetSince(col, desde);
-            if (nuevos.length > 0) {
-              // Merge: actualizar docs existentes o agregar nuevos
-              nuevos.forEach(doc => {
-                const idx = (this._cache[col] || []).findIndex(x => x.id === doc.id);
-                if (idx !== -1) this._cache[col][idx] = doc;
-                else this._cache[col].push(doc);
-              });
-              huboCambios = true;
-            }
-          } catch (e) {
-            console.warn(`Polling error en ${col}:`, e);
-          }
-        }));
-
-        this._ultimaSync = ahora;
-        this._guardarCacheLocal();
-
-        if (huboCambios) {
-          console.log('🔄 Datos actualizados (polling)');
-          _renderSeguro();
-        }
-      } catch (e) {
-        console.warn('Error en polling general:', e);
-      }
-    }, this._INTERVALO_POLLING);
-  },
-
-  _detenerPolling() {
-    if (this._pollingTimer) {
-      clearInterval(this._pollingTimer);
-      this._pollingTimer = null;
+    // Cargar cache local para mostrar datos inmediatamente
+    const cacheValido = this._cargarCacheLocal();
+    if (cacheValido) {
+      console.log('⚡ Cache local válido — mostrando datos guardados');
     }
-  },
 
-  // ── Refresco manual: al volver de segundo plano ──────────
-  // Solo recarga las colecciones dinámicas — las estáticas
-  // (users, clientes, creditos, configuracion) no cambian
-  // mientras la app está en segundo plano.
-  async refrescarTodo() {
-    const dinamicas = ['pagos', 'movimientos_cartera', 'gastos', 'cajas', 'notas_cuadre'];
-
-    try {
-      const desde = this._ultimaSync || new Date(0);
-      const ahora = new Date();
-
-      await Promise.all(dinamicas.map(async col => {
+    // Cargar estáticas desde Firebase (solo si cache expiró)
+    if (!cacheValido) {
+      await Promise.all(estaticas.map(async col => {
         try {
-          const nuevos = await fbGetSince(col, desde);
-          if (nuevos.length > 0) {
-            nuevos.forEach(doc => {
-              const idx = (this._cache[col] || []).findIndex(x => x.id === doc.id);
-              if (idx !== -1) this._cache[col][idx] = doc;
-              else this._cache[col].push(doc);
-            });
-          }
-        } catch (e) {}
+          this._cache[col] = await fbGetAll(col);
+        } catch (e) {
+          console.error(`Error cargando ${col}:`, e);
+          this._cache[col] = [];
+        }
       }));
-
-      this._ultimaSync = ahora;
-      _renderSeguro();
-      console.log('✅ Datos dinámicos refrescados al volver');
-    } catch (e) {
-      console.warn('Error al refrescar:', e);
     }
+
+    // Escuchar dinámicas en tiempo real con onSnapshot
+    this._arrancarListeners(dinamicas);
+
+    this._guardarCacheLocal();
+    console.log('✅ App lista');
   },
 
-  // ── Pausar polling (segundo plano) ───────────────────────
+  // ── onSnapshot listeners ──────────────────────────────────
+  _arrancarListeners(colecciones) {
+    colecciones.forEach(col => {
+      // Evitar listeners duplicados
+      if (this._listeners[col]) return;
+
+      this._listeners[col] = fbEscuchar(col, (datos) => {
+        this._cache[col] = datos;
+        this._guardarCacheLocal();
+        console.log(`🔄 ${col} actualizado en tiempo real`);
+        _renderSeguro();
+      });
+    });
+  },
+
+  _detenerListeners() {
+    Object.values(this._listeners).forEach(unsub => {
+      if (typeof unsub === 'function') unsub();
+    });
+    this._listeners = {};
+    console.log('⏸️ Listeners detenidos');
+  },
+
+  // ── Pausar/reanudar ───────────────────────────────────────
   pausarListeners() {
-    this._detenerPolling();
-    console.log('⏸️ Polling pausado (app en segundo plano)');
+    this._detenerListeners();
   },
 
-  // ── Reanudar polling + refresco inmediato ────────────────
   async reanudarListeners() {
-    console.log('▶️ Reanudando...');
-    await this.refrescarTodo();
-    this._arrancarPolling();
-    console.log('✅ Listeners reanudados');
+    const dinamicas = ['pagos', 'movimientos_cartera', 'gastos', 'cajas', 'notas_cuadre'];
+    this._arrancarListeners(dinamicas);
+    console.log('▶️ Listeners reanudados');
   },
 
+  // ── Mantenimiento ─────────────────────────────────────────
   async ejecutarMantenimientoManual() {
     console.warn('⚠️ Ejecutando mantenimiento manual...');
     await this._corregirCreditosSaldados();
@@ -251,9 +160,6 @@ window.DB = {
   async _corregirCreditosSaldados() {
     const creditos = this._cache['creditos'] || [];
     const pagos    = this._cache['pagos']    || [];
-
-    console.log('🛠️ Mantenimiento de integridad...');
-
     creditos.forEach(cr => {
       if (cr.activo && (!cr.fechaFin || cr.fechaFin === 'undefined')) {
         const fInicio = new Date(cr.fechaInicio + 'T00:00:00');
@@ -261,51 +167,36 @@ window.DB = {
         const nuevaFechaFin = fInicio.toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
         DB.update('creditos', cr.id, { fechaFin: nuevaFechaFin }).catch(e => console.error(e));
       }
-
       if (cr.activo === true) {
         const pagosCr = pagos.filter(p => p.creditoId === cr.id && !p.eliminado);
         const totalPagado = pagosCr.reduce((s, p) => s + (Number(p.monto) || 0), 0);
-        const totalDeberia = Number(cr.total || 0);
-        if (totalPagado >= totalDeberia && totalDeberia > 0) {
+        if (totalPagado >= Number(cr.total || 0) && cr.total > 0) {
           DB.update('creditos', cr.id, { activo: false }).catch(e => console.error(e));
         }
       }
     });
-
     if (typeof render === 'function') render();
   },
 
   async _limpiarHuerfanos() {
-    console.log('🧹 Limpiando datos huérfanos...');
     const users    = this._cache['users']    || [];
     const clientes = this._cache['clientes'] || [];
     const gastos   = this._cache['gastos']   || [];
     const pagos    = this._cache['pagos']    || [];
     const creditos = this._cache['creditos'] || [];
-
     gastos.forEach(g => {
-      if (!users.find(u => u.id === g.cobradorId)) {
-        DB.delete('gastos', g.id).catch(e => console.error(e));
-      }
+      if (!users.find(u => u.id === g.cobradorId)) DB.delete('gastos', g.id).catch(() => {});
     });
-
     pagos.forEach(p => {
-      if (!clientes.find(c => c.id === p.clienteId)) {
-        DB.delete('pagos', p.id).catch(e => console.error(e));
-      }
+      if (!clientes.find(c => c.id === p.clienteId)) DB.delete('pagos', p.id).catch(() => {});
     });
-
     creditos.forEach(cr => {
-      if (!clientes.find(c => c.id === cr.clienteId)) {
-        DB.delete('creditos', cr.id).catch(e => console.error(e));
-      }
+      if (!clientes.find(c => c.id === cr.clienteId)) DB.delete('creditos', cr.id).catch(() => {});
     });
-
-    console.log('✅ Limpieza completada.');
   }
 };
 
-// ── Pausar/reanudar según visibilidad de la pestaña ──────────
+// ── Pausar/reanudar según visibilidad ────────────────────────
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') {
     DB.pausarListeners();
@@ -329,9 +220,8 @@ window.renderIndicadorVivo = function () {
       box-shadow:0 0 0 0 rgba(34,197,94,0.4);
       animation:pulso-vivo 1.5s infinite">
     </span>
-    Activo
+    En vivo
   </div>
-
   <style>
     @keyframes pulso-vivo {
       0%   { box-shadow: 0 0 0 0 rgba(34,197,94,0.4); }

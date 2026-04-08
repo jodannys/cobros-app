@@ -652,14 +652,16 @@ window.guardarCliente = async function () {
 
     const isAdmin = state.currentUser.role === 'admin';
     const cobradorId = isAdmin ? document.getElementById('nCobrador').value : state.currentUser.id;
-
+    
+    const id = genId();
+    
     const fotoEl = document.getElementById('previewNFoto');
     let foto = '';
     if (fotoEl && fotoEl.style.display !== 'none' && fotoEl.src && fotoEl.src !== window.location.href) {
-      foto = await comprimirImagen(fotoEl.src, 600, 0.6);
+      const base64 = await comprimirImagen(fotoEl.src, 600, 0.6);
+      foto = await subirFotoStorage(base64, id);
     }
 
-    const id = genId();
     const nuevoCliente = {
       id, dni, nombre,
       negocio: document.getElementById('nNegocio').value.trim(),
@@ -708,7 +710,10 @@ window.actualizarCliente = async function () {
     const fotoEl = document.getElementById('previewEFoto');
     let foto = c.foto;
     if (fotoEl && fotoEl.style.display !== 'none' && fotoEl.src && fotoEl.src !== window.location.href) {
-      if (fotoEl.src !== c.foto) foto = await comprimirImagen(fotoEl.src, 600, 0.6);
+      if (fotoEl.src !== c.foto) {
+        const base64 = await comprimirImagen(fotoEl.src, 600, 0.6);
+        foto = await subirFotoStorage(base64, c.id);
+      }
     }
 
     const updated = {
