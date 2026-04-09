@@ -586,7 +586,7 @@ console.log("TOTAL CLIENTES EN LISTA:", clientesPendientes.length);
     
     <!-- LADO IZQUIERDO: Título e Indicador -->
     <div style="display:flex; align-items:center; gap:6px; min-width:0; flex:1">
-      <div class="card-title" style="margin:0; font-size:9px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; letter-spacing:-0.2px">
+      <div class="card-title" style="margin:0; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; letter-spacing:-0.2px">
         Clientes por Cobrar
       </div>
       <!-- Contenedor para que el indicador no se deforme -->
