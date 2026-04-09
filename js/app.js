@@ -475,7 +475,7 @@ window.navigate = function navigate(nav) {
   state.selectedClient = null;
   state.selectedCobrador = null;
   state.filtroClientes = 'todos';
-  history.pushState({ nav }, '', '#' + nav);
+  history.pushState({ nav }, '', '#' + nav); // ← ya lo tienes
   render();
 };
 
