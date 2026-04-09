@@ -1,7 +1,3 @@
-// ============================================================
-// INFO COBRADOR — Overlay flotante centrado con búsqueda
-// Uso: llamar renderBtnAyudaCobrador() en el topbar
-// ============================================================
 
 const _SECCIONES_COBRADOR = [
   {
@@ -135,7 +131,7 @@ window._filtrarAyuda = function (q) {
 window.renderBtnAyudaCobrador = function () {
   return `
   <button onclick="abrirAyudaCobrador()"
-    style="width:32px; height:32px; border-radius:50%; background:#ea580c;
+    style="width:24px; height:24px; border-radius:50%; background:#ea580c;
            border:none; color:white; cursor:pointer;
            display:flex; align-items:center; justify-content:center;
            flex-shrink:0; box-shadow:0 2px 8px rgba(234,88,12,0.4)">

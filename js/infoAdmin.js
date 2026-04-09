@@ -1,8 +1,3 @@
-// ============================================================
-// INFO ADMIN — Overlay flotante centrado con búsqueda
-// Uso: llamar renderBtnAyudaAdmin() en el topbar de cada pantalla
-// ============================================================
-
 const _SECCIONES_ADMIN = [
   // ── CLIENTES ──────────────────────────────────────────────
   {
@@ -245,7 +240,7 @@ window._filtrarAyudaAdmin = function (q) {
 window.renderBtnAyudaAdmin = function () {
   return `
   <button onclick="abrirAyudaAdmin()"
-    style="width:26px; height:26px; border-radius:50%; background:#ea580c;
+    style="width:24px; height:24px; border-radius:50%; background:#ea580c;
            border:none; color:white; cursor:pointer;
            display:flex; align-items:center; justify-content:center;
            flex-shrink:0; box-shadow:0 2px 8px rgba(234,88,12,0.4)">
