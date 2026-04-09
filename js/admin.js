@@ -434,7 +434,7 @@ window.renderAdminCobrador = function renderAdminCobrador() {
                         <span style="font-size:11px; color:#94a3b8">Cuota ${formatMoney(d.cuota)}</span>
                       </div>
                     </div>
-                    ${!d.completo ? `
+                    ${(d.estadoVisual === 'pendiente' || d.estadoVisual === 'atrasado' || d.estadoVisual === 'parcial') ? `
                     <button onclick="pagoRapido('${d.cr.id}')"
                       style="flex-shrink:0; margin-left:8px; border:none; padding:6px 14px; border-radius:8px; cursor:pointer;
                              background:#f0fdf4; color:#16a34a; font-size:12px; font-weight:700">
