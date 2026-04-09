@@ -576,23 +576,32 @@ console.log("TOTAL CLIENTES EN LISTA:", clientesPendientes.length);
         ${state.rutaActiva ? '⏸️ Pausar' : '▶️ Empezar Ruta'}
       </button>
     </div>
-   <!-- CLIENTES POR COBRAR -->
+  <!-- CLIENTES POR COBRAR -->
 <div class="card" style="margin-bottom:12px; padding:0; overflow:hidden">
   <div
     onclick="state._clientesPendientesOpen = !state._clientesPendientesOpen; render()"
-    style="padding:14px 16px; border-bottom:1px solid var(--border);
+    style="padding:12px 14px; border-bottom:1px solid var(--border);
            display:flex; justify-content:space-between; align-items:center; cursor:pointer;
-           user-select:none">
-    <div style="display:flex; align-items:center; gap:8px">
-      <div class="card-title" style="margin:0">Clientes por Cobrar</div>
-      ${indicadorGPS}
+           user-select:none; gap:8px">
+    
+    <!-- LADO IZQUIERDO: Título e Indicador -->
+    <div style="display:flex; align-items:center; gap:6px; min-width:0; flex:1">
+      <div class="card-title" style="margin:0; font-size:9px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; letter-spacing:-0.2px">
+        Clientes por Cobrar
+      </div>
+      <!-- Contenedor para que el indicador no se deforme -->
+      <div style="flex-shrink:0; transform: scale(0.9); transform-origin: left center;">
+        ${indicadorGPS}
+      </div>
     </div>
-    <div style="display:flex; align-items:center; gap:8px">
-      <span style="font-size:10.5px; background:var(--bg); padding:3px 10px;
-                   border-radius:20px; color:var(--muted); font-weight:700">
-        ${clientesPendientes.length} restantes
+
+    <!-- LADO DERECHO: Contador y Flecha -->
+    <div style="display:flex; align-items:center; gap:6px; flex-shrink:0">
+      <span style="font-size:10px; background:var(--bg); padding:2px 8px;
+                   border-radius:12px; color:var(--muted); font-weight:700; white-space:nowrap">
+        ${clientesPendientes.length} <span class="hide-mobile">restantes</span>
       </span>
-      <span style="font-size:12px; color:var(--muted)">
+      <span style="font-size:10px; color:var(--muted); opacity:0.6">
         ${state._clientesPendientesOpen ? '▲' : '▼'}
       </span>
     </div>
