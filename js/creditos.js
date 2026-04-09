@@ -492,7 +492,7 @@ window.eliminarCredito = async function (crId) {
     `Esta acción no se puede deshacer.`
   ].filter(l => l !== null).join('\n');
 
-  if (!confirm(`¿Eliminar este crédito completamente?\n\n${lineas}`)) return;
+  if (!await showConfirm(`¿Eliminar este crédito completamente?\n\n${lineas}`, { danger: true, confirmText: 'Eliminar' })) return;
 
   window._eliminandoCredito = true;
 
@@ -549,9 +549,9 @@ window.cerrarCredito = async function (crId) {
   const saldo       = cr.total - totalPagado;
 
   if (saldo > 0) {
-    if (!confirm(`¡CUIDADO! Aún debe ${formatMoney(saldo)}. ¿Cerrar de todos modos?`)) return;
+    if (!await showConfirm(`¡CUIDADO! Aún debe ${formatMoney(saldo)}. ¿Cerrar de todos modos?`, { danger: true, confirmText: 'Cerrar igualmente' })) return;
   } else {
-    if (!confirm('¿Marcar este crédito como pagado totalmente y cerrarlo?')) return;
+    if (!await showConfirm('¿Marcar este crédito como pagado totalmente y cerrarlo?', { confirmText: 'Cerrar crédito' })) return;
   }
 
   try {
@@ -741,7 +741,7 @@ window.guardarPagoEditado = async function () {
 
 // ── eliminarPago ──────────────────────────────────────────────
 window.eliminarPago = async function (pagoId) {
-  if (!confirm('¿Eliminar este pago? Esta acción afectará el saldo del crédito.')) return;
+  if (!await showConfirm('¿Eliminar este pago? Esta acción afectará el saldo del crédito.', { danger: true, confirmText: 'Eliminar' })) return;
 
   const p = (DB._cache['pagos'] || []).find(x => x.id === pagoId);
   if (!p) return;
@@ -773,7 +773,7 @@ window.eliminarPago = async function (pagoId) {
 
 // ── reabrirCredito ────────────────────────────────────────────
 window.reabrirCredito = async function (crId) {
-  if (!confirm('¿Reabrir este crédito? Volverá a estar activo y aparecerá en los cobros.')) return;
+  if (!await showConfirm('¿Reabrir este crédito? Volverá a estar activo y aparecerá en los cobros.', { confirmText: 'Reabrir' })) return;
   await DB.update('creditos', crId, { activo: true });
   showToast('✅ Crédito reabierto');
   render();

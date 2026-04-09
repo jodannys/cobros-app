@@ -367,7 +367,7 @@ window.guardarEdicionGasto = async function () {
 };
 
 window.eliminarGasto = async function () {
-  if (!confirm('¿Eliminar este gasto?')) return;
+  if (!await showConfirm('¿Eliminar este gasto?', { danger: true, confirmText: 'Eliminar' })) return;
   try {
     await DB.delete('gastos', state._editGastoId);
     state.modal = null;

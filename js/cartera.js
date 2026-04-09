@@ -639,7 +639,7 @@ window.abrirDepositoCobrador = function () {
 };
 
 window.confirmarDeposito = async function (movId) {
-  if (!confirm('¿Confirmar que recibiste este dinero? Se sumará a tu cartera.')) return;
+  if (!await showConfirm('¿Confirmar que recibiste este dinero? Se sumará a tu cartera.', { confirmText: 'Confirmar' })) return;
   try {
     await DB.update('movimientos_cartera', movId, {
       confirmado: true,

@@ -541,7 +541,7 @@ window.eliminarCobrador = async function eliminarCobrador(id) {
     alert('No se puede eliminar un administrador desde esta opción.');
     return;
   }
-  if (!confirm('¿Eliminar este cobrador? Sus clientes quedarán sin cobrador asignado. Esta acción no se puede deshacer.')) return;
+  if (!await showConfirm('¿Eliminar este cobrador? Sus clientes quedarán sin cobrador asignado. Esta acción no se puede deshacer.', { danger: true, confirmText: 'Eliminar' })) return;
   await DB.delete('users', id);
   DB._cache['users'] = users.filter(x => x.id !== id);
   state.selectedCobrador = null;
@@ -745,7 +745,7 @@ window.guardarFeriado = async function () {
 };
 
 window.eliminarFeriado = async function (fecha) {
-  if (!confirm(`¿Eliminar el bloqueo del ${formatDate(fecha)}?`)) return;
+  if (!await showConfirm(`¿Eliminar el bloqueo del ${formatDate(fecha)}?`, { danger: true, confirmText: 'Eliminar' })) return;
   const cfg = DB._cache['configuracion'] || [];
   const doc = cfg.find(c => c.id === 'dias_no_laborables');
   const nuevasFechas = (doc?.fechas || []).filter(f => f !== fecha);

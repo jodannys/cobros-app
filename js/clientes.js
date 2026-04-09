@@ -560,6 +560,14 @@ window.renderClientDetail = function () {
           <span>Enviar estado de cuenta</span>
         </button>` : ''}
 
+      ${creditoActivo?.nota ? `
+      <div style="background:#fefce8; border-left:4px solid #eab308; border-radius:10px;
+                  padding:12px 14px; margin-top:16px; margin-bottom:4px">
+        <div style="font-size:10px; font-weight:700; color:#854d0e; text-transform:uppercase;
+                    letter-spacing:0.5px; margin-bottom:6px">📝 Nota del admin</div>
+        <div style="font-size:13px; color:#713f12; line-height:1.5; font-weight:500">${creditoActivo.nota}</div>
+      </div>` : ''}
+
       <div class="flex-between mb-2" style="margin-top:20px">
         <div class="card-title" style="margin:0">💳 Gestión de Créditos</div>
         ${!creditoActivo
@@ -769,7 +777,7 @@ window.actualizarCliente = async function () {
 };
 
 window.eliminarCliente = async function () {
-  if (!confirm('¿Eliminar este cliente? Se borrarán también sus créditos y pagos. Esta acción no se puede deshacer.')) return;
+  if (!await showConfirm('¿Eliminar este cliente? Se borrarán también sus créditos y pagos. Esta acción no se puede deshacer.', { danger: true, confirmText: 'Eliminar' })) return;
   const c = state.selectedClient;
   await eliminarClienteCascade(c.id);
   state.selectedClient = null;

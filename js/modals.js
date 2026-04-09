@@ -777,7 +777,7 @@ window.eliminarAdmin = async function eliminarAdmin(id) {
   const admins = users.filter(u => u.role === 'admin');
   if (admins.length <= 1) { alert('No puedes eliminar el único administrador del sistema.'); return; }
   if (id === state.currentUser.id) { alert('No puedes eliminarte a ti mismo.'); return; }
-  if (!confirm('¿Eliminar este administrador? Esta acción no se puede deshacer.')) return;
+  if (!await showConfirm('¿Eliminar este administrador? Esta acción no se puede deshacer.', { danger: true, confirmText: 'Eliminar' })) return;
   await DB.delete('users', id);
   state._editingAdmin = null;
   state.modal = null;
