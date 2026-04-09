@@ -173,6 +173,7 @@ window.renderHistorial = function renderHistorial() {
   const creditos = DB._cache['creditos'] || [];
   const pagos = DB._cache['pagos'] || [];
   const gastos = DB._cache['gastos'] || [];
+  const movimientos = DB._cache['movimientos_cartera'] || [];
   const cobradores = usuarios.filter(u => u.role === 'cobrador');
 
   const filtroFecha = state._hFecha || today();
@@ -183,13 +184,19 @@ window.renderHistorial = function renderHistorial() {
   const pagosFiltrados = pagos.filter(p => {
     const matchFecha = p.fecha === filtroFecha;
     const matchCobrador = filtroCobradorId === 'todos' || p.cobradorId === filtroCobradorId;
-    return matchFecha && matchCobrador;
+    return matchFecha && matchCobrador && !p.eliminado;
   });
 
   const gastosFiltrados = gastos.filter(g => {
     const matchFecha = g.fecha === filtroFecha;
     const matchCobrador = filtroCobradorId === 'todos' || g.cobradorId === filtroCobradorId;
     return matchFecha && matchCobrador;
+  });
+
+  const bajasFiltradas = movimientos.filter(m => {
+    const matchFecha = m.fecha === filtroFecha;
+    const matchCobrador = filtroCobradorId === 'todos' || m.cobradorId === filtroCobradorId;
+    return matchFecha && matchCobrador && m.descripcion === 'Baja pago';
   });
 
   const creditosFiltrados = creditos.filter(cr => {
@@ -203,7 +210,8 @@ window.renderHistorial = function renderHistorial() {
   });
 
   const totalPagos = pagosFiltrados.reduce((s, p) => s + p.monto, 0);
-  const totalGastos = gastosFiltrados.reduce((s, g) => s + (g.monto || 0), 0);
+  const totalGastos = gastosFiltrados.reduce((s, g) => s + (g.monto || 0), 0)
+                    + bajasFiltradas.reduce((s, m) => s + (m.monto || 0), 0);
 
   return `
   <div class="topbar">
@@ -306,21 +314,39 @@ window.renderHistorial = function renderHistorial() {
         <div style="font-weight:800; color:var(--danger); font-size:16px">${formatMoney(totalGastos)}</div>
       </div>
       <div style="border-top:1px solid var(--border); margin-bottom:8px"></div>
-      ${gastosFiltrados.length === 0
+      ${gastosFiltrados.length === 0 && bajasFiltradas.length === 0
         ? `<div style="text-align:center; color:var(--muted); font-size:13.5px; padding:20px 0">Sin gastos este día</div>`
-        : gastosFiltrados.map(g => {
-          const cb = usuarios.find(u => u.id === g.cobradorId);
-          return `
-          <div style="padding:10px 0; border-bottom:1px solid var(--border)">
-            <div class="flex-between">
-              <div>
-                <div style="font-weight:700; font-size:14px; color:var(--text)">${g.descripcion || 'Sin descripción'}</div>
-                <div style="font-size:11.5px; color:var(--muted); margin-top:2px">${cb?.nombre || '—'}</div>
+        : [
+          ...gastosFiltrados.map(g => {
+            const cb = usuarios.find(u => u.id === g.cobradorId);
+            return `
+            <div style="padding:10px 0; border-bottom:1px solid var(--border)">
+              <div class="flex-between">
+                <div>
+                  <div style="font-weight:700; font-size:14px; color:var(--text)">${g.descripcion || 'Sin descripción'}</div>
+                  <div style="font-size:11.5px; color:var(--muted); margin-top:2px">${cb?.nombre || '—'}</div>
+                </div>
+                <div style="font-weight:800; color:var(--danger); font-size:14px">${formatMoney(g.monto)}</div>
               </div>
-              <div style="font-weight:800; color:var(--danger); font-size:14px">${formatMoney(g.monto)}</div>
-            </div>
-          </div>`;
-        }).join('')}
+            </div>`;
+          }),
+          ...bajasFiltradas.map(m => {
+            const cb = usuarios.find(u => u.id === m.cobradorId);
+            return `
+            <div style="padding:10px 0; border-bottom:1px solid var(--border); opacity:0.7">
+              <div class="flex-between">
+                <div>
+                  <div style="font-weight:700; font-size:14px; color:#e53e3e; text-decoration:line-through">Baja pago</div>
+                  <div style="font-size:11.5px; color:var(--muted); margin-top:2px">${cb?.nombre || '—'}
+                    <span style="background:#fff5f5; color:#e53e3e; font-size:10px; font-weight:700;
+                      padding:1px 6px; border-radius:10px; margin-left:4px">Pago eliminado</span>
+                  </div>
+                </div>
+                <div style="font-weight:800; color:#e53e3e; font-size:14px; text-decoration:line-through">${formatMoney(m.monto)}</div>
+              </div>
+            </div>`;
+          })
+        ].join('')}
     </div>` : ''}
 
     ${filtroVista === 'creditos' ? `
@@ -441,6 +467,7 @@ window.verHistorialCliente = function verHistorialCliente(clienteId) {
   if (!c) return;
   const creditos = (DB._cache['creditos'] || []).filter(cr => cr.clienteId === clienteId);
   const pagos = (DB._cache['pagos'] || []).filter(p => p.clienteId === clienteId && !p.eliminado);
+  const pagosEliminados = (DB._cache['pagos'] || []).filter(p => p.clienteId === clienteId && p.eliminado);
   const totalPagado = pagos.reduce((s, p) => s + p.monto, 0);
   const cobrador = (DB._cache['users'] || []).find(u => u.id === c.cobradorId);
 
@@ -468,7 +495,7 @@ window.verHistorialCliente = function verHistorialCliente(clienteId) {
 
   texto += `💰 *TOTAL PAGADO: S/${totalPagado.toFixed(2)}*`;
 
-  state._historialCliente = { c, creditos, pagos, texto, cobrador };
+  state._historialCliente = { c, creditos, pagos, pagosEliminados, texto, cobrador };
   state.modal = 'historial-cliente';
   render();
 };

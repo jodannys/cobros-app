@@ -816,7 +816,7 @@ window.guardarAdmin = async function guardarAdmin(idExistente) {
 
 // ── MODAL HISTORIAL DE CLIENTE ────────────────────────────────
 window.renderModalHistorialCliente = function renderModalHistorialCliente() {
-  const { c, creditos, pagos, cobrador } = state._historialCliente;
+  const { c, creditos, pagos, pagosEliminados, cobrador } = state._historialCliente;
   const totalPagado = pagos.reduce((s, p) => s + p.monto, 0);
 
   return `
@@ -826,20 +826,26 @@ window.renderModalHistorialCliente = function renderModalHistorialCliente() {
     DNI: ${c.dni}${c.negocio ? ` · 🏪 ${c.negocio}` : ''}
     ${cobrador ? ` · ${cobrador.nombre}` : ''}
   </div>
-  ${creditos.slice().sort((a, b) => b.fechaInicio.localeCompare(a.fechaInicio)).map(cr => {
+  ${creditos.slice().sort((a, b) => b.fechaInicio.localeCompare(a.fechaInicio)).map((cr, idx, arr) => {
     const pagosCr = pagos.filter(p => p.creditoId === cr.id && !p.eliminado);
     const pagadoCr = pagosCr.reduce((s, p) => s + p.monto, 0);
     const saldoCr = Math.max(0, cr.total - pagadoCr);
     const esCerrado = saldoCr <= 0;
+    const num = arr.length - idx;
+    const borderColor = esCerrado ? '#22c55e' : 'var(--primary)';
+    const headerBg = esCerrado ? '#f0fff4' : '#eff6ff';
     return `
-    <div style="border:1px solid #e2e8f0;border-radius:12px;padding:14px;margin-bottom:12px">
-      <div class="flex-between" style="margin-bottom:8px">
-        <div style="font-weight:700">💳 Crédito ${formatDate(cr.fechaInicio)}</div>
-        <span style="background:${esCerrado ? '#f0fff4' : '#eff6ff'};color:${esCerrado ? '#276749' : 'var(--primary)'};
-          padding:3px 8px;border-radius:20px;font-size:11px;font-weight:700">
-          ${esCerrado ? '✓ Cerrado' : 'Activo'}
+    <div style="border:2px solid ${borderColor};border-radius:12px;overflow:hidden;margin-bottom:16px">
+      <div style="background:${headerBg};padding:10px 14px;display:flex;justify-content:space-between;align-items:center">
+        <div style="font-weight:800;font-size:14px;color:${esCerrado ? '#166534' : 'var(--primary)'}">
+          #${num} · ${formatDate(cr.fechaInicio)}
+        </div>
+        <span style="background:${esCerrado ? '#dcfce7' : '#dbeafe'};color:${esCerrado ? '#166534' : '#1d4ed8'};
+          padding:3px 10px;border-radius:20px;font-size:11px;font-weight:800;letter-spacing:0.3px">
+          ${esCerrado ? '✓ CERRADO' : '● ACTIVO'}
         </span>
       </div>
+      <div style="padding:14px">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
         <div style="background:#f8fafc;border-radius:8px;padding:8px;font-size:12px">
           <div style="color:var(--muted)">Prestado</div>
@@ -875,6 +881,21 @@ window.renderModalHistorialCliente = function renderModalHistorialCliente() {
           <span style="color:var(--muted)">${formatDate(p.fecha)} · ${p.tipo}</span>
           <span style="font-weight:700;color:var(--success)">${formatMoney(p.monto)}</span>
         </div>`).join('')}
+      ${(() => {
+        const eliminadosCr = (pagosEliminados || []).filter(p => p.creditoId === cr.id)
+          .slice().sort((a, b) => b.fecha.localeCompare(a.fecha));
+        if (!eliminadosCr.length) return '';
+        return `
+        <div style="font-size:11px;font-weight:700;color:#e53e3e;margin-top:8px;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">
+          Bajas / Eliminados:
+        </div>
+        ${eliminadosCr.map(p => `
+          <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #fff5f5;font-size:12px;opacity:0.75">
+            <span style="color:#e53e3e;text-decoration:line-through">${formatDate(p.fecha)} · ${p.tipo}</span>
+            <span style="font-weight:700;color:#e53e3e;text-decoration:line-through">${formatMoney(p.monto)}</span>
+          </div>`).join('')}`;
+      })()}
+      </div>
     </div>`;
   }).join('')}
   <div style="background:#f0fff4;border-radius:10px;padding:12px;text-align:center;margin-bottom:14px">
