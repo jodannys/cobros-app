@@ -394,15 +394,30 @@ window.renderPanelCartera = function () {
       ${mostrarMovs ? 'Ver menos' : 'Ver todos'}
     </button>
   </div>
-  <div style="display:flex; gap:8px; margin-bottom:12px; align-items:center">
-    <input type="date" value="${state._filtroFechaMovs || ''}"
-      onchange="state._filtroFechaMovs=this.value||null; state._verMovsCartera=true; render()"
-      style="flex:1; padding:7px 10px; border:1px solid #e2e8f0; border-radius:8px;
-             font-size:13px; font-weight:600; color:#1e293b; background:white">
-    ${state._filtroFechaMovs ? `
-    <button onclick="state._filtroFechaMovs=null; render()"
-      style="padding:7px 12px; border-radius:8px; border:1px solid #e2e8f0;
-             background:white; font-size:12px; cursor:pointer; color:#94a3b8; font-weight:700">✕</button>` : ''}
+  <div style="margin-bottom:12px">
+    <div style="font-size:11px; color:var(--muted); font-weight:700; text-transform:uppercase;
+                letter-spacing:0.5px; margin-bottom:6px">
+      📅 Filtrar por fecha
+    </div>
+    <div style="display:flex; gap:8px; align-items:center">
+      <div style="flex:1; position:relative">
+        <input type="date" value="${state._filtroFechaMovs || ''}"
+          onchange="state._filtroFechaMovs=this.value||null; state._verMovsCartera=true; render()"
+          style="width:100%; padding:9px 12px; border:1.5px solid ${state._filtroFechaMovs ? 'var(--primary)' : '#e2e8f0'};
+                 border-radius:10px; font-size:13px; font-weight:600; color:#1e293b; background:white;
+                 box-sizing:border-box">
+        ${!state._filtroFechaMovs ? `
+        <div style="position:absolute; inset:0; display:flex; align-items:center; padding:0 12px;
+                    pointer-events:none; color:#94a3b8; font-size:13px; font-weight:500">
+          Selecciona una fecha...
+        </div>` : ''}
+      </div>
+      ${state._filtroFechaMovs ? `
+      <button onclick="state._filtroFechaMovs=null; render()"
+        style="padding:9px 12px; border-radius:10px; border:1.5px solid #e2e8f0;
+               background:white; font-size:12px; cursor:pointer; color:#94a3b8; font-weight:700;
+               white-space:nowrap">✕ Limpiar</button>` : ''}
+    </div>
   </div>
   ${(() => {
     const todos = (DB._cache['movimientos_cartera'] || []).slice().sort((a, b) => b.fecha.localeCompare(a.fecha));
