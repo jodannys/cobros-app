@@ -604,7 +604,7 @@ window.renderModalBannerAlertas = function renderModalBannerAlertas() {
         const icon = a.tipo === 'vencido' ? '🚩' : '⏳';
         const statusText = a.tipo === 'vencido'
           ? `Vencido hace ${a.dias || 0} días`
-          : `Sin abonar ${a.dias || 0} días`;
+          : `${a.dias || 0} ${a.dias === 1 ? 'cuota' : 'cuotas'} pendiente`;
         return `
           <div style="background:white; border-radius:10px; padding:14px 14px 14px 18px;
                       margin-bottom:10px; box-shadow:var(--shadow); position:relative; overflow:hidden;">
@@ -635,7 +635,7 @@ window.renderModalBannerAlertas = function renderModalBannerAlertas() {
                           display:flex; align-items:center; gap:5px">
                 ${icon} ${statusText}
               </div>
-              <button onclick="closeModal(event); selectClient('${a.cliente?.id}')"
+              <button onclick="closeModal(event); abrirGestionCredito('${a.cr?.id}','${a.cliente?.id}')"
                 style="background:#0f172a; color:white; border:none; padding:7px 14px;
                        border-radius:8px; font-size:12px; font-weight:600; cursor:pointer;
                        display:flex; align-items:center; gap:5px; flex-shrink:0">

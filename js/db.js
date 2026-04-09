@@ -60,14 +60,18 @@ window.DB = {
   // ── Cache local ──────────────────────────────────────────
   _CACHE_KEY: 'cobrosapp_cache_v1',
   _CACHE_TTL: 15 * 60 * 1000, // 15 minutos
+  _saveTimer: null,
 
   _guardarCacheLocal() {
-    try {
-      localStorage.setItem(this._CACHE_KEY, JSON.stringify({
-        ts: Date.now(),
-        data: this._cache
-      }));
-    } catch (e) { }
+    clearTimeout(this._saveTimer);
+    this._saveTimer = setTimeout(() => {
+      try {
+        localStorage.setItem(this._CACHE_KEY, JSON.stringify({
+          ts: Date.now(),
+          data: this._cache
+        }));
+      } catch (e) { }
+    }, 800);
   },
 
   _cargarCacheLocal() {
@@ -207,14 +211,17 @@ window.DB = {
   }
 };
 
-// ── Pausar/reanudar según visibilidad ────────────────────────
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'hidden') {
-    DB.pausarListeners();
-  } else {
-    DB.reanudarListeners();
-  }
-});
+// ── Pausar/reanudar según visibilidad (una sola vez) ─────────
+if (!window._visibilityListenerAdded) {
+  window._visibilityListenerAdded = true;
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+      DB.pausarListeners();
+    } else {
+      DB.reanudarListeners();
+    }
+  });
+}
 
 // ── Indicador visual "En vivo" ────────────────────────────────
 window.renderIndicadorVivo = function () {

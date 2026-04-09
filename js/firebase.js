@@ -75,27 +75,45 @@ window.subirFotoStorage = async function (base64, clienteId) {
   return await storageRef.getDownloadURL();
 };
 // ─── MODO LOCAL MOCK ─────────────────────────────────────────
-const USE_LOCAL_MOCK = false; // ← false para producción
+window.USE_LOCAL_MOCK = false; // ← false para producción
 
-if (USE_LOCAL_MOCK) {
+if (window.USE_LOCAL_MOCK) {
   const _mockData = {};
-  const _fbGetAllOriginal = window.fbGetAll;
-
 
   window.subirFotoStorage = async (base64, clienteId) => {
     console.log('📸 Mock: foto no subida a Storage');
-    return base64; // devuelve el base64 directamente para simular
+    return base64;
   };
+
+  
   window.fbGetAll = async (col) => {
     const cached = localStorage.getItem(`mock_${col}`);
     if (cached) {
       _mockData[col] = JSON.parse(cached);
       return _mockData[col];
     }
-    const datos = await _fbGetAllOriginal(col);
-    localStorage.setItem(`mock_${col}`, JSON.stringify(datos));
-    _mockData[col] = datos;
-    return datos;
+    // Sin cache local → devolver vacío, NO tocar Firestore
+    console.warn(`[MOCK] Sin cache para '${col}' — retornando []`);
+    _mockData[col] = [];
+    return [];
+  };
+
+  window.fbGet = async (col, id) => {
+    const arr = JSON.parse(localStorage.getItem(`mock_${col}`) || '[]');
+    return arr.find(x => x.id === id) || null;
+  };
+
+  window.fbGetSince = async (col, desde) => {
+    const arr = JSON.parse(localStorage.getItem(`mock_${col}`) || '[]');
+    return arr.filter(x => x.updatedAt > desde);
+  };
+
+  window.fbBatch = async (ops) => {
+    for (const { op, col, id, data } of ops) {
+      if (op === 'set')    await window.fbSet(col, id, data);
+      if (op === 'update') await window.fbUpdate(col, id, data);
+      if (op === 'delete') await window.fbDelete(col, id);
+    }
   };
 
   window.fbSet = async (col, id, data) => {
@@ -138,5 +156,5 @@ if (USE_LOCAL_MOCK) {
     return () => { };
   };
 
-  console.warn("🟡 MODO LOCAL MOCK activo — sin lecturas a Firestore");
+  console.warn('🟡 MODO LOCAL MOCK activo — sin lecturas a Firestore');
 }

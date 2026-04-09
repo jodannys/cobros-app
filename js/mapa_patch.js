@@ -1,11 +1,5 @@
 // ============================================================
 // MAPA_PATCH.JS — GPS, distancias y mapa de ruta
-// Fixes aplicados:
-//   1. Indicador visual para clientes sin coordenadas
-//   2. Centro del mapa basado en clientes, no en Lima hardcodeado
-//   3. watchPosition del mapa se limpia si se cierra con tap fuera
-//   4. (orderamiento en tiempo real ya funcionaba — sin cambio)
-//   5. _metaDetalle se recalcula al abrir el mapa (clientes ya cobrados no aparecen)
 // ============================================================
 
 window.guardarUbicacionCliente = function () {
@@ -102,12 +96,17 @@ window.abrirMapaRuta = function () {
   const anterior = document.getElementById('modal-mapa-ruta');
   if (anterior) anterior.remove();
 
-  // ── FIX 5: recalcular _metaDetalle al abrir para que refleje
-  // los pagos más recientes y no muestre clientes ya cobrados ──
-  if (typeof calcularMetaReal === 'function' && state.currentUser) {
-    const meta = calcularMetaReal(state.currentUser.id, today());
-    window._metaDetalle = meta.detalle;
+  // _metaDetalle ya viene seteado por el llamador:
+  //   - cobrador: renderCuadre() lo setea en window._metaDetalle
+  //   - admin: abrirMapaRutaCobrador() lo setea antes de llamar aquí
+  // NO recalcular aquí con currentUser.id — rompería la vista de admin
+
+  if (typeof L === 'undefined') {
+    alert('El mapa no está disponible. Verifica tu conexión a internet.');
+    return;
   }
+
+  const esAdmin = state.currentUser?.role === 'admin';
 
   const modal = document.createElement('div');
   modal.id = 'modal-mapa-ruta';
@@ -123,12 +122,13 @@ window.abrirMapaRuta = function () {
                   display:flex; justify-content:space-between; align-items:center; flex-shrink:0">
         <div style="font-weight:800; font-size:15px">🗺️ Mapa de Ruta</div>
         <div style="display:flex; gap:8px; align-items:center">
+          ${!esAdmin ? `
           <button id="btn-gps-mapa"
             style="border:none; background:#f0fdf4; border-radius:8px;
                    padding:6px 14px; font-weight:700; cursor:pointer;
                    font-size:13px; color:#16a34a">
             ▶️ Mi posición
-          </button>
+          </button>` : ''}
           <button id="btn-cerrar-mapa"
             style="border:none; background:#f1f5f9; border-radius:8px;
                    padding:6px 14px; font-weight:700; cursor:pointer; font-size:13px">
@@ -162,23 +162,27 @@ window.abrirMapaRuta = function () {
   window.addEventListener('popstate', window._mapaRutaPopState, { once: true });
 
   setTimeout(() => {
-    const pendientes = (window._metaDetalle || []).filter(d => !d.completo);
+    // Admin ve toda la ruta (incluye pagados/saldados), cobrador solo los pendientes
+    const pendientes = esAdmin
+      ? (window._metaDetalle || [])
+      : (window._metaDetalle || []).filter(d => !d.completo);
 
     // ── FIX 2: calcular centro a partir de los clientes con coordenadas ──
     // Si hay GPS activo úsalo, si no usa el centroide de los clientes,
     // si tampoco hay clientes con coords, cae en Lima como último recurso.
+    // Separar primero — se reutiliza para calcular centro y marcadores
+    const conCoords = pendientes.filter(d => d.cliente?.lat && d.cliente?.lng);
+    const sinCoords = pendientes.filter(d => !d.cliente?.lat || !d.cliente?.lng);
+
     let centro;
     if (state.miUbicacion) {
       centro = [state.miUbicacion.lat, state.miUbicacion.lng];
+    } else if (conCoords.length > 0) {
+      const avgLat = conCoords.reduce((s, d) => s + d.cliente.lat, 0) / conCoords.length;
+      const avgLng = conCoords.reduce((s, d) => s + d.cliente.lng, 0) / conCoords.length;
+      centro = [avgLat, avgLng];
     } else {
-      const conCoords = pendientes.filter(d => d.cliente?.lat && d.cliente?.lng);
-      if (conCoords.length > 0) {
-        const avgLat = conCoords.reduce((s, d) => s + d.cliente.lat, 0) / conCoords.length;
-        const avgLng = conCoords.reduce((s, d) => s + d.cliente.lng, 0) / conCoords.length;
-        centro = [avgLat, avgLng];
-      } else {
-        centro = [-12.046374, -77.042793]; // Lima — último recurso
-      }
+      centro = [-12.046374, -77.042793]; // Lima — último recurso
     }
 
     const mapa = L.map('mapa-leaflet').setView(centro, 15);
@@ -186,22 +190,29 @@ window.abrirMapaRuta = function () {
       attribution: '© OpenStreetMap'
     }).addTo(mapa);
 
-    // ── FIX 1: separar clientes con y sin coordenadas ──
-    const conCoords = pendientes.filter(d => d.cliente?.lat && d.cliente?.lng);
-    const sinCoords = pendientes.filter(d => !d.cliente?.lat || !d.cliente?.lng);
+    // Color del marcador según estado
+    const _colorMarcador = (d) => {
+      if (d.estadoVisual === 'saldado' || d.estadoVisual === 'pagado') return '#16a34a';
+      if (d.estadoVisual === 'parcial') return '#d97706';
+      if (d.estadoVisual === 'atrasado') return '#dc2626';
+      return '#e11d48'; // pendiente
+    };
 
-    // Clientes con coords → puntos rojos en el mapa
     conCoords.forEach((d, i) => {
       const dist = state.miUbicacion
         ? _fmtDistancia(calcularDistancia(
           state.miUbicacion.lat, state.miUbicacion.lng,
           d.cliente.lat, d.cliente.lng))
         : null;
+      const estadoBadge = d.estadoVisual === 'pagado' ? '✅ Pagó' :
+                          d.estadoVisual === 'saldado' ? '🏆 Saldado' :
+                          d.estadoVisual === 'parcial'  ? '🟡 Abonó' :
+                          d.estadoVisual === 'atrasado' ? '🔴 Atrasado' : '⏳ Pendiente';
       L.circleMarker([d.cliente.lat, d.cliente.lng], {
-        radius: 9, fillColor: '#e11d48', color: 'white',
+        radius: 9, fillColor: _colorMarcador(d), color: 'white',
         weight: 2, opacity: 1, fillOpacity: 0.9
       }).addTo(mapa)
-        .bindPopup(`<b>${i + 1}. ${d.cliente.nombre}</b><br>${dist ? '📍 ' + dist + '<br>' : ''}💰 ${formatMoney(d.cuota)}`);
+        .bindPopup(`<b>${i + 1}. ${d.cliente.nombre}</b><br>${estadoBadge}<br>${dist ? '📍 ' + dist + '<br>' : ''}💰 ${formatMoney(d.cuota)}`);
     });
 
     // ── FIX 1: mostrar panel de clientes sin ubicación debajo del mapa ──
@@ -224,8 +235,8 @@ window.abrirMapaRuta = function () {
       // Insertar antes del div del mapa
       const mapaDiv = document.getElementById('mapa-leaflet');
       mapaDiv.parentNode.insertBefore(contenedor, mapaDiv);
-      // Ajustar altura del mapa para dejar espacio al panel
-      mapaDiv.style.flex = '1';
+      // Notificar a Leaflet que el contenedor cambió de tamaño
+      setTimeout(() => mapa.invalidateSize(), 50);
     }
 
     // Ajustar zoom para abarcar todos los clientes con coords
@@ -265,25 +276,29 @@ window.abrirMapaRuta = function () {
       );
     };
 
-    // Si el cobrador ya tenía ruta activa, activar GPS inmediatamente
-    if (state.miUbicacion) {
-      actualizarPosicion(state.miUbicacion.lat, state.miUbicacion.lng);
-      _iniciarGPSMapa();
-    }
-
-    document.getElementById('btn-gps-mapa').onclick = () => {
-      const btn = document.getElementById('btn-gps-mapa');
-      if (gpsActivo) {
-        if (watchIdMapa != null) { navigator.geolocation.clearWatch(watchIdMapa); watchIdMapa = null; }
-        if (marcadorYo) { marcadorYo.remove(); marcadorYo = null; }
-        gpsActivo = false;
-        btn.textContent = '▶️ Mi posición';
-        btn.style.background = '#f0fdf4';
-        btn.style.color = '#16a34a';
-      } else {
+    // GPS solo disponible para cobrador (no admin)
+    if (!esAdmin) {
+      if (state.miUbicacion) {
+        actualizarPosicion(state.miUbicacion.lat, state.miUbicacion.lng);
         _iniciarGPSMapa();
       }
-    };
+
+      const btnGps = document.getElementById('btn-gps-mapa');
+      if (btnGps) {
+        btnGps.onclick = () => {
+          if (gpsActivo) {
+            if (watchIdMapa != null) { navigator.geolocation.clearWatch(watchIdMapa); watchIdMapa = null; }
+            if (marcadorYo) { marcadorYo.remove(); marcadorYo = null; }
+            gpsActivo = false;
+            btnGps.textContent = '▶️ Mi posición';
+            btnGps.style.background = '#f0fdf4';
+            btnGps.style.color = '#16a34a';
+          } else {
+            _iniciarGPSMapa();
+          }
+        };
+      }
+    }
 
     // ── FIX 3: redefinir con limpieza de GPS una vez que el mapa está listo ──
     window._cerrarMapaRuta = () => {

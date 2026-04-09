@@ -66,8 +66,8 @@ window.eliminarClienteCascade = async function (clienteId) {
 
   // Borrar créditos y cliente
   await _borrarLote('creditos', creditos);
-  // Eliminar foto de Storage si existe
-  if (cliente?.foto && cliente.foto.includes('firebasestorage')) {
+  // Eliminar foto de Storage si existe (solo en producción)
+  if (!window.USE_LOCAL_MOCK && cliente?.foto && cliente.foto.includes('firebasestorage')) {
     try {
       const ref = firebase.storage().ref(`clientes/${clienteId}.jpg`);
       await ref.delete();
@@ -152,9 +152,7 @@ window.limpiarHuerfanos = async function () {
     await DB.delete('gastos', g.id); borrados++;
   }
 
-  DB._cache['pagos']    = await fbGetAll('pagos');
-DB._cache['creditos'] = await fbGetAll('creditos');
-DB._cache['gastos']   = await fbGetAll('gastos');
+  // El cache se actualiza solo vía los listeners onSnapshot — no leer Firestore aquí
 
   console.log(`✅ Limpieza: ${borrados} documentos huérfanos eliminados.`);
   render();

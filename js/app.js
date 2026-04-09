@@ -506,8 +506,9 @@ window.addEventListener('popstate', () => {
 (async () => {
   try {
     // Restaurar sesión PRIMERO, antes de init
+    // localStorage = Recordarme activado | sessionStorage = sesión de pestaña
     try {
-      const saved = localStorage.getItem('sessionUser');
+      const saved = localStorage.getItem('sessionUser') || sessionStorage.getItem('sessionUser');
       if (saved) {
         const savedUser = JSON.parse(saved);
         state.currentUser = savedUser;
@@ -515,22 +516,26 @@ window.addEventListener('popstate', () => {
       }
     } catch (_) {
       localStorage.removeItem('sessionUser');
+      sessionStorage.removeItem('sessionUser');
     }
 
     state._cargando = true;
     await DB.init();
 
-    // Verificar que el usuario aún existe en DB
+    // Verificar que el usuario aún existe en DB y refrescar datos (sin exponer pass)
     if (state.currentUser) {
       const users = DB._cache['users'] || [];
       if (users.length > 0) {
         const userActual = users.find(u => u.id === state.currentUser.id);
         if (!userActual) {
           localStorage.removeItem('sessionUser');
+          sessionStorage.removeItem('sessionUser');
           state.currentUser = null;
           state.screen = 'login';
         } else {
-          state.currentUser = userActual; // datos frescos de DB
+          const userSafe = { ...userActual };
+          delete userSafe.pass;
+          state.currentUser = userSafe;
         }
       }
     }

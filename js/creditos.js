@@ -152,15 +152,16 @@ window.renderCreditoCard = function (cr) {
     </div>` : ''}
 
     <!-- ── TOTAL Y CUOTA ── -->
-    <div style="${_S.grid2}; margin-bottom:12px">
+    <div style="${pagadoReal ? '' : _S.grid2}; margin-bottom:12px">
       <div style="${_S.surface}">
         <div style="${_S.label}; margin-bottom:4px">Total a pagar</div>
         <div style="${_S.valueLg}">${formatMoney(cr.total)}</div>
       </div>
+      ${!pagadoReal ? `
       <div style="${_S.surface}">
         <div style="${_S.label}; margin-bottom:4px">Cuota diaria</div>
         <div style="${_S.valueLg}">${formatMoney(cr.cuotaDiaria)}</div>
-      </div>
+      </div>` : ''}
     </div>
 
     ${renderFechasCredito(cr)}
@@ -574,6 +575,7 @@ window.extenderCredito = async function () {
 
   try {
     await DB.update('creditos', cr.id, { diasTotal: nuevoTotalDias, fechaFin: nuevaFechaFin });
+    state.selectedCredito = { ...state.selectedCredito, diasTotal: nuevoTotalDias, fechaFin: nuevaFechaFin };
     showToast(`✅ Plazo extendido hasta ${formatDate(nuevaFechaFin)}`);
     render();
   } catch (error) { console.error(error); }

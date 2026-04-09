@@ -16,7 +16,6 @@ window.deshabilitarBotonesPago = function (estado) {
 // 2. EJECUTAR PAGO PROTEGIDO
 // ============================================================
 window.ejecutarPagoProtegido = function (btn, creditoId) {
-  console.log(`[PAGO] Clic detectado en crédito: ${creditoId}`);
 
   if (state._pagoProcesando) {
     console.warn("⚠️ Ya hay un pago en proceso. Ignorando clic.");

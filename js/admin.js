@@ -406,7 +406,7 @@ window.renderAdminCobrador = function renderAdminCobrador() {
                       <div style="font-size:14px; font-weight:700; color:#1e293b">
                         ${d.cliente?.nombre || '—'}
                       </div>
-                      <div style="display:flex; gap:5px; margin-top:4px; flex-wrap:wrap; align-items:center">
+                      <div style="display:flex; gap:4px; flex-wrap:wrap; margin-top:3px; align-items:center">
                         ${d.estadoVisual === 'saldado' ? `
                           <span style="background:#bbf7d0; color:#14532d; font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px">
                             🏆 Saldado
@@ -427,11 +427,12 @@ window.renderAdminCobrador = function renderAdminCobrador() {
                           <span style="background:#f1f5f9; color:#64748b; font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px">
                             ⏳ Pendiente
                           </span>` : ''}
+                        ${d.estadoVisual !== 'saldado' ? `
+                          <span style="font-size:11px; color:#94a3b8">Cuota ${formatMoney(d.cuota)}</span>` : ''}
                         ${d.deudaAcumulada > 0.5 && d.estadoVisual !== 'saldado' ? `
                           <span style="background:#fff1f2; color:#9f1239; font-size:10px; font-weight:700; padding:1px 6px; border-radius:4px">
                             ⚠️ Debe ${formatMoney(d.deudaAcumulada)}
                           </span>` : ''}
-                        <span style="font-size:11px; color:#94a3b8">Cuota ${formatMoney(d.cuota)}</span>
                       </div>
                     </div>
                     ${d.estadoVisual !== 'saldado' ? `
@@ -464,11 +465,11 @@ window.renderAdminCobrador = function renderAdminCobrador() {
 
 <div class="filtros-scroll" style="margin-bottom:10px">
   ${[
-    { key: 'todos', label: 'Todos' },
-    { key: 'activos', label: '✅ Activos' },
-    { key: 'atrasados', label: '🔴 Atrasados' },
-    { key: 'sin_credito', label: '🆕 Sin crédito' },
-  ].map(f => `
+      { key: 'todos', label: 'Todos' },
+      { key: 'activos', label: '✅ Activos' },
+      { key: 'atrasados', label: '🔴 Atrasados' },
+      { key: 'sin_credito', label: '🆕 Sin crédito' },
+    ].map(f => `
     <button onclick="state['${filtroKey}']='${f.key}'; render()"
       class="filtro-btn ${filtroAdminCob === f.key ? 'active' : ''}">
       ${f.label}
@@ -739,7 +740,7 @@ window.guardarFeriado = async function () {
     showToast('📅 Día bloqueado correctamente');
     render();
   } catch (e) {
-    console.log('ERROR:', e);
+    console.error('Error al guardar feriado:', e);
   }
 };
 

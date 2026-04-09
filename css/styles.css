@@ -14,7 +14,7 @@
 }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;   background: linear-gradient(135deg, #1a56db 0%, #0ea96d 100%); color: var(--text); min-height: 100vh; }
 
-.login-screen { 
+.login-screen{ 
   min-height: 100vh; 
   display: flex; 
   align-items: center; 
@@ -24,7 +24,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;  
 }
 
 /* LOGIN */
-.login-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #1a56db 0%, #0ea96d 100%); padding: 20px; }
 .login-card {
   background: white;
   border-radius: 20px;
@@ -33,6 +32,48 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;  
   max-width: 380px;
   box-shadow: 0 32px 80px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.05);
 }
+
+/* INPUT PASSWORD WRAP */
+.pass-wrap {
+  position: relative;
+}
+
+/* BOTÓN OJO */
+.eye-btn {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  transition: color 0.2s;
+}
+.eye-btn:active {
+  transform: translateY(-50%) scale(0.9);
+}
+
+/* RECORDARME */
+.remember {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* FOOTER LOGIN */
+.login-footer {
+  margin-top: 20px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted);
+}
+
 
 .login-logo { text-align: center; margin-bottom: 28px; }
 .login-logo h1 { font-size: 28px; font-weight: 800; color: var(--primary); }
@@ -82,6 +123,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;  
 .btn-primary:hover { box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4); }
 .btn-primary:active { background: var(--primary-dark); transform: scale(0.98); box-shadow: none; }
 
+#btnLogin { margin-top: 14px; }
+
 .btn-success {
   background: var(--success);
   color: white;
@@ -113,18 +156,18 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;  
 
 /* LAYOUT */
 .topbar {
-  
-  backdrop-filter: blur(10px);         /* Desenfoque del contenido detrás */
-  -webkit-backdrop-filter: blur(10px); /* Compatibilidad con iPhone/Safari */
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   padding: 14px 20px;
   display: flex;
- align-items:flex-start;
+  align-items: center;
   justify-content: space-between;
   position: sticky;
   top: 0;
   z-index: 100;
-  box-shadow: 0 1px 8px rgba(0,0,0,0.05); /* Sombra más suave */
-  border-bottom: 1px solid rgba(255, 255, 255, 0.3); /* Brillo en el borde */
+  box-shadow: 0 1px 8px rgba(0,0,0,0.05);
+  border-bottom: 1px solid var(--border);
 }
 
 .topbar h2 {
@@ -149,8 +192,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;  
 
 /* BOTTOM NAV */
 .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 430px; background: white; border-top: 1px solid var(--border); display: flex; z-index: 200; }
-.nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px 6px; cursor: pointer; color: var(--muted); font-size: 10px; gap: 3px; transition: color 0.2s; }
-.nav-item.active { color: var(--primary); }
 .nav-icon { font-size: 22px; }
 
 /* CARDS */
@@ -495,18 +536,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;  
 }
 
 
- 
-  .nav-item {
-    position: relative;
-    padding: 10px 5px;
-    transition: all 0.3s ease;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    color: #666; /* Color de los iconos no seleccionados */
-  }
-
- .nav-item {
+.nav-item {
   position: relative;
   flex: 1;
   display: flex;
@@ -642,13 +672,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;  
 .tag-blue { background: #eff6ff; color: #1d4ed8; }
 .tag-green { background: #f0fdf4; color: #166534; }
 
-
-.cuota-burbuja {
-  min-width: 42px;
-  font-size: 10px;
-  padding: 4px 2px;
-  text-align: center;
-}
 
 .cuota-burbuja {
   width: 30px;

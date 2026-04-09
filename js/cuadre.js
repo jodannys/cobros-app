@@ -367,28 +367,9 @@ window.renderCuadre = function () {
 // ────────────────────────────────────────────────────────────────
 // LOGS DE DEPURACIÓN (Pon esto en tu renderCuadre)
 // ────────────────────────────────────────────────────────────────
-const clientesPendientes = meta.detalle.filter(d => {
-    const noHaTerminado = !d.completo;
-    const yaPagoAlgo = (Number(d.montoPagadoHoy) > 0);
-    const resultadoFiltro = noHaTerminado || yaPagoAlgo;
-
-    // Solo logueamos si el cliente tiene nombre para no inundar la consola
-    if (d.cliente?.nombre) {
-        console.log(`DEBUG [${d.cliente.nombre}]:`, {
-            cuota: d.cuota,
-            pagadoHoy: d.montoPagadoHoy,
-            completo: d.completo,
-            noHaTerminado: noHaTerminado,
-            yaPagoAlgo: yaPagoAlgo,
-            seQuedaEnLista: resultadoFiltro,
-            estadoVisual: d.estadoVisual
-        });
-    }
-
-    return resultadoFiltro;
-});
-
-console.log("TOTAL CLIENTES EN LISTA:", clientesPendientes.length);
+const clientesPendientes = meta.detalle.filter(d =>
+  !d.completo || Number(d.montoPagadoHoy) > 0
+);
 
   if (state.miUbicacion) {
     clientesPendientes.sort((a, b) => {
@@ -687,17 +668,21 @@ ${d.estadoVisual === 'atrasado' ? `
                     </span>` : ''}
                 </div>
               </div>
-              <button
-                onclick="if(this.getAttribute('data-loading')) return;
-                         this.setAttribute('data-loading','true');
-                         this.style.opacity='0.5';
-                         pagoRapido('${d.cr.id}');"
-                style="cursor:pointer; border:none; padding:0; background:none; outline:none">
-                <span style="font-size:10.5px; font-weight:700; padding:5px 12px; border-radius:6px;
-                             background:#fff1f2; color:#9f1239; display:inline-block; white-space:nowrap">
-                  ⏳ ${formatMoney(d.cuota)}
-                </span>
-              </button>
+              ${d.estadoVisual === 'saldado' ? `
+                <span style="font-size:20px; color:#16a34a; flex-shrink:0">✅</span>
+              ` : `
+                <button
+                  onclick="if(this.getAttribute('data-loading')) return;
+                           this.setAttribute('data-loading','true');
+                           this.style.opacity='0.5';
+                           pagoRapido('${d.cr.id}');"
+                  style="cursor:pointer; border:none; padding:0; background:none; outline:none">
+                  <span style="font-size:10.5px; font-weight:700; padding:5px 12px; border-radius:6px;
+                               background:#fff1f2; color:#9f1239; display:inline-block; white-space:nowrap">
+                    ⏳ ${formatMoney(d.cuota)}
+                  </span>
+                </button>
+              `}
             </div>`;
         }).join('')}
   </div>` : ''}
