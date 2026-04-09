@@ -1,11 +1,38 @@
 // ============================================================
 // GESTIÓN DE CRÉDITOS Y PAGOS
 // ============================================================
+
+// ── Tokens de diseño (inline) ─────────────────────────────────
+// Se usan como constantes locales para mantener coherencia visual
+// sin depender de clases externas que puedan no estar cargadas.
+const _S = {
+  // Radios
+  r6:  'border-radius:6px',
+  r8:  'border-radius:8px',
+  r10: 'border-radius:10px',
+  r12: 'border-radius:12px',
+
+  // Tipografía
+  label: 'font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.7px; color:var(--muted)',
+  value: 'font-size:14px; font-weight:800; color:var(--text)',
+  valueLg: 'font-size:16px; font-weight:800; color:var(--text)',
+
+  // Superficies
+  surface:      'background:var(--bg); border-radius:8px; padding:10px 14px',
+  surfaceGreen: 'background:#f0fdf4; border-radius:8px; padding:10px 14px',
+  surfaceRed:   'background:#fff1f2; border-radius:8px; padding:10px 14px',
+  surfaceAmber: 'background:#fff7ed; border-radius:8px; padding:10px 14px',
+
+  // Grid 2 col
+  grid2: 'display:grid; grid-template-columns:1fr 1fr; gap:10px',
+};
+
+// ── registrarPagoSeguro ───────────────────────────────────────
 window.registrarPagoSeguro = function (btn, creditoId) {
   if (btn.dataset.loading === 'true') return;
   btn.dataset.loading = 'true';
-  btn.style.opacity = '0.5';
-  btn.innerHTML = '⌛ Procesando...';
+  btn.style.opacity = '0.55';
+  btn.innerHTML = '⌛ Procesando…';
 
   openRegistrarPago(creditoId);
 
@@ -16,32 +43,39 @@ window.registrarPagoSeguro = function (btn, creditoId) {
   }, 2000);
 };
 
+// ── renderSeccionCreditosCliente ──────────────────────────────
 window.renderSeccionCreditosCliente = function (clienteId) {
   const todos = (DB._cache['creditos'] || [])
     .filter(c => c.clienteId === clienteId)
     .sort((a, b) => new Date(b.creadoEn || 0) - new Date(a.creadoEn || 0));
 
-  const activo = todos.find(c => c.activo === true);
+  const activo  = todos.find(c => c.activo === true);
   const antiguos = todos.filter(c => c.activo !== true);
 
   return `
-    <div class="contenedor-creditos">
+    <div class="contenedor-creditos" style="display:flex; flex-direction:column; gap:12px">
+
       ${activo ? renderCreditoCard(activo) : `
-        <div style="text-align:center; padding:20px; color:var(--muted); font-size:13px; background:var(--bg); border-radius:10px">
-          No hay un crédito activo actualmente.
+        <div style="text-align:center; padding:28px 20px; color:var(--muted);
+                    font-size:13px; background:var(--bg); border-radius:12px;
+                    border:1.5px dashed var(--border)">
+          Sin crédito activo
         </div>
       `}
 
       ${antiguos.length > 0 ? `
-        <div style="margin-top:15px">
+        <div>
           <button onclick="toggleHistorial()"
-            style="width:100%; padding:12px; background:var(--bg); border:1.5px solid var(--border);
-                   border-radius:10px; color:var(--text); font-weight:700; font-size:12px;
-                   display:flex; justify-content:space-between; align-items:center; cursor:pointer">
-            <span>📁 Ver créditos Cerrados (${antiguos.length})</span>
-            <span id="flecha-hist">▼</span>
+            style="width:100%; padding:12px 16px; background:var(--bg);
+                   border:1.5px solid var(--border); border-radius:10px;
+                   color:var(--text); font-weight:700; font-size:12px; cursor:pointer;
+                   display:flex; justify-content:space-between; align-items:center;
+                   transition:background 0.15s">
+            <span>📁 Créditos cerrados (${antiguos.length})</span>
+            <span id="flecha-hist" style="color:var(--muted); font-size:11px">▼</span>
           </button>
-          <div id="cajon-historial" style="display:none; margin-top:10px">
+          <div id="cajon-historial" style="display:none; margin-top:10px;
+               display:flex; flex-direction:column; gap:10px">
             ${antiguos.map(ant => renderCreditoCard(ant)).join('')}
           </div>
         </div>
@@ -50,148 +84,145 @@ window.renderSeccionCreditosCliente = function (clienteId) {
   `;
 };
 
+// ── toggleHistorial ───────────────────────────────────────────
 window.toggleHistorial = function () {
   const cajon = document.getElementById('cajon-historial');
   const flecha = document.getElementById('flecha-hist');
   if (!cajon) return;
   const isHidden = cajon.style.display === 'none';
-  cajon.style.display = isHidden ? 'block' : 'none';
+  cajon.style.display = isHidden ? 'flex' : 'none';
   flecha.innerText = isHidden ? '▲' : '▼';
 };
 
+// ── renderCreditoCard ─────────────────────────────────────────
 window.renderCreditoCard = function (cr) {
   const pagos = (DB._cache['pagos'] || [])
     .filter(p => p.creditoId === cr.id && !p.eliminado)
     .sort((a, b) => a.fecha.localeCompare(b.fecha));
-  const totalPagado = pagos.reduce((s, p) => s + (Number(p.monto) || 0), 0);
-  const saldo = Math.max(0, cr.total - totalPagado);
-  const pagadoReal = saldo <= 0;
-  const progreso = Math.min(100, Math.round((totalPagado / cr.total) * 100));
-  const isAdmin = state.currentUser.role === 'admin';
-  const hoyStr = today();
-  const vencido = cr.activo && cr.fechaFin && hoyStr > cr.fechaFin;
-  const infoMora = obtenerDatosMora(cr);
-  const mora = infoMora.total;
-  const totalConMora = saldo + mora;
+
+  const totalPagado   = pagos.reduce((s, p) => s + (Number(p.monto) || 0), 0);
+  const saldo         = Math.max(0, cr.total - totalPagado);
+  const pagadoReal    = saldo <= 0;
+  const progreso      = Math.min(100, Math.round((totalPagado / cr.total) * 100));
+  const isAdmin       = state.currentUser.role === 'admin';
+  const hoyStr        = today();
+  const vencido       = cr.activo && cr.fechaFin && hoyStr > cr.fechaFin;
+  const infoMora      = obtenerDatosMora(cr);
+  const mora          = infoMora.total;
+  const totalConMora  = saldo + mora;
   const cuotasCubiertas = Math.floor(totalPagado / cr.cuotaDiaria);
 
   return `
-  <div class="credito-card" style="padding:16px; margin-bottom:12px; border-radius:10px">
+  <div class="credito-card" style="padding:18px; border-radius:14px; margin-bottom:0">
 
-    <!-- ENCABEZADO -->
-    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px">
+    <!-- ── ENCABEZADO ── -->
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px">
       <div>
-        <div style="font-size:10.5px; font-weight:700; color:var(--muted); text-transform:uppercase;
-                    letter-spacing:0.6px; margin-bottom:4px">Monto prestado</div>
-        <div style="font-size:26px; font-weight:800; color:var(--text); letter-spacing:-0.5px; line-height:1">
+        <div style="${_S.label}; margin-bottom:5px">Monto prestado</div>
+        <div style="font-size:28px; font-weight:900; color:var(--text); letter-spacing:-1px; line-height:1">
           ${formatMoney(cr.monto)}
         </div>
       </div>
       <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px">
-        <span class="tag ${!pagadoReal ? 'tag-blue' : 'tag-green'}" style="font-size:12px; padding:4px 12px">
+        <span class="tag ${!pagadoReal ? 'tag-blue' : 'tag-green'}"
+              style="font-size:12px; padding:5px 14px; border-radius:8px; font-weight:700">
           ${!pagadoReal ? 'Debe ' + formatMoney(saldo) : '✓ Pagado'}
         </span>
         ${cr.seguro ? `
-          <span style="background:#fff7ed; color:#c2410c; padding:3px 10px;
-                       border-radius:6px; font-size:10.5px; font-weight:700">
+          <span style="${_S.surfaceAmber}; padding:3px 10px; border-radius:6px;
+                        font-size:10.5px; font-weight:700; color:#c2410c">
             🛡️ Seguro ${cr.porcentajeSeguro}%
           </span>` : ''}
       </div>
     </div>
 
-    <!-- SEGURO -->
+    <!-- ── SEGURO ── -->
     ${cr.seguro ? `
-    <div style="background:#fff7ed; border-radius:8px; padding:10px 12px; margin-bottom:12px">
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px">
+    <div style="${_S.surfaceAmber}; margin-bottom:12px">
+      <div style="${_S.grid2}">
         <div>
-          <div style="font-size:10.5px; color:#c2410c; font-weight:700; text-transform:uppercase;
-                      letter-spacing:0.4px; margin-bottom:3px">🛡️ Seguro cobrado</div>
-          <div style="font-weight:800; color:#c2410c; font-size:15px">${formatMoney(cr.montoSeguro)}</div>
+          <div style="${_S.label}; color:#c2410c; margin-bottom:4px">🛡️ Seguro cobrado</div>
+          <div style="font-weight:800; color:#c2410c; font-size:16px">${formatMoney(cr.montoSeguro)}</div>
         </div>
         <div>
-          <div style="font-size:10.5px; color:var(--primary); font-weight:700; text-transform:uppercase;
-                      letter-spacing:0.4px; margin-bottom:3px">💵 Entregado</div>
-          <div style="font-weight:800; color:var(--primary); font-size:15px">${formatMoney(cr.montoEntregado)}</div>
+          <div style="${_S.label}; color:var(--primary); margin-bottom:4px">💵 Entregado</div>
+          <div style="font-weight:800; color:var(--primary); font-size:16px">${formatMoney(cr.montoEntregado)}</div>
         </div>
       </div>
     </div>` : ''}
 
-    <!-- TOTAL Y CUOTA -->
-    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px">
-      <div style="background:var(--bg); border-radius:8px; padding:10px 12px">
-        <div style="font-size:10.5px; color:var(--muted); font-weight:700; text-transform:uppercase;
-                    letter-spacing:0.4px; margin-bottom:3px">Total a pagar</div>
-        <div style="font-size:15px; font-weight:800; color:var(--text)">${formatMoney(cr.total)}</div>
+    <!-- ── TOTAL Y CUOTA ── -->
+    <div style="${_S.grid2}; margin-bottom:12px">
+      <div style="${_S.surface}">
+        <div style="${_S.label}; margin-bottom:4px">Total a pagar</div>
+        <div style="${_S.valueLg}">${formatMoney(cr.total)}</div>
       </div>
-      <div style="background:var(--bg); border-radius:8px; padding:10px 12px">
-        <div style="font-size:10.5px; color:var(--muted); font-weight:700; text-transform:uppercase;
-                    letter-spacing:0.4px; margin-bottom:3px">Cuota diaria</div>
-        <div style="font-size:15px; font-weight:800; color:var(--text)">${formatMoney(cr.cuotaDiaria)}</div>
+      <div style="${_S.surface}">
+        <div style="${_S.label}; margin-bottom:4px">Cuota diaria</div>
+        <div style="${_S.valueLg}">${formatMoney(cr.cuotaDiaria)}</div>
       </div>
     </div>
 
     ${renderFechasCredito(cr)}
 
-    <!-- PAGADO / SALDO -->
-    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:12px 0">
-      <div style="background:#f0fdf4; border-radius:8px; padding:10px 12px">
-        <div style="font-size:10.5px; color:#166534; font-weight:700; text-transform:uppercase;
-                    letter-spacing:0.4px; margin-bottom:3px">✅ Pagado</div>
-        <div style="font-size:15px; font-weight:800; color:#166534">${formatMoney(totalPagado)}</div>
+    <!-- ── PAGADO / SALDO ── -->
+    <div style="${_S.grid2}; margin:12px 0">
+      <div style="${_S.surfaceGreen}">
+        <div style="${_S.label}; color:#166534; margin-bottom:4px">✅ Pagado</div>
+        <div style="font-size:16px; font-weight:800; color:#166534">${formatMoney(totalPagado)}</div>
       </div>
-      <div style="background:${saldo > 0 ? '#fff1f2' : '#f0fdf4'}; border-radius:8px; padding:10px 12px">
-        <div style="font-size:10.5px; color:${saldo > 0 ? '#9f1239' : '#166534'}; font-weight:700;
-                    text-transform:uppercase; letter-spacing:0.4px; margin-bottom:3px">
-          ${saldo > 0 ? '⏳ Saldo' : '✓ Saldado'}
+      <div style="${saldo > 0 ? _S.surfaceRed : _S.surfaceGreen}">
+        <div style="${_S.label}; color:${saldo > 0 ? '#9f1239' : '#166534'}; margin-bottom:4px">
+          ${saldo > 0 ? '⏳ Saldo pendiente' : '✓ Saldado'}
         </div>
-        <div style="font-size:15px; font-weight:800; color:${saldo > 0 ? 'var(--danger)' : '#166534'}">
+        <div style="font-size:16px; font-weight:800; color:${saldo > 0 ? 'var(--danger)' : '#166534'}">
           ${formatMoney(saldo)}
         </div>
       </div>
     </div>
 
-    <!-- MORA -->
+    <!-- ── MORA ── -->
     ${mora > 0 ? `
-    <div style="background:#fff1f2; border-radius:8px; padding:12px 14px; margin:12px 0;
-                border-left:3px solid var(--danger)">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
+    <div style="${_S.surfaceRed}; margin:12px 0; border-left:3px solid var(--danger)">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
         <span style="font-size:12.5px; color:var(--danger); font-weight:700">
-          ⚠️ Mora (${infoMora.dias} días)
+          ⚠️ Mora · ${infoMora.dias} días
         </span>
-        <span style="font-weight:800; color:var(--danger); font-size:15px">${formatMoney(mora)}</span>
+        <span style="font-weight:800; color:var(--danger); font-size:16px">${formatMoney(mora)}</span>
       </div>
       <div style="display:flex; justify-content:space-between; align-items:center;
-                  padding-top:8px; border-top:1px dashed #fecdd3">
+                  padding-top:10px; border-top:1px dashed #fecdd3">
         <span style="font-size:13px; font-weight:700; color:var(--text)">Total con mora</span>
-        <span style="font-weight:900; font-size:17px; color:var(--danger)">${formatMoney(totalConMora)}</span>
+        <span style="font-weight:900; font-size:18px; color:var(--danger)">${formatMoney(totalConMora)}</span>
       </div>
       <div style="font-size:11px; color:#9f1239; margin-top:6px; font-style:italic">
         S/ 5.00 por cada día de atraso
       </div>
     </div>` : ''}
 
-    <!-- PROGRESO -->
-    <div style="margin:12px 0 6px">
-      <div style="display:flex; justify-content:space-between; font-size:11.5px;
-                  color:var(--muted); margin-bottom:6px">
+    <!-- ── PROGRESO ── -->
+    <div style="margin:14px 0 6px">
+      <div style="display:flex; justify-content:space-between; align-items:center;
+                  font-size:11.5px; color:var(--muted); margin-bottom:7px">
         <span>${cuotasCubiertas} de ${cr.diasTotal} cuotas</span>
         <span style="font-weight:700; color:${progreso >= 100 ? 'var(--success)' : 'var(--primary)'}">
-          ${progreso}% pagado
+          ${progreso}%
         </span>
       </div>
-      <div class="progress-bar" style="height:5px; border-radius:4px">
-        <div class="progress-fill" style="width:${progreso}%; border-radius:4px"></div>
+      <div class="progress-bar" style="height:6px; border-radius:99px; overflow:hidden">
+        <div class="progress-fill"
+             style="width:${progreso}%; height:100%; border-radius:99px; transition:width 0.4s ease"></div>
       </div>
     </div>
 
-    <!-- ACCIONES -->
+    <!-- ── ACCIONES ── -->
     ${cr.activo ? `
-    <div style="display:flex; flex-direction:column; gap:8px; margin-top:14px">
+    <div style="display:flex; flex-direction:column; gap:8px; margin-top:16px">
 
-      <!-- Botón registrar pago -->
+      <!-- Botón principal -->
       <button class="btn btn-success"
         id="btn-pago-${cr.id}"
-        style="height:46px; font-size:14px; font-weight:700; width:100%;
+        style="height:48px; font-size:14px; font-weight:700; width:100%; border-radius:10px;
                display:flex; align-items:center; justify-content:center; gap:8px"
         onclick="ejecutarPagoProtegido(this, '${cr.id}')">
         <span id="icon-${cr.id}">💰</span>
@@ -199,25 +230,25 @@ window.renderCreditoCard = function (cr) {
       </button>
 
       ${isAdmin ? `
-        <!-- FILA 1: Cerrar + Eliminar -->
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px">
+        <!-- Fila 1: Cerrar + Eliminar -->
+        <div style="${_S.grid2}">
           <button class="btn btn-outline btn-sm"
-            style="height:40px; font-size:12.5px; font-weight:700"
+            style="height:42px; font-size:12px; font-weight:700; border-radius:8px"
             onclick="cerrarCredito('${cr.id}')">
             ✓ Cerrar crédito
           </button>
           <button class="btn btn-sm"
-            style="height:40px; font-size:12.5px; font-weight:700;
+            style="height:42px; font-size:12px; font-weight:700; border-radius:8px;
                    background:#fff1f2; color:#9f1239; border:1.5px solid #fecdd3"
             onclick="eliminarCredito('${cr.id}')">
-            🚫 Eliminar crédito
+            🚫 Eliminar
           </button>
         </div>
 
-        <!-- FILA 2: Mora + Corregir monto -->
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px">
+        <!-- Fila 2: Mora + Corregir monto -->
+        <div style="${_S.grid2}">
           <button class="btn btn-sm"
-            style="height:40px; font-size:12.5px; font-weight:700;
+            style="height:42px; font-size:12px; font-weight:700; border-radius:8px;
                    background:${cr.mora_activa ? '#fff1f2' : '#f0fdf4'};
                    color:${cr.mora_activa ? 'var(--danger)' : 'var(--success)'};
                    border:1.5px solid ${cr.mora_activa ? '#fecdd3' : '#bbf7d0'}"
@@ -225,38 +256,49 @@ window.renderCreditoCard = function (cr) {
             ${cr.mora_activa ? '🔕 Sin mora' : '🔔 Activar mora'}
           </button>
           <button class="btn btn-sm btn-outline"
-            style="height:40px; font-size:12.5px; font-weight:700"
+            style="height:42px; font-size:12px; font-weight:700; border-radius:8px"
             onclick="abrirEditarCredito('${cr.id}')">
             ✏️ Corregir monto
           </button>
-        </div>` :
-        vencido ? `
-        <div style="text-align:center; font-size:12px; color:var(--danger); font-weight:600">
+        </div>
+      ` : vencido ? `
+        <div style="text-align:center; padding:10px; font-size:12px;
+                    color:var(--danger); font-weight:600; background:#fff1f2;
+                    border-radius:8px">
           ⚠️ Coordina con el administrador
-        </div>` : ''}
-    </div>` : `
-    <div style="background:#f0fdf4; border-radius:8px; padding:10px 14px; font-size:13px;
-                color:#166534; font-weight:600; text-align:center; margin-top:12px">
+        </div>
+      ` : ''}
+    </div>
+
+    ` : `
+    <div style="${_S.surfaceGreen}; font-size:13px; color:#166534;
+                font-weight:600; text-align:center; margin-top:14px">
       ✅ Crédito cerrado
     </div>
     ${isAdmin ? `
-      <button class="btn btn-sm btn-outline" style="margin-top:8px" onclick="reabrirCredito('${cr.id}')">
+      <button class="btn btn-sm btn-outline"
+        style="margin-top:8px; width:100%; border-radius:8px; height:38px; font-size:12px"
+        onclick="reabrirCredito('${cr.id}')">
         🔓 Reabrir crédito
-      </button>` : ''}`}
+      </button>` : ''}
+    `}
 
     ${renderEsquemaCuotas(cr)}
 
-    <!-- HISTORIAL DE PAGOS -->
+    <!-- ── HISTORIAL DE PAGOS ── -->
     ${pagos.length > 0 ? `
-    <div style="margin-top:14px">
-      <div style="font-size:10.5px; font-weight:700; color:var(--muted); text-transform:uppercase;
-                  letter-spacing:0.6px; margin-bottom:10px">Historial de pagos</div>
+    <div style="margin-top:16px">
+      <div style="${_S.label}; margin-bottom:10px">Historial de pagos</div>
       ${pagos.slice().reverse().map(p => `
-        <div class="cuota-item" style="display:flex; align-items:center; padding:10px 0;
-                                       border-bottom:1px solid var(--border)">
+        <div class="cuota-item"
+          style="display:flex; align-items:center; gap:10px;
+                 padding:11px 0; border-bottom:1px solid var(--border)">
+
           <div style="flex:1; min-width:0">
-            <div style="font-weight:600; font-size:13.5px; color:var(--text)">${formatDate(p.fecha)}</div>
-            <div style="display:flex; align-items:center; gap:6px; margin-top:3px">
+            <div style="font-weight:600; font-size:13.5px; color:var(--text)">
+              ${formatDate(p.fecha)}
+            </div>
+            <div style="display:flex; align-items:center; gap:5px; margin-top:4px; flex-wrap:wrap">
               <span style="font-size:10.5px; background:var(--bg); color:var(--muted);
                            padding:2px 8px; border-radius:6px; font-weight:600; text-transform:capitalize">
                 ${p.tipo}
@@ -268,52 +310,60 @@ window.renderCreditoCard = function (cr) {
                 </span>` : ''}
             </div>
           </div>
+
           <div style="font-weight:800; font-size:15px; color:var(--success);
-                      margin-right:${isAdmin ? '10px' : '0'}; flex-shrink:0; letter-spacing:-0.3px">
+                      letter-spacing:-0.3px; flex-shrink:0">
             ${formatMoney(p.monto)}
           </div>
+
           ${isAdmin ? `
             <button onclick="abrirEditarPago('${p.id}')"
-              style="width:30px; height:30px; border-radius:8px; border:none;
+              style="width:32px; height:32px; border-radius:8px; border:1.5px solid var(--border);
                      background:var(--bg); color:var(--muted); font-size:13px;
                      cursor:pointer; display:flex; align-items:center; justify-content:center;
-                     flex-shrink:0">✏️</button>` : ''}
-        </div>`).join('')}
+                     flex-shrink:0; transition:background 0.15s">
+              ✏️
+            </button>` : ''}
+        </div>
+      `).join('')}
     </div>` : ''}
 
   </div>`;
 };
 
+// ── renderFechasCredito ───────────────────────────────────────
 window.renderFechasCredito = function (cr) {
   const fechaFin = calcularFechaFin(cr.fechaInicio, cr.diasTotal);
-  const vencido = cr.activo && estaVencido(cr.fechaInicio, cr.diasTotal);
+  const vencido  = cr.activo && estaVencido(cr.fechaInicio, cr.diasTotal);
 
   return `
-  <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:4px">
-    <div style="display:flex; align-items:center; gap:6px; background:var(--bg);
-                padding:6px 12px; border-radius:8px">
-      <span style="font-size:13px">📅</span>
+  <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:4px">
+
+    <div style="display:flex; align-items:center; gap:8px; ${_S.surface}; flex:1; min-width:120px">
+      <span style="font-size:16px">📅</span>
       <div>
-        <div style="font-size:10px; color:var(--muted); font-weight:700;
-                    text-transform:uppercase; letter-spacing:0.4px">Inicio</div>
+        <div style="${_S.label}; margin-bottom:3px">Inicio</div>
         <div style="font-size:13px; font-weight:700; color:var(--text)">${formatDate(cr.fechaInicio)}</div>
       </div>
     </div>
-    <div style="display:flex; align-items:center; gap:6px;
+
+    <div style="display:flex; align-items:center; gap:8px;
                 background:${vencido ? '#fff1f2' : 'var(--bg)'};
-                padding:6px 12px; border-radius:8px">
-      <span style="font-size:13px">${vencido ? '🔴' : '🟢'}</span>
+                border-radius:8px; padding:10px 14px; flex:1; min-width:120px">
+      <span style="font-size:16px">${vencido ? '🔴' : '🟢'}</span>
       <div>
-        <div style="font-size:10px; color:${vencido ? '#9f1239' : 'var(--muted)'}; font-weight:700;
-                    text-transform:uppercase; letter-spacing:0.4px">Fin</div>
+        <div style="${_S.label}; color:${vencido ? '#9f1239' : 'var(--muted)'}; margin-bottom:3px">Fin</div>
         <div style="font-size:13px; font-weight:700; color:${vencido ? 'var(--danger)' : 'var(--text)'}">
           ${fechaFin}
-          ${vencido ? `<span style="background:#fecdd3; color:#9f1239; padding:1px 7px;
-                                   border-radius:4px; font-size:10px; font-weight:700;
-                                   margin-left:6px">VENCIDO</span>` : ''}
+          ${vencido ? `
+            <span style="background:#fecdd3; color:#9f1239; padding:1px 7px;
+                         border-radius:4px; font-size:10px; font-weight:700; margin-left:6px">
+              VENCIDO
+            </span>` : ''}
         </div>
       </div>
     </div>
+
   </div>`;
 };
 
@@ -326,30 +376,31 @@ window.calcularCredito = function () {
     return;
   }
 
-  const plan = document.getElementById('crPlan')?.value || 'A';
+  const plan     = document.getElementById('crPlan')?.value || 'A';
   const diasTotal = plan === 'B' ? 20 : 24;
-  const elPlazo = document.getElementById('crPlazo');
+  const elPlazo  = document.getElementById('crPlazo');
   if (elPlazo) elPlazo.textContent = diasTotal + ' días';
+
   const pctInteres = 0.20;
-  const interes = monto * pctInteres;
-  const total = monto + interes;
-  const cuota = total / diasTotal;
+  const interes    = monto * pctInteres;
+  const total      = monto + interes;
+  const cuota      = total / diasTotal;
 
   const preview = document.getElementById('crPreview');
   if (preview) preview.style.display = 'block';
   if (document.getElementById('crInteres')) document.getElementById('crInteres').textContent = formatMoney(interes);
-  if (document.getElementById('crTotal')) document.getElementById('crTotal').textContent = formatMoney(total);
-  if (document.getElementById('crCuota')) document.getElementById('crCuota').textContent = formatMoney(cuota);
+  if (document.getElementById('crTotal'))   document.getElementById('crTotal').textContent   = formatMoney(total);
+  if (document.getElementById('crCuota'))   document.getElementById('crCuota').textContent   = formatMoney(cuota);
 
-  const seguroActivo = state._crSeguro !== false;
+  const seguroActivo  = state._crSeguro !== false;
   const seguroPreview = document.getElementById('crSeguroPreview');
   if (seguroPreview) {
     if (seguroActivo) {
-      const pct = state._crPctSeguro ?? 5;
+      const pct         = state._crPctSeguro ?? 5;
       const montoSeguro = Math.round(monto * (pct / 100) * 100) / 100;
       const entregaReal = monto - montoSeguro;
-      if (document.getElementById('crSeguroMonto')) document.getElementById('crSeguroMonto').textContent = formatMoney(montoSeguro);
-      if (document.getElementById('crEntregaReal')) document.getElementById('crEntregaReal').textContent = formatMoney(entregaReal);
+      if (document.getElementById('crSeguroMonto'))  document.getElementById('crSeguroMonto').textContent  = formatMoney(montoSeguro);
+      if (document.getElementById('crEntregaReal'))  document.getElementById('crEntregaReal').textContent  = formatMoney(entregaReal);
       seguroPreview.style.display = 'block';
     } else {
       seguroPreview.style.display = 'none';
@@ -363,7 +414,7 @@ window.guardarCredito = async function () {
   window._guardandoCredito = true;
 
   const btn = document.querySelector('[onclick="guardarCredito()"]');
-  if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Guardando…'; }
 
   try {
     const creditosExistentes = (DB._cache['creditos'] || [])
@@ -374,21 +425,21 @@ window.guardarCredito = async function () {
       return;
     }
 
-    const plan = document.getElementById('crPlan')?.value || 'A';
+    const plan      = document.getElementById('crPlan')?.value || 'A';
     const diasTotal = plan === 'B' ? 20 : 24;
     const pctInteres = 0.20;
 
-    const monto = parseMonto(document.getElementById('crMonto').value);
+    const monto       = parseMonto(document.getElementById('crMonto').value);
     const fechaInicio = document.getElementById('crFecha').value;
     if (monto <= 0 || !fechaInicio) { alert('Datos incompletos'); return; }
 
-    const total = monto * (1 + pctInteres);
+    const total       = monto * (1 + pctInteres);
     const cuotaDiaria = Math.round((total / diasTotal) * 100) / 100;
-    const fechaFin = sumarDiasHabiles(fechaInicio, diasTotal);
+    const fechaFin    = sumarDiasHabiles(fechaInicio, diasTotal);
 
-    const seguroActivo = state._crSeguro !== false;
+    const seguroActivo     = state._crSeguro !== false;
     const porcentajeSeguro = seguroActivo ? (state._crPctSeguro ?? 5) : 0;
-    const montoSeguro = seguroActivo ? Math.round(monto * (porcentajeSeguro / 100)) : 0;
+    const montoSeguro      = seguroActivo ? Math.round(monto * (porcentajeSeguro / 100)) : 0;
 
     const id = genId();
     const nuevoCredito = {
@@ -403,13 +454,12 @@ window.guardarCredito = async function () {
     };
 
     await DB.set('creditos', id, nuevoCredito);
-
     state.modal = null;
     showToast('✅ Crédito creado con éxito');
     render();
   } catch (error) {
-    console.error("Error al guardar:", error);
-    alert("Hubo un error al guardar el crédito.");
+    console.error('Error al guardar:', error);
+    alert('Hubo un error al guardar el crédito.');
   } finally {
     window._guardandoCredito = false;
     if (btn) { btn.disabled = false; btn.textContent = 'Crear Crédito'; }
@@ -425,11 +475,11 @@ window.eliminarCredito = async function (crId) {
   const cr = (DB._cache['creditos'] || []).find(c => c.id === crId);
   if (!cr) return;
 
-  const pagos = (DB._cache['pagos'] || []).filter(p => p.creditoId === crId && !p.eliminado);
+  const pagos       = (DB._cache['pagos'] || []).filter(p => p.creditoId === crId && !p.eliminado);
   const totalPagado = pagos.reduce((s, p) => s + Number(p.monto), 0);
   const montoSeguro = Number(cr.montoSeguro || 0);
-  const montoTotal = Number(cr.monto) + montoSeguro;
-  const cliente = (DB._cache['clientes'] || []).find(c => c.id === cr.clienteId);
+  const montoTotal  = Number(cr.monto) + montoSeguro;
+  const cliente     = (DB._cache['clientes'] || []).find(c => c.id === cr.clienteId);
 
   const lineas = [
     `Monto prestado: ${formatMoney(cr.monto)}`,
@@ -454,19 +504,18 @@ window.eliminarCredito = async function (crId) {
     // 2. Eliminar el crédito
     await DB.delete('creditos', crId);
 
-    const cobradorId = cliente?.cobradorId || null;
-    const fechaAjuste = today();
+    const cobradorId   = cliente?.cobradorId || null;
+    const fechaAjuste  = today();
 
     // 3. Ajuste cartera admin: devolver monto + seguro
     if (montoTotal > 0) {
       const idAdmin = genId();
-      const ajusteAdmin = {
+      await DB.set('movimientos_cartera', idAdmin, {
         id: idAdmin, tipo: 'inyeccion', monto: montoTotal,
-        descripcion: `Baja crédito`,
+        descripcion: 'Baja crédito',
         fecha: fechaAjuste, cobradorId,
         registradoPor: state.currentUser.id
-      };
-      await DB.set('movimientos_cartera', idAdmin, ajusteAdmin);
+      });
     }
 
     // 4. Quitar cuotas ya cobradas de la mochila del cobrador
@@ -489,13 +538,14 @@ window.eliminarCredito = async function (crId) {
   }
 };
 
+// ── cerrarCredito ─────────────────────────────────────────────
 window.cerrarCredito = async function (crId) {
   const cr = (DB._cache['creditos'] || []).find(c => c.id === crId);
   if (!cr) return;
 
-  const pagos = (DB._cache['pagos'] || []).filter(p => p.creditoId === crId && !p.eliminado);
+  const pagos       = (DB._cache['pagos'] || []).filter(p => p.creditoId === crId && !p.eliminado);
   const totalPagado = pagos.reduce((s, p) => s + (Number(p.monto) || 0), 0);
-  const saldo = cr.total - totalPagado;
+  const saldo       = cr.total - totalPagado;
 
   if (saldo > 0) {
     if (!confirm(`¡CUIDADO! Aún debe ${formatMoney(saldo)}. ¿Cerrar de todos modos?`)) return;
@@ -512,14 +562,15 @@ window.cerrarCredito = async function (crId) {
   }
 };
 
+// ── extenderCredito ───────────────────────────────────────────
 window.extenderCredito = async function () {
-  const input = document.getElementById('extDias');
+  const input    = document.getElementById('extDias');
   const diasExtra = parseInt(input.value) || 0;
   if (diasExtra <= 0) return alert('⚠️ Ingresa días válidos.');
 
-  const cr = state.selectedCredito;
+  const cr            = state.selectedCredito;
   const nuevoTotalDias = Number(cr.diasTotal) + diasExtra;
-  const nuevaFechaFin = sumarDiasHabiles(cr.fechaInicio, nuevoTotalDias);
+  const nuevaFechaFin  = sumarDiasHabiles(cr.fechaInicio, nuevoTotalDias);
 
   try {
     await DB.update('creditos', cr.id, { diasTotal: nuevoTotalDias, fechaFin: nuevaFechaFin });
@@ -528,6 +579,7 @@ window.extenderCredito = async function () {
   } catch (error) { console.error(error); }
 };
 
+// ── guardarCompromiso ─────────────────────────────────────────
 window.guardarCompromiso = async function () {
   const fecha = document.getElementById('fechaCompromiso').value;
   if (!fecha) return alert('⚠️ Selecciona una fecha para el compromiso.');
@@ -545,6 +597,7 @@ window.guardarCompromiso = async function () {
   }
 };
 
+// ── guardarNotaCredito ────────────────────────────────────────
 window.guardarNotaCredito = async function () {
   const notaInput = document.getElementById('notaCredito');
   const notaTexto = notaInput.value.trim();
@@ -561,6 +614,7 @@ window.guardarNotaCredito = async function () {
   }
 };
 
+// ── toggleMora ────────────────────────────────────────────────
 window.toggleMora = async function (crId, activar) {
   try {
     const creditosCache = DB._cache['creditos'] || [];
@@ -577,11 +631,12 @@ window.toggleMora = async function (crId, activar) {
     showToast(activar ? '🔔 Mora activada — S/5 por día' : '🔕 Mora desactivada');
     render();
   } catch (error) {
-    console.error("❌ Error en toggleMora:", error);
-    alert("No se pudo cambiar el estado de la mora.");
+    console.error('❌ Error en toggleMora:', error);
+    alert('No se pudo cambiar el estado de la mora.');
   }
 };
 
+// ── abrirEditarPago ───────────────────────────────────────────
 window.abrirEditarPago = function (pagoId) {
   const p = (DB._cache['pagos'] || []).find(x => x.id === pagoId);
   if (!p) return;
@@ -590,6 +645,7 @@ window.abrirEditarPago = function (pagoId) {
   render();
 };
 
+// ── renderModalEditarPago ─────────────────────────────────────
 window.renderModalEditarPago = function () {
   const p = state._editandoPago;
   if (!p) return '';
@@ -599,49 +655,56 @@ window.renderModalEditarPago = function () {
   <div class="modal-handle"></div>
   <div class="modal-title">Editar Pago</div>
 
-  <div style="background:var(--bg); border-radius:8px; padding:10px 14px; margin-bottom:14px">
-    <div style="font-size:10.5px; color:var(--muted); font-weight:700; text-transform:uppercase;
-                letter-spacing:0.4px; margin-bottom:3px">Cliente</div>
+  <div style="${_S.surface}; margin-bottom:14px">
+    <div style="${_S.label}; margin-bottom:4px">Cliente</div>
     <div style="font-weight:700; font-size:14px; color:var(--text)">${cliente?.nombre || '—'}</div>
   </div>
 
   <div class="form-group">
     <label>Monto (S/) *</label>
     <input class="form-control" id="epMonto" type="number" step="0.01" value="${p.monto}"
-      style="font-size:20px; font-weight:800; text-align:center; letter-spacing:-0.5px">
+      style="font-size:22px; font-weight:800; text-align:center; letter-spacing:-0.5px;
+             border-radius:10px; height:56px">
   </div>
 
   <div class="form-group">
     <label>Tipo de pago</label>
-    <select class="form-control" id="epTipo">
-      <option value="efectivo"      ${p.tipo === 'efectivo' ? 'selected' : ''}>Efectivo</option>
-      <option value="yape"          ${p.tipo === 'yape' ? 'selected' : ''}>Yape / Plin</option>
+    <select class="form-control" id="epTipo" style="border-radius:10px; height:46px">
+      <option value="efectivo"      ${p.tipo === 'efectivo'      ? 'selected' : ''}>Efectivo</option>
+      <option value="yape"          ${p.tipo === 'yape'          ? 'selected' : ''}>Yape / Plin</option>
       <option value="transferencia" ${p.tipo === 'transferencia' ? 'selected' : ''}>Transferencia</option>
     </select>
   </div>
 
-  <button class="btn btn-primary" onclick="guardarPagoEditado()">Guardar cambios</button>
+  <button class="btn btn-primary" style="width:100%; height:46px; border-radius:10px; font-weight:700"
+    onclick="guardarPagoEditado()">
+    Guardar cambios
+  </button>
 
-  <div style="margin-top:10px; padding-top:10px; border-top:1px solid var(--border)">
-    <button class="btn btn-danger" onclick="eliminarPago('${p.id}')">Eliminar pago</button>
+  <div style="margin-top:12px; padding-top:12px; border-top:1px solid var(--border)">
+    <button class="btn btn-danger" style="width:100%; height:42px; border-radius:10px; font-weight:700"
+      onclick="eliminarPago('${p.id}')">
+      Eliminar pago
+    </button>
   </div>`;
 };
 
+// ── guardarPagoEditado ────────────────────────────────────────
 window.guardarPagoEditado = async function () {
   if (window._guardandoPagoEditado) return;
   window._guardandoPagoEditado = true;
 
   const btn = document.querySelector('[onclick="guardarPagoEditado()"]');
-  if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Guardando…'; }
 
   try {
-    const p = state._editandoPago;
+    const p          = state._editandoPago;
     const montoNuevo = parseMonto(document.getElementById('epMonto').value);
-    const tipo = document.getElementById('epTipo').value;
+    const tipo       = document.getElementById('epTipo').value;
     if (!montoNuevo || montoNuevo <= 0) { alert('Ingresa un monto válido'); return; }
 
-    const montoViejo  = Number(p.monto);
-    const diferencia  = Math.round((montoNuevo - montoViejo) * 100) / 100;
+    const montoViejo = Number(p.monto);
+    const diferencia = Math.round((montoNuevo - montoViejo) * 100) / 100;
 
     // 1. Actualizar el pago
     await DB.update('pagos', p.id, { monto: montoNuevo, tipo });
@@ -649,8 +712,8 @@ window.guardarPagoEditado = async function () {
     // 2. Ajustar mochila del cobrador si el monto cambió
     if (Math.abs(diferencia) >= 0.01 && p.cobradorId) {
       const idAjuste = genId();
-      // diferencia > 0 → cobrador cobró MÁS de lo que se registró → sumar (cobro_ajuste)
-      // diferencia < 0 → cobrador cobró MENOS de lo que se registró → restar (gasto_cobrador)
+      // diferencia > 0 → cobrador cobró MÁS → sumar (cobro_ajuste)
+      // diferencia < 0 → cobrador cobró MENOS → restar (gasto_cobrador)
       await DB.set('movimientos_cartera', idAjuste, {
         id: idAjuste,
         tipo: diferencia > 0 ? 'cobro_ajuste' : 'gasto_cobrador',
@@ -674,7 +737,7 @@ window.guardarPagoEditado = async function () {
   }
 };
 
-
+// ── eliminarPago ──────────────────────────────────────────────
 window.eliminarPago = async function (pagoId) {
   if (!confirm('¿Eliminar este pago? Esta acción afectará el saldo del crédito.')) return;
 
@@ -690,7 +753,7 @@ window.eliminarPago = async function (pagoId) {
       const idAjuste = genId();
       await DB.set('movimientos_cartera', idAjuste, {
         id: idAjuste, tipo: 'gasto_cobrador', monto: Number(p.monto),
-        descripcion: `Baja pago`,
+        descripcion: 'Baja pago',
         fecha: p.fecha,
         cobradorId: p.cobradorId,
         registradoPor: state.currentUser.id
@@ -706,7 +769,7 @@ window.eliminarPago = async function (pagoId) {
   }
 };
 
-
+// ── reabrirCredito ────────────────────────────────────────────
 window.reabrirCredito = async function (crId) {
   if (!confirm('¿Reabrir este crédito? Volverá a estar activo y aparecerá en los cobros.')) return;
   await DB.update('creditos', crId, { activo: true });
@@ -714,6 +777,7 @@ window.reabrirCredito = async function (crId) {
   render();
 };
 
+// ── nuevoCreditoRapido ────────────────────────────────────────
 window.nuevoCreditoRapido = function (clienteId) {
   const cliente = (DB._cache['clientes'] || []).find(c => c.id === clienteId);
   if (!cliente) return;
@@ -721,4 +785,3 @@ window.nuevoCreditoRapido = function (clienteId) {
   state.modal = 'nuevo-credito';
   render();
 };
-
