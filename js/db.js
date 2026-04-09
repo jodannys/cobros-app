@@ -67,7 +67,7 @@ window.DB = {
         ts: Date.now(),
         data: this._cache
       }));
-    } catch (e) {}
+    } catch (e) { }
   },
 
   _cargarCacheLocal() {
@@ -86,10 +86,8 @@ window.DB = {
     console.log('🚀 Iniciando CobrosApp...');
 
     // Colecciones estáticas — solo se cargan una vez
-    const estaticas = ['users', 'clientes', 'creditos', 'configuracion'];
-    // Colecciones dinámicas — se escuchan en tiempo real
-    const dinamicas = ['pagos', 'movimientos_cartera', 'gastos', 'cajas', 'notas_cuadre'];
-
+    const estaticas = ['users', 'configuracion'];
+    const dinamicas = ['pagos', 'movimientos_cartera', 'gastos', 'cajas', 'notas_cuadre', 'creditos', 'clientes'];
     // Cargar cache local para mostrar datos inmediatamente
     const cacheValido = this._cargarCacheLocal();
     if (cacheValido) {
@@ -159,7 +157,7 @@ window.DB = {
 
   async _corregirCreditosSaldados() {
     const creditos = this._cache['creditos'] || [];
-    const pagos    = this._cache['pagos']    || [];
+    const pagos = this._cache['pagos'] || [];
     creditos.forEach(cr => {
       if (cr.activo && (!cr.fechaFin || cr.fechaFin === 'undefined')) {
         const fInicio = new Date(cr.fechaInicio + 'T00:00:00');
@@ -179,19 +177,19 @@ window.DB = {
   },
 
   async _limpiarHuerfanos() {
-    const users    = this._cache['users']    || [];
+    const users = this._cache['users'] || [];
     const clientes = this._cache['clientes'] || [];
-    const gastos   = this._cache['gastos']   || [];
-    const pagos    = this._cache['pagos']    || [];
+    const gastos = this._cache['gastos'] || [];
+    const pagos = this._cache['pagos'] || [];
     const creditos = this._cache['creditos'] || [];
     gastos.forEach(g => {
-      if (!users.find(u => u.id === g.cobradorId)) DB.delete('gastos', g.id).catch(() => {});
+      if (!users.find(u => u.id === g.cobradorId)) DB.delete('gastos', g.id).catch(() => { });
     });
     pagos.forEach(p => {
-      if (!clientes.find(c => c.id === p.clienteId)) DB.delete('pagos', p.id).catch(() => {});
+      if (!clientes.find(c => c.id === p.clienteId)) DB.delete('pagos', p.id).catch(() => { });
     });
     creditos.forEach(cr => {
-      if (!clientes.find(c => c.id === cr.clienteId)) DB.delete('creditos', cr.id).catch(() => {});
+      if (!clientes.find(c => c.id === cr.clienteId)) DB.delete('creditos', cr.id).catch(() => { });
     });
   }
 };
