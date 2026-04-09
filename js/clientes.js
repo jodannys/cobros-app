@@ -481,31 +481,47 @@ window.renderClientDetail = function () {
   const isAdmin = state.currentUser.role === 'admin';
 
   return `
-  <div>
-    <div style="background:linear-gradient(135deg,#1a56db,#0ea96d); padding-bottom:16px;">
-      <div style="padding:14px 20px; display:flex; align-items:center; gap:12px">
-        <button class="back-btn" style="color:rgba(255,255,255,0.8); font-size:20px" onclick="backFromClient()">←</button>
-        <h2 style="color:white; font-size:16px; font-weight:600; flex:1; margin:0; letter-spacing:-0.2px; opacity:0.9">Ficha del Cliente</h2>
-        <button
-          style="background:rgba(255,255,255,0.15); color:white; border:1px solid rgba(255,255,255,0.2);
-                 font-size:12px; font-weight:600; padding:6px 12px; border-radius:8px; cursor:pointer;
-                 backdrop-filter:blur(4px)"
-          onclick="openModal('editar-cliente')">Editar</button>
-      </div>
-      <div style="padding:0 20px">
-        <div style="font-size:20px; font-weight:800; color:white; letter-spacing:-0.5px; line-height:1.2">
-          ${c.nombre}
-        </div>
-        ${c.negocio ? `
-          <div style="color:rgba(255,255,255,0.75); font-size:12.5px; margin-top:3px">
-            🏪 ${c.negocio}
-          </div>` : ''}
-        <div style="color:rgba(255,255,255,0.5); font-size:11.5px; margin-top:3px">
-          DNI: ${c.dni}
-        </div>
-      </div>
+ <div style="background: linear-gradient(135deg, #1a56db, #0ea96d); padding-bottom: 20px; font-family: sans-serif;">
+  <!-- Barra Superior -->
+  <div style="padding: 16px 20px; display: flex; align-items: center; gap: 16px">
+    <button style="background: none; border: none; color: white; font-size: 24px; cursor: pointer; padding: 0; display: flex; align-items: center; opacity: 0.8;" onclick="backFromClient()">
+      <span style="transform: translateY(-1px);">←</span>
+    </button>
+    
+    <h2 style="color: white; font-size: 13px; font-weight: 500; flex: 1; margin: 0; letter-spacing: 0.5px; text-transform: uppercase; opacity: 0.7">
+      Ficha del Cliente
+    </h2>
+
+    <button style="background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.3); font-size: 11px; font-weight: 600; padding: 5px 12px; border-radius: 20px; cursor: pointer; backdrop-filter: blur(8px);" onclick="openModal('editar-cliente')">
+      EDITAR
+    </button>
+  </div>
+
+  <!-- Información del Cliente -->
+  <div style="padding: 0 20px">
+    <div style="font-size: 26px; font-weight: 800; color: white; letter-spacing: -0.5px; line-height: 1.1">
+      ${c.nombre}
     </div>
 
+    <!-- Línea Unificada: Negocio + ID (Mismo tamaño y alineación) -->
+    <div style="display: flex; align-items: center; gap: 10px; margin-top: 8px; color: rgba(255,255,255,0.9); font-size: 13px;">
+      
+      ${c.negocio ? `
+        <div style="display: flex; align-items: center; gap: 5px;">
+          <span style="font-size: 14px; line-height: 1;">🏪</span> 
+          <span style="font-weight: 600;">${c.negocio}</span>
+        </div>` : ''}
+      
+      ${c.negocio ? `<span style="opacity: 0.3; font-weight: 200;">|</span>` : ''}
+      
+      <div style="display: flex; align-items: center; gap: 5px; color: rgba(255,255,255,0.75);">
+        <span style="font-size: 14px; line-height: 1;">🪪</span> 
+        <span style="font-weight: 400;">${c.dni}</span>
+      </div>
+
+    </div>
+  </div>
+</div>
     <div class="page" style="padding-top:12px">
       <div class="card">
         <div class="card-title">📋 Datos Generales</div>
