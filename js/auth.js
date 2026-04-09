@@ -129,7 +129,7 @@ window.bindLogin = function () {
 
       localStorage.setItem('lastUser', found.user);
 
-      state.currentUser = userSafe; 
+      state.currentUser = userSafe;
       state.screen = 'main';
       state.nav = 'clientes';
       state.loginError = '';
@@ -137,6 +137,11 @@ window.bindLogin = function () {
       state.loginPassField = '';
 
       render();
+
+      // Mostrar alertas automáticamente al admin si hay créditos en mora/vencidos
+      if (userSafe.role === 'admin' && typeof getAlertasCreditos === 'function' && getAlertasCreditos().length > 0) {
+        setTimeout(() => { state.modal = 'banner-alertas'; render(); }, 500);
+      }
 
 
     } else {
