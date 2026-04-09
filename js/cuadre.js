@@ -24,10 +24,16 @@ window.calcularMetaReal = function (cobradorId, fecha) {
     };
   }
 
+  // Incluir también créditos cerrados HOY (para mostrar badge de pago en la lista)
+  const creditosConPagoHoy = new Set(
+    pagos.filter(p => p.cobradorId === cobradorId && p.fecha === fecha && !p.eliminado)
+         .map(p => p.creditoId)
+  );
+
   const creditosTodos = creditos.filter(cr =>
     misClientesIds.includes(cr.clienteId) &&
-    cr.activo === true &&
-    cr.fechaInicio <= fecha
+    cr.fechaInicio <= fecha &&
+    (cr.activo === true || creditosConPagoHoy.has(cr.id))
   );
 
   let metaTotal = 0;
@@ -59,7 +65,17 @@ window.calcularMetaReal = function (cobradorId, fecha) {
 
     const saldoRestante = Number(cr.total) - totalPagado;
 
-    if (saldoRestante <= 0.5) return;
+    // Crédito ya saldado: solo mostrarlo si pagó HOY (badge de saldado)
+    if (saldoRestante <= 0.5) {
+      if (montoPagadoHoy > 0) {
+        detalle.push({
+          cliente, cr, cuota, montoPagadoHoy,
+          completo: true, deudaAcumulada: 0, atrasado: false,
+          cuotasAtraso: 0, saldoRestante: 0, estadoVisual: 'saldado'
+        });
+      }
+      return;
+    }
 
     const diasTranscurridos = Math.max(
       0,
@@ -100,13 +116,12 @@ window.calcularMetaReal = function (cobradorId, fecha) {
     // ── ESTADO VISUAL ──
     let estadoVisual = 'pendiente';
 
-    if (montoPagadoHoy > 0 && montoPagadoHoy < cuota) {
-      estadoVisual = 'parcial';
-    } else if (montoPagadoHoy >= cuota) {
+    if (montoPagadoHoy >= cuota) {
       estadoVisual = 'pagado';
-    }
-
-    if (estado.atrasado) {
+    } else if (montoPagadoHoy > 0) {
+      estadoVisual = 'parcial';
+    } else if (estado.atrasado) {
+      // Solo muestra 'atrasado' si NO pagó nada hoy
       estadoVisual = 'atrasado';
     }
 
@@ -137,13 +152,17 @@ window.calcularMetaReal = function (cobradorId, fecha) {
   });
 
   // ─────────────────────────────────────────────
-  // COBROS EXTRA (FUERA DEL LOOP ✅)
+  // COBROS EXTRA (créditos inactivos desde ANTES de hoy)
+  // Los saldados HOY ya aparecen arriba como 'saldado', no duplicar
   // ─────────────────────────────────────────────
+  const detalleIds = new Set(detalle.map(d => d.cr.id));
+
   const creditosInactivosIds = new Set(
     creditos
       .filter(cr =>
         misClientesIds.includes(cr.clienteId) &&
-        cr.activo === false
+        cr.activo === false &&
+        !detalleIds.has(cr.id)   // excluir los ya mostrados como 'saldado'
       )
       .map(cr => cr.id)
   );
@@ -342,7 +361,34 @@ window.renderCuadre = function () {
   window._metaDetalle = meta.detalle;
 
   // ── Ordenar clientes por distancia o por nombre ──
-  const clientesPendientes = meta.detalle.filter(d => !d.completo);
+  //const clientesPendientes = meta.detalle.filter(d => !d.completo);
+  // Ahora incluimos a los que ya pagaron hoy para poder ver el badge verde
+// SUSTITUYE LA LÍNEA DE clientesPendientes POR ESTA:
+// ────────────────────────────────────────────────────────────────
+// LOGS DE DEPURACIÓN (Pon esto en tu renderCuadre)
+// ────────────────────────────────────────────────────────────────
+const clientesPendientes = meta.detalle.filter(d => {
+    const noHaTerminado = !d.completo;
+    const yaPagoAlgo = (Number(d.montoPagadoHoy) > 0);
+    const resultadoFiltro = noHaTerminado || yaPagoAlgo;
+
+    // Solo logueamos si el cliente tiene nombre para no inundar la consola
+    if (d.cliente?.nombre) {
+        console.log(`DEBUG [${d.cliente.nombre}]:`, {
+            cuota: d.cuota,
+            pagadoHoy: d.montoPagadoHoy,
+            completo: d.completo,
+            noHaTerminado: noHaTerminado,
+            yaPagoAlgo: yaPagoAlgo,
+            seQuedaEnLista: resultadoFiltro,
+            estadoVisual: d.estadoVisual
+        });
+    }
+
+    return resultadoFiltro;
+});
+
+console.log("TOTAL CLIENTES EN LISTA:", clientesPendientes.length);
 
   if (state.miUbicacion) {
     clientesPendientes.sort((a, b) => {
@@ -494,10 +540,10 @@ window.renderCuadre = function () {
                 <div style="font-weight:700; color:var(--danger); font-size:14px">
                   ${formatMoney(g.monto)}
                 </div>
-                <button onclick="abrirEditarGasto('${g.id}')"
+                ${!g._esAjuste ? `<button onclick="abrirEditarGasto('${g.id}')"
                   style="width:30px; height:30px; border-radius:8px; border:1px solid var(--border);
                          background:white; cursor:pointer; display:flex; align-items:center;
-                         justify-content:center; font-size:13px">✏️</button>
+                         justify-content:center; font-size:13px">✏️</button>` : `<div style="width:30px"></div>`}
               </div>
             </div>`).join('')}
 
@@ -573,7 +619,19 @@ window.renderCuadre = function () {
                 </div>
                 <div style="font-size:11.5px; color:var(--muted); margin-top:2px;
             display:flex; align-items:center; gap:6px; flex-wrap:wrap">
-            ${d.estadoVisual === 'pagado' ? `
+            ${d.estadoVisual === 'saldado' ? `
+  <span style="
+    background:#bbf7d0;
+    color:#14532d;
+    font-size:10px;
+    font-weight:700;
+    padding:2px 6px;
+    border-radius:4px">
+    🏆 Crédito Saldado
+  </span>
+` : ''}
+
+${d.estadoVisual === 'pagado' ? `
   <span style="
     background:#dcfce7;
     color:#166534;
@@ -581,7 +639,7 @@ window.renderCuadre = function () {
     font-weight:700;
     padding:2px 6px;
     border-radius:4px">
-    ✅ Pagado
+    ✅ Pagó hoy
   </span>
 ` : ''}
 

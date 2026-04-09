@@ -306,9 +306,9 @@ window.renderAdminCobrador = function renderAdminCobrador() {
                 </div>
                 <div style="display:flex; align-items:center; gap:10px; flex-shrink:0; margin-left:8px">
                   <div style="font-weight:800; color:#dc2626; font-size:14px">${formatMoney(g.monto)}</div>
-                  <button onclick="abrirEditarGasto('${g.id}')"
+                  ${!g._esAjuste ? `<button onclick="abrirEditarGasto('${g.id}')"
                     style="padding:6px 8px; border-radius:6px; border:1px solid #e2e8f0;
-                    background:white; font-size:13px; cursor:pointer; color:#64748b; font-weight:600">✏️</button>
+                    background:white; font-size:13px; cursor:pointer; color:#64748b; font-weight:600">✏️</button>` : ''}
                 </div>
               </div>`).join('')}
             ${hayMas ? `
@@ -399,27 +399,48 @@ window.renderAdminCobrador = function renderAdminCobrador() {
                      <div style="font-size:22px">✅</div>
                      <div style="color:#16a34a; font-weight:700; font-size:13px; margin-top:4px">¡Ruta completada!</div>
                    </div>`
-          : meta.detalle.filter(d => !d.completo).map(d => `
+          : meta.detalle.map(d => `
                   <div style="display:flex; justify-content:space-between; align-items:center;
                               padding:10px 0; border-bottom:1px solid #f8fafc">
-                    <div>
+                    <div style="flex:1; min-width:0">
                       <div style="font-size:14px; font-weight:700; color:#1e293b">
                         ${d.cliente?.nombre || '—'}
                       </div>
-                      <div style="display:flex; gap:6px; margin-top:3px; flex-wrap:wrap">
-                        ${d.deudaAcumulada > 0.5 ? `
-                        <span style="background:#fff1f2; color:#9f1239; font-size:10px;
-                                     font-weight:700; padding:1px 6px; border-radius:4px">
-                          ⚠️ Debe ${formatMoney(d.deudaAcumulada)}
-                        </span>` : ''}
+                      <div style="display:flex; gap:5px; margin-top:4px; flex-wrap:wrap; align-items:center">
+                        ${d.estadoVisual === 'saldado' ? `
+                          <span style="background:#bbf7d0; color:#14532d; font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px">
+                            🏆 Saldado
+                          </span>` : ''}
+                        ${d.estadoVisual === 'pagado' ? `
+                          <span style="background:#dcfce7; color:#166534; font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px">
+                            ✅ Pagó hoy
+                          </span>` : ''}
+                        ${d.estadoVisual === 'parcial' ? `
+                          <span style="background:#fef9c3; color:#854d0e; font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px">
+                            🟡 Abonó ${formatMoney(d.montoPagadoHoy)}
+                          </span>` : ''}
+                        ${d.estadoVisual === 'atrasado' ? `
+                          <span style="background:#fee2e2; color:#991b1b; font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px">
+                            🔴 Atrasado (${d.cuotasAtraso})
+                          </span>` : ''}
+                        ${d.estadoVisual === 'pendiente' ? `
+                          <span style="background:#f1f5f9; color:#64748b; font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px">
+                            ⏳ Pendiente
+                          </span>` : ''}
+                        ${d.deudaAcumulada > 0.5 && d.estadoVisual !== 'saldado' ? `
+                          <span style="background:#fff1f2; color:#9f1239; font-size:10px; font-weight:700; padding:1px 6px; border-radius:4px">
+                            ⚠️ Debe ${formatMoney(d.deudaAcumulada)}
+                          </span>` : ''}
                         <span style="font-size:11px; color:#94a3b8">Cuota ${formatMoney(d.cuota)}</span>
                       </div>
                     </div>
+                    ${!d.completo ? `
                     <button onclick="pagoRapido('${d.cr.id}')"
-                      style="border:none; padding:6px 14px; border-radius:8px; cursor:pointer;
+                      style="flex-shrink:0; margin-left:8px; border:none; padding:6px 14px; border-radius:8px; cursor:pointer;
                              background:#f0fdf4; color:#16a34a; font-size:12px; font-weight:700">
                       💰 Cobrar
-                    </button>
+                    </button>` : `
+                    <div style="flex-shrink:0; margin-left:8px; width:70px"></div>`}
                   </div>`).join('')
       }
           </div>` : ''}

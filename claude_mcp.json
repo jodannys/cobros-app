@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "code-review-graph": {
+      "command": "C:\\Users\\jodan\\AppData\\Local\\Programs\\Python\\Python313\\Scripts\\code-review-graph.exe",
+      "args": ["serve"]
+    }
+  }
+}

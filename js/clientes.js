@@ -249,7 +249,7 @@ window._renderClienteItem = function (c, creditos, users, pagos, isAdmin) {
       </div>
     </div>
 
-    <div onclick="event.stopPropagation(); ${tieneTelefono ? `abrirChatWhatsApp('${c.telefono}', '${c.nombre}')` : `alert('Sin teléfono')`}"
+    <div onclick="event.stopPropagation(); ${tieneTelefono ? `abrirChatWhatsApp('${c.telefono}', '${c.nombre.replace(/'/g,"\\'")}')` : `alert('Sin teléfono')`}"
          style="position:absolute; right:0; top:0; bottom:0; width:44px;
                 display:flex; align-items:center; justify-content:center;
                 cursor:pointer; border-left:1px solid #f1f5f9">
@@ -518,6 +518,11 @@ window.renderClientDetail = function () {
             <div class="info-label">Registro</div>
             <div class="info-value" style="font-size:14px">${formatDate(c.creado)}</div>
           </div>
+          ${isAdmin && cobrador ? `
+          <div class="info-item" style="grid-column:1/-1">
+            <div class="info-label">Cobrador asignado</div>
+            <div class="info-value" style="font-size:14px; font-weight:600; color:var(--text)">👤 ${cobrador.nombre}</div>
+          </div>` : ''}
         </div>
         <div class="info-item" style="margin-top:8px">
           <div class="info-label">Dirección</div>
@@ -615,7 +620,7 @@ window.enviarEstadoWhatsApp = function (clienteId) {
   const url = /Android|iPhone|iPad/i.test(navigator.userAgent)
     ? `whatsapp://send?phone=${numeroFinal}&text=${encodeURIComponent(texto)}`
     : `https://wa.me/${numeroFinal}?text=${encodeURIComponent(texto)}`;
-  window.location.href = url;
+  window.open(url, '_blank');
 };
 
 window.selectClient = function (id) {

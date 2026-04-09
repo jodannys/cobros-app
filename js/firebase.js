@@ -46,6 +46,19 @@ window.fbGetSince = async function (colName, desde) {
   return snap.docs.map(d => ({ ...d.data(), id: d.id }));
 };
 
+// Escrituras múltiples atómicas (batch)
+// ops = [{ op: 'set'|'update'|'delete', col, id, data? }]
+window.fbBatch = async function (ops) {
+  const batch = fsdb.batch();
+  ops.forEach(({ op, col, id, data }) => {
+    const ref = fsdb.collection(col).doc(id);
+    if (op === 'set')    batch.set(ref, data);
+    if (op === 'update') batch.update(ref, data);
+    if (op === 'delete') batch.delete(ref);
+  });
+  await batch.commit();
+};
+
 window.fbEscuchar = function (colName, callback) {
   return fsdb.collection(colName).onSnapshot(snap => {
     const datos = snap.docs.map(d => ({ ...d.data(), id: d.id }));

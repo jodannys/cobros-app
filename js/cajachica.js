@@ -182,10 +182,10 @@ window.renderPanelCajaChica = function () {
             </div>
             <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;margin-left:8px">
               <div style="font-weight:800;color:var(--danger)">${formatMoney(g.monto)}</div>
-              <button onclick="abrirEditarGasto('${g.id}')"
+              ${!g._esAjuste ? `<button onclick="abrirEditarGasto('${g.id}')"
                 style="padding:4px 8px;border-radius:6px;border:1px solid #e2e8f0;
                 background:white;font-size:12px;cursor:pointer;color:#64748b;
-                display:flex;align-items:center;line-height:1">✏️</button>
+                display:flex;align-items:center;line-height:1">✏️</button>` : `<div style="width:32px"></div>`}
             </div>
           </div>`).join('')}
 
@@ -278,9 +278,9 @@ window.renderCajaChicaAdmin = function (cobradorId, fecha) {
           </span>
           <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;margin-left:8px">
             <span style="color:var(--danger);font-weight:600">-${formatMoney(g.monto)}</span>
-            <button onclick="abrirEditarGasto('${g.id}')"
+            ${!g._esAjuste ? `<button onclick="abrirEditarGasto('${g.id}')"
               style="padding:2px 7px;border-radius:5px;border:1px solid #e2e8f0;
-              background:white;font-size:11px;cursor:pointer;color:#64748b;line-height:1.6">✏️</button>
+              background:white;font-size:11px;cursor:pointer;color:#64748b;line-height:1.6">✏️</button>` : ''}
           </div>
         </div>`).join('')}
 

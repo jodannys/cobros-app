@@ -59,7 +59,7 @@ window.DB = {
 
   // ── Cache local ──────────────────────────────────────────
   _CACHE_KEY: 'cobrosapp_cache_v1',
-  _CACHE_TTL: 60 * 60 * 1000, // 60 minutos
+  _CACHE_TTL: 15 * 60 * 1000, // 15 minutos
 
   _guardarCacheLocal() {
     try {
@@ -142,7 +142,7 @@ window.DB = {
   },
 
   async reanudarListeners() {
-    const dinamicas = ['pagos', 'movimientos_cartera', 'gastos', 'cajas', 'notas_cuadre'];
+    const dinamicas = ['pagos', 'movimientos_cartera', 'gastos', 'cajas', 'notas_cuadre', 'creditos', 'clientes'];
     this._arrancarListeners(dinamicas);
     console.log('▶️ Listeners reanudados');
   },
@@ -182,14 +182,27 @@ window.DB = {
     const gastos = this._cache['gastos'] || [];
     const pagos = this._cache['pagos'] || [];
     const creditos = this._cache['creditos'] || [];
+
+    // Seguridad: si el cache está vacío o incompleto, no borrar nada
+    if (clientes.length === 0 || users.length === 0) {
+      console.warn('⚠️ _limpiarHuerfanos cancelado: cache incompleto, abortando para evitar borrados falsos.');
+      return;
+    }
+
     gastos.forEach(g => {
       if (!users.find(u => u.id === g.cobradorId)) DB.delete('gastos', g.id).catch(() => { });
     });
     pagos.forEach(p => {
-      if (!clientes.find(c => c.id === p.clienteId)) DB.delete('pagos', p.id).catch(() => { });
+      if (!clientes.find(c => c.id === p.clienteId)) {
+        console.warn(`⚠️ Pago huérfano detectado: ${p.id} (clienteId: ${p.clienteId})`);
+        DB.delete('pagos', p.id).catch(() => { });
+      }
     });
     creditos.forEach(cr => {
-      if (!clientes.find(c => c.id === cr.clienteId)) DB.delete('creditos', cr.id).catch(() => { });
+      if (!clientes.find(c => c.id === cr.clienteId)) {
+        console.warn(`⚠️ Crédito huérfano detectado: ${cr.id} (clienteId: ${cr.clienteId})`);
+        DB.delete('creditos', cr.id).catch(() => { });
+      }
     });
   }
 };

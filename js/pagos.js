@@ -118,11 +118,17 @@ window.guardarPago = async function () {
     let aplicadoSaldo = Math.min(monto - aplicadoMora, saldoRestante);
 
     const clienteDePago = (DB._cache['clientes'] || []).find(c => c.id === cr.clienteId);
-    const cobradorDelPago = state.currentUser.role === 'admin'
+    const users = DB._cache['users'] || [];
+    const cobradorCandidato = state.currentUser.role === 'admin'
       ? (clienteDePago?.cobradorId || state.currentUser.id)
+      : state.currentUser.id;
+    // Validar que el cobrador exista; si no, caer al usuario actual
+    const cobradorDelPago = users.some(u => u.id === cobradorCandidato)
+      ? cobradorCandidato
       : state.currentUser.id;
 
     const id = genId();
+    const ts = new Date().toISOString();
     const nuevoPago = {
       id,
       creditoId: cr.id,
@@ -135,17 +141,25 @@ window.guardarPago = async function () {
       tipo,
       fecha,
       nota,
-      creadoEn: new Date().toISOString()
+      creadoEn: ts,
+      updatedAt: new Date()
     };
 
-    await DB.set('pagos', id, nuevoPago);
+    const creditoSeCierra = (totalPagadoAntes + aplicadoSaldo) >= cr.total && (moraActual - aplicadoMora) <= 0;
 
+    // Escritura atómica: pago + cierre de crédito (si aplica) en un solo commit
+    const ops = [{ op: 'set', col: 'pagos', id, data: nuevoPago }];
+    if (creditoSeCierra) {
+      ops.push({ op: 'update', col: 'creditos', id: cr.id, data: { activo: false, updatedAt: new Date() } });
+    }
+    await fbBatch(ops);
+
+    // Actualizar cache local
     if (!DB._cache['pagos'].some(p => p.id === id)) {
       DB._cache['pagos'].push(nuevoPago);
     }
 
-    if ((totalPagadoAntes + aplicadoSaldo) >= cr.total && (moraActual - aplicadoMora) <= 0) {
-      await DB.update('creditos', cr.id, { activo: false });
+    if (creditoSeCierra) {
       const idx = (DB._cache['creditos'] || []).findIndex(c => c.id === cr.id);
       if (idx !== -1) DB._cache['creditos'][idx].activo = false;
       showToast('🎉 ¡Crédito completado!');
