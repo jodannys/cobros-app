@@ -490,6 +490,8 @@ window.addEventListener('popstate', () => {
   if (state.selectedClient) {
     state.selectedClient = null;
     render();
+    window.scrollTo({ top: state._scrollClientes || 0, behavior: 'instant' }); // ← NUEVO
+    state._scrollClientes = 0; // ← NUEVO
     return;
   }
   if (state.selectedCobrador) {
