@@ -83,8 +83,11 @@ window.renderClientes = function () {
           placeholder="Buscar por nombre, DNI o negocio..."
           value="${state.search || ''}"
           oninput="updateSearch(this.value)">
-        <span id="btn-clear-search"
-  onclick="updateSearch(''); document.getElementById('search-clientes').value=''; render()"
+       <span id="btn-clear-search"
+  onclick="state.search=''; 
+           document.getElementById('search-clientes').value='';
+           _renderListaClientes();
+           document.getElementById('btn-clear-search').style.display='none';"
   style="position:absolute; right:14px; cursor:pointer; color:#a0aec0;
          font-size:13px; font-weight:700; line-height:1;
          display:${state.search ? 'block' : 'none'}">
@@ -654,7 +657,7 @@ window.guardarCliente = async function () {
     const cobradorId = isAdmin ? document.getElementById('nCobrador').value : state.currentUser.id;
     
     const id = genId();
-    
+
     const fotoEl = document.getElementById('previewNFoto');
     let foto = '';
     if (fotoEl && fotoEl.style.display !== 'none' && fotoEl.src && fotoEl.src !== window.location.href) {
