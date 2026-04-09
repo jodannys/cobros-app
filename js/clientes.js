@@ -631,7 +631,7 @@ window.backFromClient = function () {
   state.selectedClient = null;
   state.search = "";
   render();
-  const scroll = state._scrollClientes || 0; // ← restaurar al volver
+  const scroll = state._scrollClientes || 0;
   window.scrollTo({ top: scroll, behavior: 'instant' });
   state._scrollClientes = 0;
 };
@@ -685,6 +685,7 @@ window.guardarCliente = async function () {
       state.abrirCreditoAlGuardar = false;
     } else {
       state.modal = null;
+      showToast('✅ Cliente guardado');
     }
     render();
   } catch (err) {
@@ -736,6 +737,7 @@ window.actualizarCliente = async function () {
     await DB.set('clientes', c.id, updated);
     state.selectedClient = updated;
     window._coordsSeleccionadas = null;
+    showToast('✅ Cliente actualizado'); 
     render();
   } catch (e) {
     alert('Error al actualizar: ' + e.message);
