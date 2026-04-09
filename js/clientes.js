@@ -621,6 +621,7 @@ window.enviarEstadoWhatsApp = function (clienteId) {
 window.selectClient = function (id) {
   state._scrollClientes = window.scrollY; // ← guardar antes de entrar
   state.selectedClient = (DB._cache['clientes'] || []).find(x => x.id === id);
+  history.pushState({ cliente: id }, '', '#cliente');
   render();
   const c = state.selectedClient;
   if (c?.lat && c?.lng) iniciarMapaCliente(c.lat, c.lng, c.nombre);
