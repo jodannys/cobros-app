@@ -13,22 +13,28 @@ document.addEventListener('pointerdown', e => {
   if (!fab) return;
 
   let moved = false;
-  const startX = e.clientX - fab.getBoundingClientRect().left;
-  const startY = e.clientY - fab.getBoundingClientRect().top;
+  const rect = fab.getBoundingClientRect();
+  const startX = e.clientX - rect.left;
+  const startY = e.clientY - rect.top;
 
   const onMove = e => {
     moved = true;
     fab._dragged = true;
-    const x = e.clientX - startX;
-    const y = e.clientY - startY;
-    const maxX = window.innerWidth - fab.offsetWidth;
-    const maxY = window.innerHeight - fab.offsetHeight;
-    fab.style.left = Math.min(Math.max(0, x), maxX) + 'px';
-    fab.style.top = Math.min(Math.max(0, y), maxY) + 'px';
+
+    const fabW = fab.offsetWidth;
+    const fabH = fab.offsetHeight;
+
+    let x = e.clientX - startX;
+    let y = e.clientY - startY;
+
+    x = Math.min(Math.max(0, x), window.innerWidth - fabW);
+    y = Math.min(Math.max(0, y), window.innerHeight - fabH);
+
+    fab.style.left = x + 'px';
+    fab.style.top = y + 'px';
     fab.style.right = 'auto';
     fab.style.bottom = 'auto';
   };
-
   const onUp = () => {
     document.removeEventListener('pointermove', onMove);
     document.removeEventListener('pointerup', onUp);
