@@ -1,16 +1,8 @@
-// ── FAB arrastrable ──────────────────────────────────────────
-document.addEventListener('click', e => {
-  const fab = e.target.closest('.fab');
-  if (fab && fab._dragged) {
-    e.preventDefault();
-    e.stopPropagation();
-    fab._dragged = false;
-  }
-});
-
 document.addEventListener('pointerdown', e => {
   const fab = e.target.closest('.fab');
   if (!fab) return;
+
+  e.preventDefault();
 
   let moved = false;
   const rect = fab.getBoundingClientRect();
@@ -18,6 +10,7 @@ document.addEventListener('pointerdown', e => {
   const startY = e.clientY - rect.top;
 
   const onMove = e => {
+    e.preventDefault();
     moved = true;
     fab._dragged = true;
 
@@ -35,12 +28,22 @@ document.addEventListener('pointerdown', e => {
     fab.style.right = 'auto';
     fab.style.bottom = 'auto';
   };
+
   const onUp = () => {
     document.removeEventListener('pointermove', onMove);
     document.removeEventListener('pointerup', onUp);
     if (!moved) fab._dragged = false;
   };
 
-  document.addEventListener('pointermove', onMove);
+  document.addEventListener('pointermove', onMove, { passive: false });
   document.addEventListener('pointerup', onUp);
-}, { passive: true });
+}, { passive: false });
+
+document.addEventListener('click', e => {
+  const fab = e.target.closest('.fab');
+  if (fab && fab._dragged) {
+    e.preventDefault();
+    e.stopPropagation();
+    fab._dragged = false;
+  }
+});
