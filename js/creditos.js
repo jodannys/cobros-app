@@ -60,7 +60,9 @@ window.toggleHistorial = function () {
 };
 
 window.renderCreditoCard = function (cr) {
-  const pagos = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id && !p.eliminado);
+  const pagos = (DB._cache['pagos'] || [])
+    .filter(p => p.creditoId === cr.id && !p.eliminado)
+    .sort((a, b) => a.fecha.localeCompare(b.fecha));
   const totalPagado = pagos.reduce((s, p) => s + (Number(p.monto) || 0), 0);
   const saldo = Math.max(0, cr.total - totalPagado);
   const pagadoReal = saldo <= 0;
