@@ -120,6 +120,11 @@ window.render = function render() {
   </div>`;
 
   window.scrollTo({ top: scrollAntes, behavior: 'instant' }); // ← NUEVO
+
+  // Re-poblar resultados de búsqueda si el historial tiene texto activo
+  if (state.nav === 'historial' && state._hBusqueda) {
+    renderBusquedaClientes();
+  }
 };
 // ── CONFIRMAR SALIDA (overlay custom) ────────────────────────
 window.confirmarSalida = function () {
@@ -432,7 +437,6 @@ window.renderBusquedaClientes = function renderBusquedaClientes() {
 
 // ── VER HISTORIAL DE CLIENTE ──────────────────────────────────
 window.verHistorialCliente = function verHistorialCliente(clienteId) {
-  state._hBusqueda = '';
   const c = (DB._cache['clientes'] || []).find(x => x.id === clienteId);
   if (!c) return;
   const creditos = (DB._cache['creditos'] || []).filter(cr => cr.clienteId === clienteId);
@@ -475,6 +479,7 @@ window.navigate = function navigate(nav) {
   state.selectedClient = null;
   state.selectedCobrador = null;
   state.filtroClientes = 'todos';
+  state._hBusqueda = '';
   history.pushState({ nav }, '', '#' + nav); // ← ya lo tienes
   render();
 };

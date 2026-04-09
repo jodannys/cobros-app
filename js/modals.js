@@ -1,9 +1,7 @@
-// Fallback por si mapa_patch.js no cargó aún
-// Fallback por si mapa_patch.js no cargó aún
 if (typeof window.renderMapaSelector !== 'function') {
   window.renderMapaSelector = function(lat, lng) {
     const tiene = lat && lng;
-    window._coordsSeleccionadas = tiene ? { lat, lng } : null;  // ← AÑADIR ESTO
+    window._coordsSeleccionadas = tiene ? { lat, lng } : null;  
     return `
     <div class="form-group">
       <label>📍 Ubicación</label>
@@ -828,17 +826,18 @@ window.renderModalHistorialCliente = function renderModalHistorialCliente() {
     DNI: ${c.dni}${c.negocio ? ` · 🏪 ${c.negocio}` : ''}
     ${cobrador ? ` · ${cobrador.nombre}` : ''}
   </div>
-  ${creditos.map(cr => {
+  ${creditos.slice().sort((a, b) => b.fechaInicio.localeCompare(a.fechaInicio)).map(cr => {
     const pagosCr = pagos.filter(p => p.creditoId === cr.id && !p.eliminado);
     const pagadoCr = pagosCr.reduce((s, p) => s + p.monto, 0);
     const saldoCr = Math.max(0, cr.total - pagadoCr);
+    const esCerrado = saldoCr <= 0;
     return `
     <div style="border:1px solid #e2e8f0;border-radius:12px;padding:14px;margin-bottom:12px">
       <div class="flex-between" style="margin-bottom:8px">
         <div style="font-weight:700">💳 Crédito ${formatDate(cr.fechaInicio)}</div>
-        <span style="background:${cr.activo ? '#eff6ff' : '#f0fff4'};color:${cr.activo ? 'var(--primary)' : '#276749'};
+        <span style="background:${esCerrado ? '#f0fff4' : '#eff6ff'};color:${esCerrado ? '#276749' : 'var(--primary)'};
           padding:3px 8px;border-radius:20px;font-size:11px;font-weight:700">
-          ${cr.activo ? 'Activo' : '✓ Cerrado'}
+          ${esCerrado ? '✓ Cerrado' : 'Activo'}
         </span>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
@@ -871,7 +870,7 @@ window.renderModalHistorialCliente = function renderModalHistorialCliente() {
         </div>
       </div>
       <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px">PAGOS:</div>
-      ${pagosCr.slice().reverse().map(p => `
+      ${pagosCr.slice().sort((a, b) => b.fecha.localeCompare(a.fecha)).map(p => `
         <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f1f5f9;font-size:13px">
           <span style="color:var(--muted)">${formatDate(p.fecha)} · ${p.tipo}</span>
           <span style="font-weight:700;color:var(--success)">${formatMoney(p.monto)}</span>
