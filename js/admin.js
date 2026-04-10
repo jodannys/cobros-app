@@ -15,7 +15,6 @@ window.renderAdmin = function renderAdmin() {
   const cobradores = users.filter(u => u.role === 'cobrador');
   const admins = users.filter(u => u.role === 'admin');
   const alertas = getAlertasCreditos();
-
   return `
   <div>
    <div class="topbar">
@@ -225,6 +224,11 @@ window.renderAdminCobrador = function renderAdminCobrador() {
   const filtroKey = `_filtroAdminCob_${state.selectedCobrador}`;
   const filtroAdminCob = state[filtroKey] || 'todos';
 
+  const rutaFiltroKey = `_filtroRuta_${state.selectedCobrador}`;
+  const rutaFiltro = state[rutaFiltroKey] || 'todos';
+
+
+
   let listaClientes = [...clientes];
   if (filtroAdminCob === 'activos') {
     listaClientes = listaClientes.filter(cl =>
@@ -363,142 +367,284 @@ window.renderAdminCobrador = function renderAdminCobrador() {
   </div>` : ''}
 </div>` : ''}
 
-        <div class="card" style="padding:0; overflow:hidden; border-radius:12px">
-          <!-- Header ruta -->
-          <div style="padding:14px 16px; display:flex; justify-content:space-between; align-items:center;
-                      cursor:pointer; background:white"
-               onclick="state['_verRutaAdmin_${cobrador.id}']=!state['_verRutaAdmin_${cobrador.id}']; render()">
-            <div style="display:flex; align-items:center; gap:8px">
-              <div style="font-size:10px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.5px">
-                ✅ Ruta del día
-              </div>
-              <span style="font-size:10px; background:#f1f5f9; padding:2px 8px; border-radius:10px;
-                           color:#64748b; font-weight:700">
-                ${meta.detalle.filter(d => !d.completo).length} pendientes
-              </span>
-            </div>
-            <div style="display:flex; align-items:center; gap:8px">
-              <button onclick="event.stopPropagation(); abrirMapaRutaCobrador('${cobrador.id}', '${fechaVer}')"
-                style="border:none; border-radius:8px; padding:6px 14px;
-                       background:#0f172a; color:white; font-size:12px; font-weight:700; cursor:pointer">
-                🗺️ Mapa
+       <div class="card" style="padding:0; overflow:hidden; border-radius:12px">
+  <!-- Header ruta -->
+  <div style="padding:14px 16px; display:flex; justify-content:space-between; align-items:center;
+              cursor:pointer; background:linear-gradient(135deg,#1a56db,#0ea96d)"
+       onclick="state['_verRutaAdmin_${cobrador.id}']=!state['_verRutaAdmin_${cobrador.id}']; render()">
+
+    <div style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;
+                white-space:nowrap; color:white">
+      ✅ Ruta del día
+    </div>
+
+    <div style="display:flex; align-items:center; gap:8px">
+      <span style="font-size:10px; padding:2px 8px; border-radius:10px; font-weight:700;
+                   white-space:nowrap; background:rgba(255,255,255,0.2); color:white">
+        ${meta.detalle.filter(d => !d.completo).length} pendientes
+      </span>
+
+      <button onclick="event.stopPropagation(); abrirMapaRutaCobrador('${cobrador.id}', '${fechaVer}')"
+        style="border:1px solid rgba(255,255,255,0.5); border-radius:8px; padding:6px 14px;
+               background:rgba(255,255,255,0.15); color:white; font-size:12px; font-weight:700; cursor:pointer">
+        🗺️ Mapa
+      </button>
+
+      <span style="font-size:16px; color:white">
+        ${state[`_verRutaAdmin_${cobrador.id}`] ? '▲' : '▼'}
+      </span>
+    </div>
+  </div>
+
+  ${state[`_verRutaAdmin_${cobrador.id}`] ? `
+  <div style="border-top:1px solid #f1f5f9; padding:0 16px 8px; background:white">
+    ${(() => {
+
+        const prioridad = { atrasado: 1, pendiente: 2, parcial: 3, pagado: 4, saldado: 5 };
+
+        const listaOrdenada = [...meta.detalle].sort((a, b) => {
+          return (prioridad[a.estadoVisual] || 99) - (prioridad[b.estadoVisual] || 99);
+        });
+
+        if (meta.detalle.length === 0) {
+          return `<div style="text-align:center; padding:20px 0; color:#94a3b8; font-size:13px">
+                  Sin clientes en ruta
+                </div>`;
+        }
+
+        if (meta.detalle.every(d => d.estadoVisual === 'pagado' || d.estadoVisual === 'saldado')) {
+          return `<div style="text-align:center; padding:20px 0">
+                  <div style="font-size:22px">✅</div>
+                  <div style="color:#16a34a; font-weight:700; font-size:13px; margin-top:4px">
+                    ¡Ruta completada!
+                  </div>
+                </div>`;
+        }   
+        function getEstadoFiltro(d) {
+          if (d.estadoVisual === 'saldado') return 'saldado';
+          if (d.deudaAcumulada > 0.5 && d.estadoVisual === 'pagado') return 'pagado_con_deuda';
+          if (d.estadoVisual === 'pagado') return 'pagado';
+          if (d.estadoVisual === 'parcial') return 'parcial';
+          if (d.estadoVisual === 'atrasado') return 'atrasado';
+          if (d.estadoVisual === 'pendiente') return 'pendiente';
+          return 'otros';
+        }
+
+        const listaFiltrada = rutaFiltro !== 'todos'
+          ? listaOrdenada.filter(d => getEstadoFiltro(d) === rutaFiltro)
+          : listaOrdenada;
+
+        const filtroBar = `
+          <div style="display:flex; gap:6px; overflow-x:auto; padding:10px 0; margin-bottom:4px">
+            ${[
+              { key: 'todos', label: 'Todos' },
+              { key: 'pendiente', label: '⏳ Pendientes' },
+              { key: 'atrasado', label: '🔴 Atrasados' },
+              { key: 'parcial', label: '🟡 Abonos' },
+              { key: 'pagado', label: '✅ Pagaron' },
+              { key: 'saldado', label: '🏆 Saldados' },
+            ].map(f => `
+              <button onclick="event.stopPropagation(); state['${rutaFiltroKey}']='${f.key}'; render()"
+                style="padding:5px 10px; border-radius:15px; font-size:11px;
+                       border:${rutaFiltro === f.key ? '2px solid #1a56db' : '1px solid #e2e8f0'};
+                       background:${rutaFiltro === f.key ? '#eff6ff' : 'white'};
+                       font-weight:${rutaFiltro === f.key ? '700' : '400'};
+                       cursor:pointer; white-space:nowrap">
+                ${f.label}
               </button>
-              <span style="font-size:16px; color:#94a3b8">
-                ${state[`_verRutaAdmin_${cobrador.id}`] ? '▲' : '▼'}
-              </span>
+            `).join('')}
+          </div>`;
+
+        const listaHTML = listaFiltrada.length === 0
+          ? `<div style="text-align:center; padding:20px 0; color:#94a3b8; font-size:13px">
+               Sin clientes en este filtro
+             </div>`
+          : listaFiltrada.map(d => {
+              const terminado = d.estadoVisual === 'saldado' && d.deudaAcumulada <= 0.5;
+              return `
+        <div style="display:flex; justify-content:space-between; align-items:center;
+                    padding:10px 0; border-bottom:1px solid #f8fafc;
+                    ${terminado ? 'opacity:0.6' : ''}">
+
+          <div style="flex:1; min-width:0">
+            <div style="font-size:14px; font-weight:700; color:${terminado ? '#64748b' : '#1e293b'}">
+              ${d.cliente?.nombre || '—'}
+            </div>
+
+            <div style="display:flex; gap:4px; flex-wrap:wrap; margin-top:3px; align-items:center">
+              ${d.estadoVisual === 'saldado' ? `<span style="background:#bbf7d0; color:#14532d; font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px">🏆 Saldado</span>` : ''}
+              ${d.estadoVisual === 'pagado' ? `<span style="background:#dcfce7; color:#166534; font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px">✅ Pagó hoy</span>` : ''}
+              ${d.estadoVisual === 'parcial' ? `<span style="background:#fef9c3; color:#854d0e; font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px">🟡 Abonó ${formatMoney(d.montoPagadoHoy)}</span>` : ''}
+              ${d.estadoVisual === 'atrasado' ? `<span style="background:#fee2e2; color:#991b1b; font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px">🔴 Atrasado (${d.cuotasAtraso})</span>` : ''}
+              ${d.estadoVisual === 'pendiente' ? `<span style="background:#f1f5f9; color:#64748b; font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px">⏳ Pendiente</span>` : ''}
+
+              ${d.estadoVisual !== 'saldado' ? `<span style="font-size:11px; color:#94a3b8">Cuota ${formatMoney(d.cuota)}</span>` : ''}
+
+              ${d.deudaAcumulada > 0.5 && d.estadoVisual !== 'saldado' ? `
+                <span style="background:#fff1f2; color:#9f1239; font-size:10px; font-weight:700; padding:1px 6px; border-radius:4px">
+                  ⚠️ Debe ${formatMoney(d.deudaAcumulada)}
+                </span>` : ''}
             </div>
           </div>
 
-          <!-- Lista desplegable -->
-          ${state[`_verRutaAdmin_${cobrador.id}`] ? `
-          <div style="border-top:1px solid #f1f5f9; padding:0 16px 8px; background:white">
-            ${meta.detalle.length === 0
-        ? `<div style="text-align:center; padding:20px 0; color:#94a3b8; font-size:13px">Sin clientes en ruta</div>`
-        : meta.detalle.filter(d => !d.completo).length === 0
-          ? `<div style="text-align:center; padding:20px 0">
-                     <div style="font-size:22px">✅</div>
-                     <div style="color:#16a34a; font-weight:700; font-size:13px; margin-top:4px">¡Ruta completada!</div>
-                   </div>`
-          : meta.detalle.map(d => `
-                  <div style="display:flex; justify-content:space-between; align-items:center;
-                              padding:10px 0; border-bottom:1px solid #f8fafc">
-                    <div style="flex:1; min-width:0">
-                      <div style="font-size:14px; font-weight:700; color:#1e293b">
-                        ${d.cliente?.nombre || '—'}
-                      </div>
-                      <div style="display:flex; gap:4px; flex-wrap:wrap; margin-top:3px; align-items:center">
-                        ${d.estadoVisual === 'saldado' ? `
-                          <span style="background:#bbf7d0; color:#14532d; font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px">
-                            🏆 Saldado
-                          </span>` : ''}
-                        ${d.estadoVisual === 'pagado' ? `
-                          <span style="background:#dcfce7; color:#166534; font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px">
-                            ✅ Pagó hoy
-                          </span>` : ''}
-                        ${d.estadoVisual === 'parcial' ? `
-                          <span style="background:#fef9c3; color:#854d0e; font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px">
-                            🟡 Abonó ${formatMoney(d.montoPagadoHoy)}
-                          </span>` : ''}
-                        ${d.estadoVisual === 'atrasado' ? `
-                          <span style="background:#fee2e2; color:#991b1b; font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px">
-                            🔴 Atrasado (${d.cuotasAtraso})
-                          </span>` : ''}
-                        ${d.estadoVisual === 'pendiente' ? `
-                          <span style="background:#f1f5f9; color:#64748b; font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px">
-                            ⏳ Pendiente
-                          </span>` : ''}
-                        ${d.estadoVisual !== 'saldado' ? `
-                          <span style="font-size:11px; color:#94a3b8">Cuota ${formatMoney(d.cuota)}</span>` : ''}
-                        ${d.deudaAcumulada > 0.5 && d.estadoVisual !== 'saldado' ? `
-                          <span style="background:#fff1f2; color:#9f1239; font-size:10px; font-weight:700; padding:1px 6px; border-radius:4px">
-                            ⚠️ Debe ${formatMoney(d.deudaAcumulada)}
-                          </span>` : ''}
-                      </div>
-                    </div>
-                    ${d.estadoVisual !== 'saldado' ? `
-                    <button onclick="pagoRapido('${d.cr.id}')"
-                      style="flex-shrink:0; margin-left:8px; border:none; padding:6px 14px; border-radius:8px; cursor:pointer;
-                             background:#f0fdf4; color:#16a34a; font-size:12px; font-weight:700">
-                      💰 Cobrar
-                    </button>` : `
-                    <div style="flex-shrink:0; margin-left:8px; width:70px; display:flex; justify-content:center; align-items:center; color:#16a34a; font-size:16px">
-                     ✅
-                    </div>`}
-                  </div>`).join('')
-      }
-          </div>` : ''}
-        </div>
+          ${!terminado ? `
+            <button onclick="pagoRapido('${d.cr.id}')"
+              style="flex-shrink:0; margin-left:8px; border:none; padding:6px 14px; border-radius:8px;
+                     cursor:pointer; background:#f0fdf4; color:#16a34a; font-size:12px; font-weight:700">
+              💰 Cobrar
+            </button>`
+              :
+              `<div style="flex-shrink:0; margin-left:8px; width:70px; display:flex; justify-content:center;
+                         align-items:center; color:#16a34a; font-size:16px">
+              ✅
+            </div>`
+            }
+        </div>`;
+            }).join('');
 
-        ${c.nota ? `
-        <div class="card" style="padding:14px 16px; background:#fefce8; border-radius:12px; border-left:4px solid #eab308">
-          <div style="font-size:10px; font-weight:700; color:#854d0e; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px">📝 Nota</div>
-          <div style="font-size:13px; color:#713f12; line-height:1.5; font-weight:500">${c.nota}</div>
-        </div>` : ''}
+        return filtroBar + listaHTML;
 
-        <!-- CLIENTES CON FILTROS -->
-<div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px; margin-bottom:8px">
-  <div class="card-title" style="margin:0">👥 Clientes</div>
-  <span style="font-size:11px; color:var(--muted); font-weight:600">
-    ${listaClientes.length} / ${clientes.length}
-  </span>
+      })()}
+  </div>
+  ` : ''}
 </div>
 
-<div class="filtros-scroll" style="margin-bottom:10px">
+${c.nota ? `
+<div class="card" style="padding:14px 16px; background:#fefce8; border-radius:12px; border-left:4px solid #eab308; margin-top:10px">
+  <div style="font-size:10px; font-weight:700; color:#854d0e; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px">
+    📝 Nota
+  </div>
+  <div style="font-size:13px; color:#713f12; line-height:1.5; font-weight:500">
+    ${c.nota}
+  </div>
+</div>
+` : ''}
+
+    <!-- CLIENTES CON FILTROS -->
+<div class="card" style="padding:0; overflow:hidden; border-radius:12px; margin-top:20px">
+
+  <!-- Header colapsable -->
+  <div style="padding:14px 16px; display:flex; justify-content:space-between; align-items:center;
+              cursor:pointer; background:linear-gradient(135deg,#1a56db,#0ea96d)"
+       onclick="state['_verClientesAdmin_${cobrador.id}']=!state['_verClientesAdmin_${cobrador.id}']; render()">
+    <div style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;
+                white-space:nowrap; color:white">
+      👥 Clientes de ${cobrador.nombre}
+    </div>
+    <div style="display:flex; align-items:center; gap:8px">
+      <span style="font-size:10px; padding:2px 8px; border-radius:10px; font-weight:700;
+                   white-space:nowrap; background:rgba(255,255,255,0.2); color:white">
+        ${listaClientes.length} / ${clientes.length}
+      </span>
+      <span style="font-size:16px; color:white">
+        ${state[`_verClientesAdmin_${cobrador.id}`] ? '▲' : '▼'}
+      </span>
+    </div>
+  </div>
+
+  <div style="height:1px; background:rgba(255,255,255,0.15)"></div>
+
+  ${state[`_verClientesAdmin_${cobrador.id}`] ? `
+  <div style="padding:12px 16px 8px; background:white">
+
+    <!-- Barra de búsqueda -->
+    <div style="margin-bottom:10px">
+      <div style="position:relative; width:100%">
+      <span style="position:absolute; left:12px; top:50%; transform:translateY(-50%);
+                   pointer-events:none; display:flex; align-items:center; z-index:1">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a0aec0"
+             stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+      </span>
+  <input
+    id="search_${cobrador.id}" 
+    style="width:100%; box-sizing:border-box; border:1px solid #e2e8f0; border-radius:20px;
+           padding:9px 36px; font-size:13px; color:#1e293b;
+           font-weight:500; outline:none; background:#f8fafc"
+    placeholder="Buscar por nombre o DNI..."
+    value="${state[`_searchClientes_${cobrador.id}`] || ''}"
+    oninput="
+      const val = this.value;
+      const inputId = this.id;
+      state['_searchClientes_${cobrador.id}'] = val; 
+      
+      clearTimeout(window._searchT);
+      const y = window.scrollY;
+
+      window._searchT = setTimeout(() => {
+        render(); 
+        const input = document.getElementById(inputId);
+        if (input) {
+          input.focus();
+          input.setSelectionRange(val.length, val.length);
+        }
+        requestAnimationFrame(() => window.scrollTo(0, y));
+      }, 300)">
+
+  ${state[`_searchClientes_${cobrador.id}`] ? `
+    <span onclick="
+      event.stopPropagation(); 
+      state['_searchClientes_${cobrador.id}'] = ''; 
+      const y = window.scrollY;
+      render(); 
+      requestAnimationFrame(() => window.scrollTo(0, y));"
+      style="position:absolute; right:12px; top:50%; transform:translateY(-50%);
+             cursor:pointer; color:#94a3b8; font-size:13px; font-weight:700; padding:5px">
+      ✕
+    </span>
+  ` : ''}
+</div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="filtros-scroll" style="margin-bottom:10px; display:flex; gap:5px; overflow-x:auto; padding-bottom:4px">
   ${[
-      { key: 'todos', label: 'Todos' },
-      { key: 'activos', label: '✅ Activos' },
-      { key: 'atrasados', label: '🔴 Atrasados' },
-      { key: 'sin_credito', label: '🆕 Sin crédito' },
-    ].map(f => `
-    <button onclick="state['${filtroKey}']='${f.key}'; render()"
-      class="filtro-btn ${filtroAdminCob === f.key ? 'active' : ''}">
+        { key: 'todos', label: 'Todos' },
+        { key: 'activos', label: '✅ Activos' },
+        { key: 'atrasados', label: '🔴 Atrasados' },
+        { key: 'sin_credito', label: '🆕 Sin crédito' }, // Acortamos el texto para ganar espacio
+      ].map(f => `
+    <button onclick="event.stopPropagation(); state['${filtroKey}']='${f.key}'; render()"
+      class="filtro-btn ${filtroAdminCob === f.key ? 'active' : ''}"
+      style="padding: 5px 10px; font-size: 10.5px; border-radius: 15px; white-space: nowrap; flex-shrink: 0; height: 28px; display: flex; align-items: center; gap: 4px">
       ${f.label}
     </button>`).join('')}
 </div>
 
-        ${listaClientes.length === 0
-      ? `<div class="empty-state" style="padding:20px 0">
-               <div class="icon">👤</div>
-               <p>Sin clientes en este filtro</p>
-             </div>`
-      : listaClientes.map(cl => {
-        const crs = creditos.filter(cr => cr.clienteId === cl.id && cr.activo);
-        const estadoAtraso = crs.length > 0
-          ? calcularEstadoAtraso(crs[0], pagosCache)
-          : { atrasado: false, cuotasAtraso: 0 };
-        const vencido = crs.length > 0 && crs[0].fechaFin && today() > crs[0].fechaFin;
+    <!-- Lista -->
+    ${(() => {
+        const busqueda = (state[`_searchClientes_${cobrador.id}`] || '').toLowerCase();
+        const filtrados = busqueda
+          ? listaClientes.filter(cl =>
+            cl.nombre.toLowerCase().includes(busqueda) ||
+            (cl.dni || '').toLowerCase().includes(busqueda))
+          : listaClientes;
 
-        let badge, badgeStyle;
-        if (estadoAtraso.atrasado) {
-          badge = vencido ? '🔴 Vencido' : `⚠️ Atrasado ${estadoAtraso.cuotasAtraso}`;
-          badgeStyle = vencido ? 'background:#fff1f2;color:#9f1239' : 'background:#fff7ed;color:#c2410c';
-        } else if (crs.length > 0) {
-          badge = '● Activo'; badgeStyle = 'background:#f0fdf4;color:#166534';
-        } else {
-          badge = 'Sin crédito'; badgeStyle = 'background:#f8fafc;color:#64748b';
-        }
+        return filtrados.length === 0
+          ? `<div class="empty-state" style="padding:20px 0">
+             <div class="icon">👤</div>
+             <p>Sin clientes en este filtro</p>
+           </div>`
+          : filtrados.map(cl => {
+            const crs = creditos.filter(cr => cr.clienteId === cl.id && cr.activo);
+            const estadoAtraso = crs.length > 0
+              ? calcularEstadoAtraso(crs[0], pagosCache)
+              : { atrasado: false, cuotasAtraso: 0 };
+            const vencido = crs.length > 0 && estaVencido(crs[0].fechaInicio, crs[0].diasTotal);
 
-        return `
+            let badge, badgeStyle;
+            if (estadoAtraso.atrasado) {
+              badge = vencido ? '🔴 Vencido' : `⚠️ Atrasado ${estadoAtraso.cuotasAtraso}`;
+              badgeStyle = vencido ? 'background:#fff1f2;color:#9f1239' : 'background:#fff7ed;color:#c2410c';
+            } else if (crs.length > 0) {
+              badge = '● Activo'; badgeStyle = 'background:#f0fdf4;color:#166534';
+            } else {
+              badge = 'Sin crédito'; badgeStyle = 'background:#f8fafc;color:#64748b';
+            }
+
+            return `
               <div class="client-item" onclick="selectClient('${cl.id}')" style="cursor:pointer">
                 <div class="client-avatar"
                   style="background:linear-gradient(135deg,#1a56db,#0ea96d);color:white;font-weight:800">
@@ -513,10 +659,13 @@ window.renderAdminCobrador = function renderAdminCobrador() {
                   ${badge}
                 </span>
               </div>`;
-      }).join('')}
-      </div>
-    </div>
-  </div>`;
+          }).join('');
+      })()}
+
+  </div>` : ''}
+
+</div>
+</div>`;
 };
 
 window.cambiarFechaCobrador = function cambiarFechaCobrador(dias) {
@@ -656,7 +805,7 @@ window.renderModalEditarCredito = function renderModalEditarCredito() {
   <div style="background:#eff6ff;border-radius:10px;padding:12px;margin-bottom:16px">
     <div style="font-size:11px;color:var(--muted);font-weight:700;margin-bottom:8px;text-transform:uppercase">
       Se recalculará con 20% de interés
-    </div>
+    </div> 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
       <div>
         <div style="font-size:11px;color:var(--muted)">Total a pagar</div>

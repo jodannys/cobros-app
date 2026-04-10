@@ -510,8 +510,9 @@ ${cobradores_admin.map(u => {
         const expandido = state._expandCobrador === u.id;
         const pct = meta.metaTotal > 0 ? Math.min(100, Math.round((meta.pagadoHoy / meta.metaTotal) * 100)) : 0;
         const saldoOk = caja.saldo >= 0;
+        const clientesDelCob = (DB._cache['clientes'] || []).filter(c => c.cobradorId === u.id).map(c => c.id);
         const segCob = creditos
-          .filter(cr => cr.fechaInicio === hoy && cr.cobradorId === u.id)
+          .filter(cr => cr.fechaInicio === hoy && clientesDelCob.includes(cr.clienteId) && cr.seguro && cr.montoSeguro > 0)
           .reduce((s, cr) => s + Number(cr.montoSeguro || 0), 0);
 
         return `
@@ -678,6 +679,8 @@ window.guardarMovimientoCartera = async function () {
 
   try {
     await DB.set('movimientos_cartera', id, nuevo);
+    if (!DB._cache['movimientos_cartera']) DB._cache['movimientos_cartera'] = [];
+    DB._cache['movimientos_cartera'].push(nuevo);
     state.modal = null;
     state._movCarteraTipo = null;
     state._movCarteraCobrador = null;
@@ -703,7 +706,7 @@ window.guardarDepositoCobrador = async function () {
   if (!fecha) { alert('Selecciona una fecha'); return; }
 
   const id = genId();
-  await DB.set('movimientos_cartera', id, {
+  const nuevoDeposito = {
     id,
     tipo: 'deposito_cobrador',
     monto,
@@ -712,7 +715,10 @@ window.guardarDepositoCobrador = async function () {
     cobradorId: state.currentUser.id,
     registradoPor: state.currentUser.id,
     confirmado: false
-  });
+  };
+  await DB.set('movimientos_cartera', id, nuevoDeposito);
+  if (!DB._cache['movimientos_cartera']) DB._cache['movimientos_cartera'] = [];
+  DB._cache['movimientos_cartera'].push(nuevoDeposito);
 
   state.modal = null;
   showToast('📲 Depósito registrado — esperando confirmación');
@@ -953,6 +959,8 @@ window.guardarRetiroCobrador = async function () {
 
   try {
     await DB.set('movimientos_cartera', id, nuevo);
+    if (!DB._cache['movimientos_cartera']) DB._cache['movimientos_cartera'] = [];
+    DB._cache['movimientos_cartera'].push(nuevo);
     state.modal = null;
     state._retiroCobrador = null;
     showToast(`💼 Retiro de ${formatMoney(monto)} registrado`);

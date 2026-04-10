@@ -394,10 +394,10 @@ const clientesPendientes = meta.detalle.filter(d =>
 
   // ── Indicador de modo GPS ──
   const indicadorGPS = state.miUbicacion
-    ? `<span style="font-size:10px; color:#16a34a; font-weight:700; background:#f0fdf4;
-         padding:2px 8px; border-radius:12px">📍 Por cercanía</span>`
-    : `<span style="font-size:10px; color:#92400e; font-weight:700; background:#fffbeb;
-         padding:2px 8px; border-radius:12px">⚠️ Por nombre</span>`;
+    ? `<span style="font-size:10px; color:white; font-weight:700; background:rgba(255,255,255,0.2);
+         padding:2px 8px; border-radius:12px; white-space:nowrap">📍 Por cercanía</span>`
+    : `<span style="font-size:10px; color:white; font-weight:700; background:rgba(255,255,255,0.15);
+         padding:2px 8px; border-radius:12px; white-space:nowrap">⚠️ Por nombre</span>`;
 
   const metaAlcanzada = meta.pagadoHoy >= meta.metaTotal;
 
@@ -560,45 +560,72 @@ const clientesPendientes = meta.detalle.filter(d =>
         ${state.rutaActiva ? '⏸️ Pausar' : '▶️ Empezar Ruta'}
       </button>
     </div>
-  <!-- CLIENTES POR COBRAR -->
-<div class="card" style="margin-bottom:12px; padding:0; overflow:hidden">
-  <div
-    onclick="state._clientesPendientesOpen = !state._clientesPendientesOpen; render()"
-    style="padding:12px 14px; border-bottom:1px solid var(--border);
-           display:flex; justify-content:space-between; align-items:center; cursor:pointer;
-           user-select:none; gap:8px">
+
     
-    <!-- LADO IZQUIERDO: Título e Indicador -->
-    <div style="display:flex; align-items:center; gap:6px; min-width:0; flex:1">
-      <div class="card-title" style="margin:0; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; letter-spacing:-0.2px">
-        Clientes por Cobrar
-      </div>
-      <!-- Contenedor para que el indicador no se deforme -->
-      <div style="flex-shrink:0; transform: scale(0.9); transform-origin: left center;">
-        ${indicadorGPS}
-      </div>
+  <!-- CLIENTES POR COBRAR -->
+<div class="card" style="margin-bottom:12px; padding:0; overflow:hidden; border-radius:12px">
+  <!-- Header ruta cobrador -->
+  <div style="padding:14px 16px; display:flex; justify-content:space-between; align-items:center;
+              cursor:pointer; background:linear-gradient(135deg,#1a56db,#0ea96d)"
+       onclick="state._clientesPendientesOpen = !state._clientesPendientesOpen; render()">
+
+    <div style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;
+                white-space:nowrap; color:white">
+      ✅ Ruta del día
     </div>
 
-    <!-- LADO DERECHO: Contador y Flecha -->
-    <div style="display:flex; align-items:center; gap:6px; flex-shrink:0">
-      <span style="font-size:10px; background:var(--bg); padding:2px 8px;
-                   border-radius:12px; color:var(--muted); font-weight:700; white-space:nowrap">
-        ${clientesPendientes.length} <span class="hide-mobile">restantes</span>
+    <div style="display:flex; align-items:center; gap:8px">
+      <span style="font-size:10px; padding:2px 8px; border-radius:10px; font-weight:700;
+                   white-space:nowrap; background:rgba(255,255,255,0.2); color:white">
+        ${clientesPendientes.filter(d => !d.completo).length} pendientes
       </span>
-      <span style="font-size:10px; color:var(--muted); opacity:0.6">
+
+      ${indicadorGPS}
+
+      <span style="font-size:16px; color:white">
         ${state._clientesPendientesOpen ? '▲' : '▼'}
       </span>
     </div>
   </div>
 
   ${state._clientesPendientesOpen ? `
-  <div style="padding:0 16px 8px">
-    ${clientesPendientes.length === 0
-        ? `<div style="text-align:center; padding:28px 0">
-           <div style="font-size:28px; margin-bottom:8px">✅</div>
-           <p style="color:#16a34a; font-weight:700; margin:0; font-size:13.5px">¡Ruta completada!</p>
-         </div>`
-        : clientesPendientes.map(d => {
+  <div style="border-top:1px solid #f1f5f9; padding:0 16px 8px; background:white">
+    ${(() => {
+      const _filtroRuta = state._filtroRutaCobrador || 'todos';
+      const _filtroKey = '_filtroRutaCobrador';
+      function _getEstado(d) {
+        if (d.estadoVisual === 'saldado') return 'saldado';
+        if (d.estadoVisual === 'pagado') return 'pagado';
+        if (d.estadoVisual === 'parcial') return 'parcial';
+        if (d.estadoVisual === 'atrasado') return 'atrasado';
+        if (d.estadoVisual === 'pendiente') return 'pendiente';
+        return 'otros';
+      }
+      const listaFiltrada = _filtroRuta !== 'todos'
+        ? clientesPendientes.filter(d => _getEstado(d) === _filtroRuta)
+        : clientesPendientes;
+
+      const _btns = [
+        { key: 'todos', label: 'Todos' },
+        { key: 'pendiente', label: '⏳ Pendientes' },
+        { key: 'atrasado', label: '🔴 Atrasados' },
+        { key: 'parcial', label: '🟡 Abonos' },
+        { key: 'pagado', label: '✅ Pagaron' },
+        { key: 'saldado', label: '🏆 Saldados' },
+      ].map(function(f) {
+        return '<button onclick="event.stopPropagation(); state[\'' + _filtroKey + '\']=\'' + f.key + '\'; render()"'
+          + ' style="padding:5px 10px; border-radius:15px; font-size:11px; flex-shrink:0; cursor:pointer; white-space:nowrap;'
+          + ' border:' + (_filtroRuta === f.key ? '2px solid #1a56db' : '1px solid #e2e8f0') + ';'
+          + ' background:' + (_filtroRuta === f.key ? '#eff6ff' : 'white') + ';'
+          + ' font-weight:' + (_filtroRuta === f.key ? '700' : '400') + '">'
+          + f.label + '</button>';
+      }).join('');
+      const filtroBar = '<div style="display:flex; gap:6px; overflow-x:auto; padding:10px 0 6px; margin-bottom:2px">' + _btns + '</div>';
+       
+
+      const listaHTML = listaFiltrada.length === 0
+        ? `<div style="text-align:center; padding:20px 0; color:#94a3b8; font-size:13px">Sin clientes en este filtro</div>`
+        : listaFiltrada.map(d => {
           const dist = state.miUbicacion
             ? calcularDistancia(state.miUbicacion.lat, state.miUbicacion.lng, d.cliente?.lat, d.cliente?.lng)
             : null;
@@ -687,7 +714,16 @@ ${d.estadoVisual === 'atrasado' ? `
                 </button>
               `}
             </div>`;
-        }).join('')}
+        }).join('');
+
+      if (clientesPendientes.length === 0) {
+        return `<div style="text-align:center; padding:28px 0">
+          <div style="font-size:28px; margin-bottom:8px">✅</div>
+          <p style="color:#16a34a; font-weight:700; margin:0; font-size:13.5px">¡Ruta completada!</p>
+        </div>`;
+      }
+      return filtroBar + listaHTML;
+    })()}
   </div>` : ''}
 </div>
 

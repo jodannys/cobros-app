@@ -7,8 +7,8 @@
 // sin depender de clases externas que puedan no estar cargadas.
 const _S = {
   // Radios
-  r6:  'border-radius:6px',
-  r8:  'border-radius:8px',
+  r6: 'border-radius:6px',
+  r8: 'border-radius:8px',
   r10: 'border-radius:10px',
   r12: 'border-radius:12px',
 
@@ -18,9 +18,9 @@ const _S = {
   valueLg: 'font-size:16px; font-weight:800; color:var(--text)',
 
   // Superficies
-  surface:      'background:var(--bg); border-radius:8px; padding:10px 14px',
+  surface: 'background:var(--bg); border-radius:8px; padding:10px 14px',
   surfaceGreen: 'background:#f0fdf4; border-radius:8px; padding:10px 14px',
-  surfaceRed:   'background:#fff1f2; border-radius:8px; padding:10px 14px',
+  surfaceRed: 'background:#fff1f2; border-radius:8px; padding:10px 14px',
   surfaceAmber: 'background:#fff7ed; border-radius:8px; padding:10px 14px',
 
   // Grid 2 col
@@ -49,7 +49,7 @@ window.renderSeccionCreditosCliente = function (clienteId) {
     .filter(c => c.clienteId === clienteId)
     .sort((a, b) => new Date(b.creadoEn || 0) - new Date(a.creadoEn || 0));
 
-  const activo  = todos.find(c => c.activo === true);
+  const activo = todos.find(c => c.activo === true);
   const antiguos = todos.filter(c => c.activo !== true);
 
   return `
@@ -100,16 +100,16 @@ window.renderCreditoCard = function (cr) {
     .filter(p => p.creditoId === cr.id && !p.eliminado)
     .sort((a, b) => a.fecha.localeCompare(b.fecha));
 
-  const totalPagado   = pagos.reduce((s, p) => s + (Number(p.monto) || 0), 0);
-  const saldo         = Math.max(0, cr.total - totalPagado);
-  const pagadoReal    = saldo <= 0;
-  const progreso      = Math.min(100, Math.round((totalPagado / cr.total) * 100));
-  const isAdmin       = state.currentUser.role === 'admin';
-  const hoyStr        = today();
-  const vencido       = cr.activo && estaVencido(cr.fechaInicio, cr.diasTotal);
-  const infoMora      = obtenerDatosMora(cr);
-  const mora          = infoMora.total;
-  const totalConMora  = saldo + mora;
+  const totalPagado = pagos.reduce((s, p) => s + (Number(p.monto) || 0), 0);
+  const saldo = Math.max(0, cr.total - totalPagado);
+  const pagadoReal = saldo <= 0;
+  const progreso = Math.min(100, Math.round((totalPagado / cr.total) * 100));
+  const isAdmin = state.currentUser.role === 'admin';
+  const hoyStr = today();
+  const vencido = cr.activo && estaVencido(cr.fechaInicio, cr.diasTotal);
+  const infoMora = obtenerDatosMora(cr);
+  const mora = infoMora.total;
+  const totalConMora = saldo + mora;
   const cuotasCubiertas = Math.floor(totalPagado / cr.cuotaDiaria);
 
   return `
@@ -335,38 +335,61 @@ window.renderCreditoCard = function (cr) {
 // ── renderFechasCredito ───────────────────────────────────────
 window.renderFechasCredito = function (cr) {
   const fechaFin = calcularFechaFin(cr.fechaInicio, cr.diasTotal);
-  const vencido  = cr.activo && estaVencido(cr.fechaInicio, cr.diasTotal);
+  const vencido = cr.activo && estaVencido(cr.fechaInicio, cr.diasTotal);
 
   return `
-  <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:4px">
+  <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:4px; align-items:stretch">
 
-    <div style="display:flex; align-items:center; gap:8px; ${_S.surface}; flex:1; min-width:120px">
-      <span style="font-size:16px">📅</span>
-      <div>
-        <div style="${_S.label}; margin-bottom:3px">Inicio</div>
-        <div style="font-size:13px; font-weight:700; color:var(--text)">${formatDate(cr.fechaInicio)}</div>
-      </div>
-    </div>
+    <div style="display:flex; align-items:flex-start; gap:8px;
+                background:var(--bg);
+                border-radius:8px;
+                padding:12px 14px;
+                flex:1; min-width:120px">
 
-    <div style="display:flex; align-items:center; gap:8px;
-                background:${vencido ? '#fff1f2' : 'var(--bg)'};
-                border-radius:8px; padding:10px 14px; flex:1; min-width:120px">
-      <span style="font-size:16px">${vencido ? '🔴' : '🟢'}</span>
+      <span style="font-size:16px; width:20px; text-align:center; margin-top:1px">📅</span>
+
       <div>
-        <div style="${_S.label}; color:${vencido ? '#9f1239' : 'var(--muted)'}; margin-bottom:3px">Fin</div>
-        <div style="font-size:13px; font-weight:700; color:${vencido ? 'var(--danger)' : 'var(--text)'}">
-          ${fechaFin}
-          ${vencido ? `
-            <span style="background:#fecdd3; color:#9f1239; padding:1px 7px;
-                         border-radius:4px; font-size:10px; font-weight:700; margin-left:6px">
-              VENCIDO
-            </span>` : ''}
+        <div style="${_S.label}; margin-bottom:3px; text-transform:uppercase">Inicio</div>
+        <div style="font-size:13px; font-weight:700; color:var(--text)">
+          ${formatDate(cr.fechaInicio)}
         </div>
       </div>
     </div>
 
+    <div style="display:flex; align-items:flex-start; gap:8px;
+                background:${vencido ? '#fff1f2' : 'var(--bg)'};
+                border-radius:8px;
+                padding:12px 14px;
+                flex:1; min-width:120px">
+
+      <span style="font-size:16px; width:20px; text-align:center; margin-top:1px">
+        ${vencido ? '🔴' : '🟢'}
+      </span>
+
+      <div>
+        <div style="${_S.label}; margin-bottom:3px; text-transform:uppercase;
+                    color:${vencido ? '#9f1239' : 'var(--muted)'}">
+          Fin
+        </div>
+
+        <div style="font-size:13px; font-weight:700;
+                    color:${vencido ? 'var(--danger)' : 'var(--text)'}">
+          ${fechaFin}
+        </div>
+
+        ${vencido ? `
+          <div style="margin-top:4px">
+            <span style="background:#fecdd3; color:#9f1239;
+                         padding:2px 6px; border-radius:4px;
+                         font-size:9px; font-weight:800; letter-spacing:0.5px">
+              VENCIDO
+            </span>
+          </div>` : ''}
+      </div>
+    </div>
+
   </div>`;
-};
+}
 
 // ── calcularCredito ───────────────────────────────────────────
 window.calcularCredito = function () {
@@ -377,31 +400,31 @@ window.calcularCredito = function () {
     return;
   }
 
-  const plan     = document.getElementById('crPlan')?.value || 'A';
+  const plan = document.getElementById('crPlan')?.value || 'A';
   const diasTotal = plan === 'B' ? 20 : 24;
-  const elPlazo  = document.getElementById('crPlazo');
+  const elPlazo = document.getElementById('crPlazo');
   if (elPlazo) elPlazo.textContent = diasTotal + ' días';
 
   const pctInteres = 0.20;
-  const interes    = monto * pctInteres;
-  const total      = monto + interes;
-  const cuota      = total / diasTotal;
+  const interes = monto * pctInteres;
+  const total = monto + interes;
+  const cuota = total / diasTotal;
 
   const preview = document.getElementById('crPreview');
   if (preview) preview.style.display = 'block';
   if (document.getElementById('crInteres')) document.getElementById('crInteres').textContent = formatMoney(interes);
-  if (document.getElementById('crTotal'))   document.getElementById('crTotal').textContent   = formatMoney(total);
-  if (document.getElementById('crCuota'))   document.getElementById('crCuota').textContent   = formatMoney(cuota);
+  if (document.getElementById('crTotal')) document.getElementById('crTotal').textContent = formatMoney(total);
+  if (document.getElementById('crCuota')) document.getElementById('crCuota').textContent = formatMoney(cuota);
 
-  const seguroActivo  = state._crSeguro !== false;
+  const seguroActivo = state._crSeguro !== false;
   const seguroPreview = document.getElementById('crSeguroPreview');
   if (seguroPreview) {
     if (seguroActivo) {
-      const pct         = state._crPctSeguro ?? 5;
+      const pct = state._crPctSeguro ?? 5;
       const montoSeguro = Math.round(monto * (pct / 100) * 100) / 100;
       const entregaReal = monto - montoSeguro;
-      if (document.getElementById('crSeguroMonto'))  document.getElementById('crSeguroMonto').textContent  = formatMoney(montoSeguro);
-      if (document.getElementById('crEntregaReal'))  document.getElementById('crEntregaReal').textContent  = formatMoney(entregaReal);
+      if (document.getElementById('crSeguroMonto')) document.getElementById('crSeguroMonto').textContent = formatMoney(montoSeguro);
+      if (document.getElementById('crEntregaReal')) document.getElementById('crEntregaReal').textContent = formatMoney(entregaReal);
       seguroPreview.style.display = 'block';
     } else {
       seguroPreview.style.display = 'none';
@@ -426,21 +449,21 @@ window.guardarCredito = async function () {
       return;
     }
 
-    const plan      = document.getElementById('crPlan')?.value || 'A';
+    const plan = document.getElementById('crPlan')?.value || 'A';
     const diasTotal = plan === 'B' ? 20 : 24;
     const pctInteres = 0.20;
 
-    const monto       = parseMonto(document.getElementById('crMonto').value);
+    const monto = parseMonto(document.getElementById('crMonto').value);
     const fechaInicio = document.getElementById('crFecha').value;
     if (monto <= 0 || !fechaInicio) { alert('Datos incompletos'); return; }
 
-    const total       = monto * (1 + pctInteres);
+    const total = monto * (1 + pctInteres);
     const cuotaDiaria = Math.round((total / diasTotal) * 100) / 100;
-    const fechaFin    = sumarDiasHabiles(fechaInicio, diasTotal);
+    const fechaFin = sumarDiasHabiles(fechaInicio, diasTotal);
 
-    const seguroActivo     = state._crSeguro !== false;
+    const seguroActivo = state._crSeguro !== false;
     const porcentajeSeguro = seguroActivo ? (state._crPctSeguro ?? 5) : 0;
-    const montoSeguro      = seguroActivo ? Math.round(monto * (porcentajeSeguro / 100)) : 0;
+    const montoSeguro = seguroActivo ? Math.round(monto * (porcentajeSeguro / 100)) : 0;
 
     const id = genId();
     const nuevoCredito = {
@@ -476,11 +499,11 @@ window.eliminarCredito = async function (crId) {
   const cr = (DB._cache['creditos'] || []).find(c => c.id === crId);
   if (!cr) return;
 
-  const pagos       = (DB._cache['pagos'] || []).filter(p => p.creditoId === crId && !p.eliminado);
+  const pagos = (DB._cache['pagos'] || []).filter(p => p.creditoId === crId && !p.eliminado);
   const totalPagado = pagos.reduce((s, p) => s + Number(p.monto), 0);
   const montoSeguro = Number(cr.montoSeguro || 0);
-  const montoTotal  = Number(cr.monto) + montoSeguro;
-  const cliente     = (DB._cache['clientes'] || []).find(c => c.id === cr.clienteId);
+  const montoTotal = Number(cr.monto) + montoSeguro;
+  const cliente = (DB._cache['clientes'] || []).find(c => c.id === cr.clienteId);
 
   const lineas = [
     `Monto prestado: ${formatMoney(cr.monto)}`,
@@ -505,8 +528,8 @@ window.eliminarCredito = async function (crId) {
     // 2. Eliminar el crédito
     await DB.delete('creditos', crId);
 
-    const cobradorId   = cliente?.cobradorId || null;
-    const fechaAjuste  = today();
+    const cobradorId = cliente?.cobradorId || null;
+    const fechaAjuste = today();
 
     // 3. Ajuste cartera admin: devolver monto + seguro
     if (montoTotal > 0) {
@@ -544,9 +567,9 @@ window.cerrarCredito = async function (crId) {
   const cr = (DB._cache['creditos'] || []).find(c => c.id === crId);
   if (!cr) return;
 
-  const pagos       = (DB._cache['pagos'] || []).filter(p => p.creditoId === crId && !p.eliminado);
+  const pagos = (DB._cache['pagos'] || []).filter(p => p.creditoId === crId && !p.eliminado);
   const totalPagado = pagos.reduce((s, p) => s + (Number(p.monto) || 0), 0);
-  const saldo       = cr.total - totalPagado;
+  const saldo = cr.total - totalPagado;
 
   if (saldo > 0) {
     if (!await showConfirm(`¡CUIDADO! Aún debe ${formatMoney(saldo)}. ¿Cerrar de todos modos?`, { danger: true, confirmText: 'Cerrar igualmente' })) return;
@@ -565,13 +588,13 @@ window.cerrarCredito = async function (crId) {
 
 // ── extenderCredito ───────────────────────────────────────────
 window.extenderCredito = async function () {
-  const input    = document.getElementById('extDias');
+  const input = document.getElementById('extDias');
   const diasExtra = parseInt(input.value) || 0;
   if (diasExtra <= 0) return alert('⚠️ Ingresa días válidos.');
 
-  const cr            = state.selectedCredito;
+  const cr = state.selectedCredito;
   const nuevoTotalDias = Number(cr.diasTotal) + diasExtra;
-  const nuevaFechaFin  = sumarDiasHabiles(cr.fechaInicio, nuevoTotalDias);
+  const nuevaFechaFin = sumarDiasHabiles(cr.fechaInicio, nuevoTotalDias);
 
   try {
     await DB.update('creditos', cr.id, { diasTotal: nuevoTotalDias, fechaFin: nuevaFechaFin });
@@ -672,8 +695,8 @@ window.renderModalEditarPago = function () {
   <div class="form-group">
     <label>Tipo de pago</label>
     <select class="form-control" id="epTipo" style="border-radius:10px; height:46px">
-      <option value="efectivo"      ${p.tipo === 'efectivo'      ? 'selected' : ''}>Efectivo</option>
-      <option value="yape"          ${p.tipo === 'yape'          ? 'selected' : ''}>Yape / Plin</option>
+      <option value="efectivo"      ${p.tipo === 'efectivo' ? 'selected' : ''}>Efectivo</option>
+      <option value="yape"          ${p.tipo === 'yape' ? 'selected' : ''}>Yape / Plin</option>
       <option value="transferencia" ${p.tipo === 'transferencia' ? 'selected' : ''}>Transferencia</option>
     </select>
   </div>
@@ -700,9 +723,9 @@ window.guardarPagoEditado = async function () {
   if (btn) { btn.disabled = true; btn.textContent = 'Guardando…'; }
 
   try {
-    const p          = state._editandoPago;
+    const p = state._editandoPago;
     const montoNuevo = parseMonto(document.getElementById('epMonto').value);
-    const tipo       = document.getElementById('epTipo').value;
+    const tipo = document.getElementById('epTipo').value;
     if (!montoNuevo || montoNuevo <= 0) { alert('Ingresa un monto válido'); return; }
 
     const montoViejo = Number(p.monto);
