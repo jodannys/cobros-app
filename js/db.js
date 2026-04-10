@@ -11,7 +11,7 @@ function _renderSeguro() {
 }
 
 window.DB = {
-  _listeners: {},   // onSnapshot activos
+  _listeners: {},
   _cache: {
     users: [],
     clientes: [],
@@ -24,7 +24,6 @@ window.DB = {
     configuracion: []
   },
 
-  // ── Escritura ────────────────────────────────────────────
   async set(colName, id, data) {
     const dataConTs = { ...data, updatedAt: new Date() };
     await fbSet(colName, id, { ...dataConTs, id });
@@ -57,9 +56,8 @@ window.DB = {
     return (this._cache[colName] || []).filter(x => x[field] === value);
   },
 
-  // ── Cache local ──────────────────────────────────────────
   _CACHE_KEY: 'cobrosapp_cache_v1',
-  _CACHE_TTL: 15 * 60 * 1000, // 15 minutos
+  _CACHE_TTL: 15 * 60 * 1000,
   _saveTimer: null,
 
   _guardarCacheLocal() {
@@ -85,22 +83,23 @@ window.DB = {
     } catch (e) { return false; }
   },
 
-  // ── Init ─────────────────────────────────────────────────
   async init() {
     console.log('🚀 Iniciando CobrosApp...');
 
-    // Colecciones estáticas — solo se cargan una vez
     const estaticas = ['users', 'configuracion'];
     const dinamicas = ['pagos', 'movimientos_cartera', 'gastos', 'cajas', 'notas_cuadre', 'creditos', 'clientes'];
-    // Cargar cache local para mostrar datos inmediatamente
+
     const cacheValido = this._cargarCacheLocal();
     if (cacheValido) {
       console.log('⚡ Cache local válido — mostrando datos guardados');
     }
 
-    // Cargar estáticas desde Firebase (solo si cache expiró)
+    // Siempre recargar users desde Firebase (nunca confiar en caché para auth)
+    await fbGetAll('users').then(data => { this._cache['users'] = data; }).catch(() => {});
+
     if (!cacheValido) {
       await Promise.all(estaticas.map(async col => {
+        if (col === 'users') return; // ya cargado arriba
         try {
           this._cache[col] = await fbGetAll(col);
         } catch (e) {
@@ -110,19 +109,22 @@ window.DB = {
       }));
     }
 
-    // Escuchar dinámicas en tiempo real con onSnapshot
     this._arrancarListeners(dinamicas);
 
-    this._guardarCacheLocal();
+    const usersValidos = this._cache['users'].length > 0 &&
+      this._cache['users'].every(u => u.pass !== undefined);
+    if (usersValidos) {
+      this._guardarCacheLocal();
+    } else {
+      localStorage.removeItem(this._CACHE_KEY);
+      console.warn('⚠️ Users sin pass — caché no guardado');
+    }
     console.log('✅ App lista');
   },
 
-  // ── onSnapshot listeners ──────────────────────────────────
   _arrancarListeners(colecciones) {
     colecciones.forEach(col => {
-      // Evitar listeners duplicados
       if (this._listeners[col]) return;
-
       this._listeners[col] = fbEscuchar(col, (datos) => {
         this._cache[col] = datos;
         this._guardarCacheLocal();
@@ -140,7 +142,6 @@ window.DB = {
     console.log('⏸️ Listeners detenidos');
   },
 
-  // ── Pausar/reanudar ───────────────────────────────────────
   pausarListeners() {
     this._detenerListeners();
   },
@@ -151,7 +152,6 @@ window.DB = {
     console.log('▶️ Listeners reanudados');
   },
 
-  // ── Mantenimiento ─────────────────────────────────────────
   async ejecutarMantenimientoManual() {
     console.warn('⚠️ Ejecutando mantenimiento manual...');
     await this._corregirCreditosSaldados();
@@ -185,7 +185,6 @@ window.DB = {
     const pagos = this._cache['pagos'] || [];
     const creditos = this._cache['creditos'] || [];
 
-    // Seguridad: si el cache está vacío o incompleto, no borrar nada
     if (clientes.length === 0 || users.length === 0) {
       console.warn('⚠️ _limpiarHuerfanos cancelado: cache incompleto, abortando para evitar borrados falsos.');
       return;
@@ -209,7 +208,6 @@ window.DB = {
   }
 };
 
-// ── Pausar/reanudar según visibilidad (una sola vez) ─────────
 if (!window._visibilityListenerAdded) {
   window._visibilityListenerAdded = true;
   document.addEventListener('visibilitychange', () => {
@@ -221,7 +219,6 @@ if (!window._visibilityListenerAdded) {
   });
 }
 
-// ── Indicador visual "En vivo" ────────────────────────────────
 window.renderIndicadorVivo = function () {
   return `
   <div id="indicador-vivo" style="
