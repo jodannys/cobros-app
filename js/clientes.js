@@ -18,6 +18,14 @@ window.renderClientes = function () {
     ? clientes
     : clientes.filter(c => c.cobradorId === state.currentUser.id);
 
+  // Cobrador: ocultar clientes cuyo crédito inició hoy (día 0, sin cuota pendiente aún)
+  if (!isAdmin) {
+    lista = lista.filter(c => {
+      const crActivo = creditos.find(cr => cr.clienteId === c.id && cr.activo);
+      return !(crActivo && crActivo.fechaInicio === today());
+    });
+  }
+
   if (filtro === 'activos') {
     lista = lista.filter(c => creditos.some(cr => cr.clienteId === c.id && cr.activo));
   } else if (filtro === 'sin_credito') {
@@ -592,7 +600,7 @@ window.renderClientDetail = function () {
 // ============================================================
 // ENVIAR ESTADO POR WHATSAPP
 // ============================================================
-window.enviarEstadoWhatsApp = function (clienteId) {
+window.enviarEstadoWhatsApp = async function (clienteId) {
   const c = (DB._cache['clientes'] || []).find(x => x.id === clienteId);
   if (!c) return;
 
@@ -611,7 +619,7 @@ window.enviarEstadoWhatsApp = function (clienteId) {
   const totalCobrar = saldoCapital + montoMora;
 
   const numeroRegistrado = c.telefono ? c.telefono.replace(/\D/g, '') : '';
-  const numeroInput = prompt(`📲 Enviar historial a ${c.nombre}:\n(Confirma o edita el número)`, numeroRegistrado);
+  const numeroInput = await showPrompt(`Confirma o edita el número de ${c.nombre}`, numeroRegistrado);
   if (numeroInput === null) return;
   const numero = numeroInput.replace(/\D/g, '').trim();
   if (!numero) { alert('⚠️ Número inválido'); return; }

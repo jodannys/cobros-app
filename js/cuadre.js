@@ -216,6 +216,9 @@ window.guardarNota = async function () {
       const id = genId();
       const nueva = { id, cobradorId: state.currentUser.id, fecha: hoy, nota };
       await DB.set('notas_cuadre', id, nueva);
+      // Actualizar cache para evitar duplicados si el listener no ha disparado aún
+      if (!DB._cache['notas_cuadre']) DB._cache['notas_cuadre'] = [];
+      DB._cache['notas_cuadre'].push(nueva);
     }
     showToast('Nota guardada');
     render();
@@ -439,7 +442,7 @@ const clientesPendientes = meta.detalle.filter(d =>
           <div style="font-size:10.5px; color:var(--muted); font-weight:700; text-transform:uppercase;
                       letter-spacing:0.6px; margin-bottom:4px">Recaudado</div>
           <div style="font-size:24px; font-weight:800; color:#16a34a; letter-spacing:-0.5px">
-          ${formatMoney(cuadreHoy.total)}
+          ${formatMoney(meta.pagadoHoy)}
           </div>
         </div>
       </div>

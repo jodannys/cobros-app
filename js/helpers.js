@@ -121,7 +121,9 @@ window.diasSinPagar = function(creditoId) {
 window.getAlertasCreditos = function() {
   if (!DB || !DB._cache) return [];
 
-  const creditos = (DB._cache['creditos'] || []).filter(c => c.activo === true);
+  // No filtrar por c.activo — puede estar obsoleto si se eliminó un pago.
+  // La verificación saldoTotal <= 0.1 más adelante descarta los realmente cerrados.
+  const creditos = DB._cache['creditos'] || [];
   const clientes = DB._cache['clientes'] || [];
   const users = DB._cache['users'] || [];
   const todosLosPagos = DB._cache['pagos'] || [];
@@ -141,10 +143,8 @@ window.getAlertasCreditos = function() {
 
       if (saldoTotal <= 0.1) return;
 
-      // Vencido (pasó la fecha fin)
-      const finStr = cr.fechaFin && cr.fechaFin !== 'undefined'
-                     ? cr.fechaFin
-                     : sumarDiasHabiles(cr.fechaInicio, Number(cr.diasTotal || 0));
+      // Siempre recalcular fechaFin con feriados actuales (la guardada puede estar desactualizada)
+      const finStr = sumarDiasHabiles(cr.fechaInicio, Number(cr.diasTotal || 0));
       const fFin = new Date(finStr + 'T00:00:00');
 
       if (hoy > fFin) {
@@ -170,11 +170,6 @@ window.getAlertasCreditos = function() {
   return alertas;
 };
 
-function calcularFechaFinSimple(inicio, dias) {
-    const d = new Date(inicio + 'T00:00:00');
-    d.setDate(d.getDate() + Number(dias));
-    return d.toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
-}
 
 window.obtenerDatosMora = function(credito, pagos) {
   const listaPagos = pagos || (DB && DB._cache ? DB._cache['pagos'] : []) || [];
@@ -182,13 +177,8 @@ window.obtenerDatosMora = function(credito, pagos) {
 
   if (!credito) return { esVencido: false, dias: 0, total: 0, diasInactivo: 0 };
 
-  let fFin;
-  if (credito.fechaFin && credito.fechaFin !== 'undefined') {
-    fFin = new Date(credito.fechaFin + 'T00:00:00');
-  } else {
-    const finStr = sumarDiasHabiles(credito.fechaInicio, Number(credito.diasTotal || 0));
-    fFin = new Date(finStr + 'T00:00:00');
-  }
+  // Siempre recalcular con feriados actuales para consistencia con el calendario
+  const fFin = new Date(sumarDiasHabiles(credito.fechaInicio, Number(credito.diasTotal || 0)) + 'T00:00:00');
   fFin.setHours(0, 0, 0, 0);
 
   const pagosCr = listaPagos.filter(p => p.creditoId === credito.id && !p.eliminado);

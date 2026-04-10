@@ -541,18 +541,23 @@ window.eliminarCobrador = async function eliminarCobrador(id) {
     alert('No se puede eliminar un administrador desde esta opción.');
     return;
   }
-  if (!await showConfirm('¿Eliminar este cobrador? Sus clientes quedarán sin cobrador asignado. Esta acción no se puede deshacer.', { danger: true, confirmText: 'Eliminar' })) return;
-  await DB.delete('users', id);
-  DB._cache['users'] = users.filter(x => x.id !== id);
-  state.selectedCobrador = null;
-  state.modal = null;
-  showToast('Cobrador eliminado');
-  render();
+  if (!await showConfirm('¿Eliminar este cobrador y todos sus datos (clientes, créditos, pagos)? Esta acción no se puede deshacer.', { danger: true, confirmText: 'Eliminar todo' })) return;
+  try {
+    await eliminarCobradorCascade(id);
+    state.selectedCobrador = null;
+    state.modal = null;
+    showToast('Cobrador eliminado');
+    render();
+  } catch (e) {
+    alert('Error al eliminar: ' + e.message);
+  }
 };
 
 window.abrirGestionCredito = function abrirGestionCredito(crId, clienteId) {
+  state._selectedClientAntes = state.selectedClient || null;
   state.selectedClient = (DB._cache['clientes'] || []).find(x => x.id === clienteId);
   state.selectedCredito = (DB._cache['creditos'] || []).find(x => x.id === crId);
+  state._gestionCreditoDesdeAdmin = !state._selectedClientAntes;
   state.modal = 'gestionar-credito';
   render();
 };
@@ -724,6 +729,8 @@ window.renderModalAgregarFeriado = function () {
 window.guardarFeriado = async function () {
   const fecha = document.getElementById('feriadoFecha').value;
   if (!fecha) { alert('Selecciona una fecha'); return; }
+  const diaSemana = new Date(fecha + 'T00:00:00').getDay();
+  if (diaSemana === 0) { alert('Los domingos ya son no laborables por defecto.'); return; }
   const cfg = DB._cache['configuracion'] || [];
   const doc = cfg.find(c => c.id === 'dias_no_laborables');
   const fechas = doc?.fechas || [];

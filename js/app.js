@@ -125,6 +125,9 @@ window.render = function render() {
   if (state.nav === 'historial' && state._hBusqueda) {
     renderBusquedaClientes();
   }
+
+  // Restaurar posición del FAB (se pierde en cada render porque el DOM se reconstruye)
+  if (typeof restoreFabPosition === 'function') restoreFabPosition();
 };
 // ── CONFIRMAR SALIDA (overlay custom) ────────────────────────
 window.confirmarSalida = function () {
@@ -365,16 +368,17 @@ window.renderHistorial = function renderHistorial() {
           const pagosCredito = pagos.filter(p => p.creditoId === cr.id && !p.eliminado);
           const totalPagado = pagosCredito.reduce((s, p) => s + p.monto, 0);
           const saldo = cr.total - totalPagado;
+          const esCerrado = saldo <= 0;
           const porcentaje = cr.total > 0 ? Math.min(100, Math.round((totalPagado / cr.total) * 100)) : 0;
           return `
           <div style="padding:12px 0; border-bottom:1px solid var(--border); cursor:pointer"
             onclick="verHistorialCliente('${cr.clienteId}')">
             <div class="flex-between" style="margin-bottom:6px">
               <div style="font-weight:700; font-size:14px; color:var(--text)">${cl?.nombre || '—'}</div>
-              <span style="background:${cr.activo ? '#eff6ff' : '#f0fff4'};
-                           color:${cr.activo ? 'var(--primary)' : '#276749'};
+              <span style="background:${esCerrado ? '#f0fff4' : '#eff6ff'};
+                           color:${esCerrado ? '#276749' : 'var(--primary)'};
                            padding:3px 8px; border-radius:20px; font-size:11px; font-weight:700">
-                ${cr.activo ? 'Activo' : '✓ Cerrado'}
+                ${esCerrado ? '✓ Cerrado' : 'Activo'}
               </span>
             </div>
             <div style="font-size:11.5px; color:var(--muted); margin-bottom:8px">
@@ -402,18 +406,6 @@ window.renderHistorial = function renderHistorial() {
 
   </div>`;
 };
-window.verImagen = function (src) {
-  const overlay = document.createElement('div');
-  overlay.style.cssText = `
-    position:fixed; inset:0; background:rgba(0,0,0,0.9);
-    z-index:99999; display:flex; align-items:center;
-    justify-content:center; padding:20px; cursor:zoom-out`;
-  overlay.innerHTML = `
-    <img src="${src}" style="max-width:100%; max-height:100%;
-      border-radius:10px; object-fit:contain">`;
-  overlay.addEventListener('click', () => overlay.remove());
-  document.body.appendChild(overlay);
-};
 // ── BÚSQUEDA EN VIVO ──────────────────────────────────────────
 window.renderBusquedaClientes = function renderBusquedaClientes() {
   const filtroBusqueda = state._hBusqueda || '';
@@ -438,10 +430,14 @@ window.renderBusquedaClientes = function renderBusquedaClientes() {
   contenedor.innerHTML = clientesBuscados.map(c => {
     const pagosCliente = pagos.filter(p => p.clienteId === c.id && !p.eliminado);
     const totalPagado = pagosCliente.reduce((s, p) => s + p.monto, 0);
-    const creditoActivo = creditos.filter(cr => cr.clienteId === c.id).find(cr => cr.activo);
-    const saldo = creditoActivo
-      ? Math.max(0, creditoActivo.total - pagosCliente
-        .filter(p => p.creditoId === creditoActivo.id && !p.eliminado)
+    const creditosCliente = creditos.filter(cr => cr.clienteId === c.id);
+    const creditoConSaldo = creditosCliente.find(cr => {
+      const pagadoCr = pagosCliente.filter(p => p.creditoId === cr.id).reduce((s, p) => s + p.monto, 0);
+      return cr.total - pagadoCr > 0;
+    });
+    const saldo = creditoConSaldo
+      ? Math.max(0, creditoConSaldo.total - pagosCliente
+        .filter(p => p.creditoId === creditoConSaldo.id)
         .reduce((s, p) => s + p.monto, 0))
       : 0;
     return `
@@ -454,7 +450,7 @@ window.renderBusquedaClientes = function renderBusquedaClientes() {
         </div>
         <div style="text-align:right">
           <div style="font-weight:800;color:var(--success);font-size:14px">${formatMoney(totalPagado)}</div>
-          ${creditoActivo ? `<div style="font-size:11px;color:var(--danger)">Saldo: ${formatMoney(saldo)}</div>` : ''}
+          ${creditoConSaldo ? `<div style="font-size:11px;color:var(--danger)">Saldo: ${formatMoney(saldo)}</div>` : ''}
         </div>
       </div>
     </div>`;
@@ -516,6 +512,8 @@ window.addEventListener('popstate', () => {
   if (state.modal) {
     state.modal = null;
     state.selectedCredito = null;
+    state._pagoProcesando = false;
+    deshabilitarBotonesPago(false);
     render();
     return;
   }

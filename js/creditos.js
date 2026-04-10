@@ -75,7 +75,7 @@ window.renderSeccionCreditosCliente = function (clienteId) {
             <span id="flecha-hist" style="color:var(--muted); font-size:11px">▼</span>
           </button>
           <div id="cajon-historial" style="display:none; margin-top:10px;
-               display:flex; flex-direction:column; gap:10px">
+               flex-direction:column; gap:10px">
             ${antiguos.map(ant => renderCreditoCard(ant)).join('')}
           </div>
         </div>
@@ -106,7 +106,7 @@ window.renderCreditoCard = function (cr) {
   const progreso      = Math.min(100, Math.round((totalPagado / cr.total) * 100));
   const isAdmin       = state.currentUser.role === 'admin';
   const hoyStr        = today();
-  const vencido       = cr.activo && cr.fechaFin && hoyStr > cr.fechaFin;
+  const vencido       = cr.activo && estaVencido(cr.fechaInicio, cr.diasTotal);
   const infoMora      = obtenerDatosMora(cr);
   const mora          = infoMora.total;
   const totalConMora  = saldo + mora;

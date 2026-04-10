@@ -331,6 +331,8 @@ const monto = parseMonto(document.getElementById('gMonto').value);
 
   try {
     await DB.set('gastos', id, nuevoGasto);
+    if (!DB._cache['gastos']) DB._cache['gastos'] = [];
+    DB._cache['gastos'].push(nuevoGasto);
     state.modal = null;
     state._gastoCobradorId = null;
     showToast('Gasto registrado');
@@ -347,7 +349,7 @@ window.abrirEditarGasto = function (gastoId) {
 };
 
 window.guardarEdicionGasto = async function () {
-  const monto = parseFloat(document.getElementById('gMontoEdit').value);
+  const monto = parseMonto(document.getElementById('gMontoEdit').value);
   const descripcion = document.getElementById('gDescripcionEdit').value.trim();
   const fecha = document.getElementById('gFechaEdit').value;
 
@@ -502,6 +504,8 @@ window.guardarCajaChica = async function () {
       const id = genId();
       const nuevaCaja = { id, cobradorId: u.id, monto, fecha, asignadoPor: state.currentUser.id };
       await DB.set('cajas', id, nuevaCaja);
+      if (!DB._cache['cajas']) DB._cache['cajas'] = [];
+      DB._cache['cajas'].push(nuevaCaja);
     }
     state.modal = null;
     state._cajaCobrador = null;

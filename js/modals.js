@@ -102,6 +102,12 @@ window.closeModal = function closeModal(e) {
   state._movCarteraCobrador = null;
   state._pagoProcesando = false;
   deshabilitarBotonesPago(false);
+  // Si el modal fue abierto desde admin (alertas), restaurar selectedClient anterior
+  if (state._gestionCreditoDesdeAdmin) {
+    state.selectedClient = state._selectedClientAntes || null;
+    state._gestionCreditoDesdeAdmin = false;
+    state._selectedClientAntes = null;
+  }
   render();
 };
 window.togglePass = function togglePass(id) {

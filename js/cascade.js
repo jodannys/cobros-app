@@ -62,7 +62,8 @@ window.eliminarClienteCascade = async function (clienteId) {
   }
 
   // Marcar pagos como eliminados (no borrar para preservar cuadre histórico)
-  await _marcarEliminados(pagos);
+  // Solo los que aún no están marcados para evitar escrituras duplicadas
+  await _marcarEliminados(pagos.filter(p => !p.eliminado));
 
   // Borrar créditos y cliente
   await _borrarLote('creditos', creditos);
@@ -115,10 +116,15 @@ window.eliminarCobradorCascade = async function (cobradorId) {
   const movsDelCobrador = (DB._cache['movimientos_cartera'] || []).filter(m => m.cobradorId === cobradorId);
   await _borrarLote('movimientos_cartera', movsDelCobrador);
 
+  // Limpiar notas_cuadre del cobrador
+  const notasDelCobrador = (DB._cache['notas_cuadre'] || []).filter(n => n.cobradorId === cobradorId);
+  await _borrarLote('notas_cuadre', notasDelCobrador);
+
   await DB.delete('users', cobradorId);
 
   DB._cache['gastos']               = (DB._cache['gastos']               || []).filter(x => x.cobradorId !== cobradorId);
   DB._cache['movimientos_cartera']  = (DB._cache['movimientos_cartera']  || []).filter(x => x.cobradorId !== cobradorId);
+  DB._cache['notas_cuadre']         = (DB._cache['notas_cuadre']         || []).filter(x => x.cobradorId !== cobradorId);
   DB._cache['users']                = (DB._cache['users']                || []).filter(x => x.id !== cobradorId);
 
   console.log(`✅ Cobrador ${cobradorId} eliminado con todos sus datos.`);

@@ -75,7 +75,7 @@ window.subirFotoStorage = async function (base64, clienteId) {
   return await storageRef.getDownloadURL();
 };
 // ─── MODO LOCAL MOCK ─────────────────────────────────────────
-window.USE_LOCAL_MOCK = false; // ← false para producción
+window.USE_LOCAL_MOCK =false; // ← false para producción
 
 if (window.USE_LOCAL_MOCK) {
   const _mockData = {};
