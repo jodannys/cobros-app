@@ -593,17 +593,25 @@ const clientesPendientes = meta.detalle.filter(d =>
     ${(() => {
       const _filtroRuta = state._filtroRutaCobrador || 'todos';
       const _filtroKey = '_filtroRutaCobrador';
+
       function _getEstado(d) {
-        if (d.estadoVisual === 'saldado') return 'saldado';
-        if (d.estadoVisual === 'pagado') return 'pagado';
-        if (d.estadoVisual === 'parcial') return 'parcial';
-        if (d.estadoVisual === 'atrasado') return 'atrasado';
-        if (d.estadoVisual === 'pendiente') return 'pendiente';
-        return 'otros';
-      }
-      const listaFiltrada = _filtroRuta !== 'todos'
-        ? clientesPendientes.filter(d => _getEstado(d) === _filtroRuta)
-        : clientesPendientes;
+  if (d.estadoVisual === 'saldado') return 'saldado';
+  if (d.deudaAcumulada > 0.5 && d.estadoVisual === 'pagado') return 'pagado_con_deuda';
+  if (d.estadoVisual === 'pagado') return 'pagado';
+  if (d.estadoVisual === 'parcial') return 'parcial';
+  if (d.estadoVisual === 'atrasado') return 'atrasado';
+  if (d.estadoVisual === 'pendiente') return 'pendiente';
+  return 'otros';
+}
+
+const prioridad = { atrasado: 1, pendiente: 2, parcial: 3, pagado: 4, pagado_con_deuda: 4, saldado: 5 };
+const listaOrdenada = [...clientesPendientes].sort((a, b) =>
+  (prioridad[_getEstado(a)] || 99) - (prioridad[_getEstado(b)] || 99)
+);
+
+const listaFiltrada = _filtroRuta !== 'todos'
+  ? listaOrdenada.filter(d => _getEstado(d) === _filtroRuta)
+  : listaOrdenada;
 
       const _btns = [
         
