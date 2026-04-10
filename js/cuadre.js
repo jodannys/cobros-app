@@ -371,10 +371,10 @@ window.renderCuadre = function () {
 // LOGS DE DEPURACIÓN (Pon esto en tu renderCuadre)
 // ────────────────────────────────────────────────────────────────
 const clientesPendientes = meta.detalle.filter(d =>
-  d.atrasado ||
   d.estadoVisual === 'pendiente' ||
   d.estadoVisual === 'parcial' ||
   d.estadoVisual === 'pagado' ||
+  d.estadoVisual === 'atrasado' ||
   (d.estadoVisual === 'saldado' && d.montoPagadoHoy > 0)
 );
 
@@ -600,7 +600,6 @@ const clientesPendientes = meta.detalle.filter(d =>
 
       function _getEstado(d) {
   if (d.estadoVisual === 'saldado') return 'saldado';
-  if (d.deudaAcumulada > 0.5 && d.estadoVisual === 'pagado') return 'pagado_con_deuda';
   if (d.estadoVisual === 'pagado') return 'pagado';
   if (d.estadoVisual === 'parcial') return 'parcial';
   if (d.estadoVisual === 'atrasado') return 'atrasado';
@@ -608,7 +607,7 @@ const clientesPendientes = meta.detalle.filter(d =>
   return 'otros';
 }
 
-const prioridad = { atrasado: 1, pendiente: 2, parcial: 3, pagado: 4, pagado_con_deuda: 4, saldado: 5 };
+const prioridad = { atrasado: 1, pendiente: 2, parcial: 3, pagado: 4, saldado: 5 };
 const listaOrdenada = [...clientesPendientes].sort((a, b) =>
   (prioridad[_getEstado(a)] || 99) - (prioridad[_getEstado(b)] || 99)
 );
