@@ -204,9 +204,14 @@ window.renderModalNuevoCliente = function renderModalNuevoCliente() {
   ${isAdmin ? `
   <div class="form-group">
     <label>Cobrador asignado</label>
-    <select class="form-control" id="nCobrador">
-      ${cobradores.map(u => `<option value="${u.id}">${u.nombre}</option>`).join('')}
-    </select>
+    <input type="hidden" id="nCobrador" value="${cobradores[0]?.id || ''}">
+    ${renderCustomSelect({
+      id: 'cs-nCobrador',
+      value: cobradores[0]?.id || '',
+      onChange: "document.getElementById('nCobrador').value=VALUE",
+      options: cobradores.map(u => ({ value: u.id, label: u.nombre })),
+      placeholder: 'Seleccionar cobrador'
+    })}
   </div>` : ''}
 
   <div class="form-group">
@@ -283,11 +288,14 @@ window.renderModalEditarCliente = function renderModalEditarCliente() {
   ${isAdmin ? `
   <div class="form-group">
     <label>Cobrador asignado</label>
-    <select class="form-control" id="eCobrador">
-      ${cobradores.map(u => `
-        <option value="${u.id}" ${u.id === c.cobradorId ? 'selected' : ''}>${u.nombre}</option>
-      `).join('')}
-    </select>
+    <input type="hidden" id="eCobrador" value="${c.cobradorId || ''}">
+    ${renderCustomSelect({
+      id: 'cs-eCobrador',
+      value: c.cobradorId || '',
+      onChange: "document.getElementById('eCobrador').value=VALUE",
+      options: cobradores.map(u => ({ value: u.id, label: u.nombre })),
+      placeholder: 'Seleccionar cobrador'
+    })}
   </div>` : ''}
 
   <div class="form-group" style="display:flex; flex-direction:column; align-items:center; gap:12px">
@@ -336,10 +344,16 @@ window.renderModalNuevoCredito = function renderModalNuevoCredito() {
 
   <div class="form-group">
     <label>Plan de crédito</label>
-    <select class="form-control" id="crPlan" onchange="calcularCredito()">
-      <option value="A">24 días — 20% interés</option>
-      <option value="B">20 días — 20% interés</option>
-    </select>
+    <input type="hidden" id="crPlan" value="${state._crPlan || 'A'}">
+    ${renderCustomSelect({
+      id: 'cs-crPlan',
+      value: state._crPlan || 'A',
+      onChange: "state._crPlan=VALUE; document.getElementById('crPlan').value=VALUE; calcularCredito()",
+      options: [
+        { value: 'A', label: '24 días — 20% interés' },
+        { value: 'B', label: '20 días — 20% interés' }
+      ]
+    })}
   </div>
 
   <div class="form-group">
@@ -425,17 +439,23 @@ window.renderModalNuevoCredito = function renderModalNuevoCredito() {
 
   <div class="form-group">
     <label>Fecha de inicio</label>
-    <input class="form-control" id="crFecha" type="date" value="${fechaHoy}">
+    <input type="hidden" id="crFecha" value="${fechaHoy}">
+    ${renderDatePicker({ value: fechaHoy, onChange: "document.getElementById('crFecha').value=VALUE" })}
   </div>
 
   <div class="form-group">
     <label>¿Cómo entregas el dinero? *</label>
-    <select class="form-control" id="crMetodoPago"
-      style="font-weight:600; border:1.5px solid var(--primary); cursor:pointer">
-      <option value="Efectivo">💵 Efectivo</option>
-      <option value="Yape">📱 Yape / Plin</option>
-      <option value="Transferencia">🏦 Transferencia</option>
-    </select>
+    <input type="hidden" id="crMetodoPago" value="${state._crMetodoPago || 'Efectivo'}">
+    ${renderCustomSelect({
+      id: 'cs-crMetodoPago',
+      value: state._crMetodoPago || 'Efectivo',
+      onChange: "state._crMetodoPago=VALUE; document.getElementById('crMetodoPago').value=VALUE",
+      options: [
+        { value: 'Efectivo', label: '💵 Efectivo' },
+        { value: 'Yape', label: '📱 Yape / Plin' },
+        { value: 'Transferencia', label: '🏦 Transferencia' }
+      ]
+    })}
   </div>
 
   <button class="btn btn-primary" style="height:48px; font-size:15px; font-weight:700"
@@ -489,10 +509,16 @@ window.renderModalNuevoUsuario = function renderModalNuevoUsuario() {
 
   <div class="form-group">
     <label>Rol</label>
-    <select class="form-control" id="uRol">
-      <option value="cobrador">Cobrador</option>
-      <option value="admin">Administrador</option>
-    </select>
+    <input type="hidden" id="uRol" value="cobrador">
+    ${renderCustomSelect({
+      id: 'cs-uRol',
+      value: 'cobrador',
+      onChange: "document.getElementById('uRol').value=VALUE",
+      options: [
+        { value: 'cobrador', label: 'Cobrador' },
+        { value: 'admin', label: 'Administrador' }
+      ]
+    })}
   </div>
 
   <button class="btn btn-primary" onclick="guardarUsuario()">Crear Usuario</button>`;
@@ -567,7 +593,8 @@ window.renderModalGestionarCredito = function renderModalGestionarCredito() {
   <div style="border:2px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px">
     <div style="font-weight:500;margin-bottom:10px">🤝 Fecha de compromiso</div>
     <div class="form-group" style="margin-bottom:8px">
-      <input class="form-control" id="fechaCompromiso" type="date" value="${cr.fechaCompromiso || ''}">
+      <input type="hidden" id="fechaCompromiso" value="${cr.fechaCompromiso || ''}">
+      ${renderDatePicker({ value: cr.fechaCompromiso || '', placeholder: 'Seleccionar fecha', onChange: "document.getElementById('fechaCompromiso').value=VALUE" })}
     </div>
     <button class="btn btn-primary btn-sm" style="width:100%" onclick="guardarCompromiso()">Guardar compromiso</button>
   </div>
@@ -707,10 +734,16 @@ window.renderModalEditarUsuario = function renderModalEditarUsuario() {
 
   <div class="form-group">
     <label>Rol</label>
-    <select class="form-control" id="euRol">
-      <option value="cobrador" ${u.role === 'cobrador' ? 'selected' : ''}>Cobrador</option>
-      <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>Administrador</option>
-    </select>
+    <input type="hidden" id="euRol" value="${u.role}">
+    ${renderCustomSelect({
+      id: 'cs-euRol',
+      value: u.role,
+      onChange: "document.getElementById('euRol').value=VALUE",
+      options: [
+        { value: 'cobrador', label: 'Cobrador' },
+        { value: 'admin', label: 'Administrador' }
+      ]
+    })}
   </div>
 
   <button class="btn btn-primary" onclick="actualizarUsuario()">Actualizar Datos</button>

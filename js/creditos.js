@@ -698,11 +698,17 @@ window.renderModalEditarPago = function () {
 
   <div class="form-group">
     <label>Tipo de pago</label>
-    <select class="form-control" id="epTipo" style="border-radius:10px; height:46px">
-      <option value="efectivo"      ${p.tipo === 'efectivo' ? 'selected' : ''}>Efectivo</option>
-      <option value="yape"          ${p.tipo === 'yape' ? 'selected' : ''}>Yape / Plin</option>
-      <option value="transferencia" ${p.tipo === 'transferencia' ? 'selected' : ''}>Transferencia</option>
-    </select>
+    <input type="hidden" id="epTipo" value="${p.tipo || 'efectivo'}">
+    ${renderCustomSelect({
+      id: 'cs-epTipo',
+      value: p.tipo || 'efectivo',
+      onChange: "document.getElementById('epTipo').value=VALUE",
+      options: [
+        { value: 'efectivo',      label: '💵 Efectivo' },
+        { value: 'yape',          label: '📱 Yape / Plin' },
+        { value: 'transferencia', label: '🏦 Transferencia' }
+      ]
+    })}
   </div>
 
   <button class="btn btn-primary" style="width:100%; height:46px; border-radius:10px; font-weight:700"

@@ -401,15 +401,13 @@ window.renderPanelCartera = function () {
     </div>
     <div style="display:flex; gap:8px; align-items:center">
       <div style="flex:1; position:relative">
-        <input type="date" value="${state._filtroFechaMovs || ''}"
-          onchange="state._filtroFechaMovs=this.value||null; state._verMovsCartera=true; render()"
-          style="width:100%; padding:9px 12px; border:1.5px solid ${state._filtroFechaMovs ? 'var(--primary)' : '#e2e8f0'};
-                 border-radius:10px; font-size:13px; font-weight:600; color:#1e293b; background:white;
-                 box-sizing:border-box">
+        ${renderDatePicker({
+          value: state._filtroFechaMovs || '',
+          placeholder: 'Selecciona una fecha...',
+          onChange: "state._filtroFechaMovs=VALUE||null; state._verMovsCartera=true; render()"
+        })}
         ${!state._filtroFechaMovs ? `
-        <div style="position:absolute; inset:0; display:flex; align-items:center; padding:0 12px;
-                    pointer-events:none; color:#94a3b8; font-size:13px; font-weight:500">
-          Selecciona una fecha...
+        <div style="display:none"><!-- placeholder handled by datePicker -->
         </div>` : ''}
       </div>
       ${state._filtroFechaMovs ? `
@@ -783,12 +781,14 @@ window.renderModalMovimientoCartera = function () {
 ${tipo === 'envio_cobrador' ? `
 <div class="form-group">
   <label>Cobrador *</label>
-  <select class="form-control" id="mcCobrador">
-    <option value="">Selecciona cobrador...</option>
-    ${cobradores.map(u => `
-      <option value="${u.id}" ${u.id === presel ? 'selected' : ''}>${u.nombre}</option>
-    `).join('')}
-  </select>
+  <input type="hidden" id="mcCobrador" value="${presel || ''}">
+  ${renderCustomSelect({
+    id: 'cs-mcCobrador',
+    value: presel || '',
+    onChange: "document.getElementById('mcCobrador').value=VALUE",
+    options: [{ value: '', label: 'Selecciona cobrador...' }, ...cobradores.map(u => ({ value: u.id, label: u.nombre }))],
+    placeholder: 'Selecciona cobrador...'
+  })}
 </div>` : ''}
 
 ${tipo === 'retiro' ? `
@@ -826,7 +826,8 @@ ${tipo === 'retiro' ? `
 
 <div class="form-group">
   <label>Fecha</label>
-  <input class="form-control" id="mcFecha" type="date" value="${today()}">
+  <input type="hidden" id="mcFecha" value="${today()}">
+  ${renderDatePicker({ value: today(), onChange: "document.getElementById('mcFecha').value=VALUE" })}
 </div>
 
 <button class="btn"
@@ -866,7 +867,8 @@ window.renderModalDepositoCobrador = function () {
 
   <div class="form-group">
     <label>Fecha</label>
-    <input class="form-control" id="dcFecha" type="date" value="${today()}">
+    <input type="hidden" id="dcFecha" value="${today()}">
+    ${renderDatePicker({ value: today(), onChange: "document.getElementById('dcFecha').value=VALUE" })}
   </div>
 
   <button class="btn btn-primary" style="height:48px; font-size:15px; font-weight:700"
@@ -897,15 +899,17 @@ window.renderModalRetiroCobrador = function () {
 
   <div class="form-group">
     <label>Cobrador *</label>
-    <select class="form-control" id="rcCobrador">
-      <option value="">Selecciona cobrador...</option>
-      ${cobradores.map(u => {
-    const saldo = getSaldoMochila(u.id);
-    return `<option value="${u.id}" ${u.id === presel ? 'selected' : ''}>
-          ${u.nombre} — ${formatMoney(saldo)} en caja
-        </option>`;
-  }).join('')}
-    </select>
+    <input type="hidden" id="rcCobrador" value="${presel || ''}">
+    ${renderCustomSelect({
+      id: 'cs-rcCobrador',
+      value: presel || '',
+      onChange: "document.getElementById('rcCobrador').value=VALUE",
+      options: [
+        { value: '', label: 'Selecciona cobrador...' },
+        ...cobradores.map(u => ({ value: u.id, label: u.nombre + ' — ' + formatMoney(getSaldoMochila(u.id)) + ' en caja' }))
+      ],
+      placeholder: 'Selecciona cobrador...'
+    })}
   </div>
 
   <div class="form-group">
@@ -924,7 +928,8 @@ window.renderModalRetiroCobrador = function () {
 
   <div class="form-group">
     <label>Fecha</label>
-    <input class="form-control" id="rcFecha" type="date" value="${today()}">
+    <input type="hidden" id="rcFecha" value="${today()}">
+    ${renderDatePicker({ value: today(), onChange: "document.getElementById('rcFecha').value=VALUE" })}
   </div>
 
   <button class="btn" onclick="guardarRetiroCobrador()"

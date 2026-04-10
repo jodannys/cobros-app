@@ -241,7 +241,8 @@ window.renderModalRegistrarPago = function () {
 
   <div class="form-group">
     <label>Fecha</label>
-    <input class="form-control" id="pFecha" type="date" value="${fechaHoy}">
+    <input type="hidden" id="pFecha" value="${fechaHoy}">
+    ${renderDatePicker({ value: fechaHoy, onChange: "document.getElementById('pFecha').value=VALUE" })}
   </div>
 
   <div class="form-group">

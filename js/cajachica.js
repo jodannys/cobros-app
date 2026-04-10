@@ -401,7 +401,8 @@ window.renderModalEditarGasto = function () {
 
   <div class="form-group">
     <label>Fecha</label>
-    <input class="form-control" id="gFechaEdit" type="date" value="${gasto.fecha}">
+    <input type="hidden" id="gFechaEdit" value="${gasto.fecha}">
+    ${renderDatePicker({ value: gasto.fecha, onChange: "document.getElementById('gFechaEdit').value=VALUE" })}
   </div>
 
   <button class="btn btn-primary" onclick="guardarEdicionGasto()">
@@ -425,12 +426,16 @@ window.renderModalNuevoGasto = function () {
   ${isAdmin ? `
   <div class="form-group">
     <label>Cobrador</label>
-    <select class="form-control" id="gCobrador" onchange="state._gastoCobradorId=this.value">
-      <option value="">Seleccione cobrador...</option>
-      ${cobradores.map(u => `
-        <option value="${u.id}" ${u.id === state._gastoCobradorId ? 'selected' : ''}>${u.nombre}</option>
-      `).join('')}
-    </select>
+    ${renderCustomSelect({
+      id: 'cs-gCobrador',
+      value: state._gastoCobradorId || '',
+      onChange: "state._gastoCobradorId=VALUE",
+      options: [
+        { value: '', label: 'Seleccione cobrador...' },
+        ...cobradores.map(u => ({ value: u.id, label: u.nombre }))
+      ],
+      placeholder: 'Seleccione cobrador...'
+    })}
   </div>` : ''}
 
   <div class="form-group">
@@ -445,7 +450,8 @@ window.renderModalNuevoGasto = function () {
 
   <div class="form-group">
     <label>Fecha</label>
-    <input class="form-control" id="gFecha" type="date" value="${today()}">
+    <input type="hidden" id="gFecha" value="${today()}">
+    ${renderDatePicker({ value: today(), onChange: "document.getElementById('gFecha').value=VALUE" })}
   </div>
 
   <button class="btn btn-danger" style="font-weight:700" onclick="guardarGasto()">
@@ -466,15 +472,8 @@ window.renderModalAsignarCaja = function () {
   <div class="modal-title">💼 Caja Chica — ${u.nombre}</div>
   <div class="form-group">
     <label>Fecha</label>
-    <input class="form-control" id="cajaFecha" type="date" value="${fechaModal}"
-      onchange="
-        const nuevaFecha = this.value;
-        state._fechaCobrador = nuevaFecha;
-        const cajas = DB._cache['cajas'] || [];
-        const existe = cajas.find(c => c.cobradorId === '${u.id}' && c.fecha === nuevaFecha);
-        const el = document.getElementById('cajaMontoActual');
-        if (el) el.textContent = existe ? 'S/ ' + Number(existe.monto).toFixed(2) : 'S/ 0.00';
-      ">
+    <input type="hidden" id="cajaFecha" value="${fechaModal}">
+    ${renderDatePicker({ value: fechaModal, onChange: "onCajaFechaChange(VALUE)" })}
   </div>
   <div style="background:var(--bg);border-radius:12px;padding:14px;margin-bottom:16px">
     <div style="font-size:13px;color:var(--muted)">Monto asignado para esta fecha</div>
@@ -487,6 +486,16 @@ window.renderModalAsignarCaja = function () {
     <input class="form-control" id="cajaMonto" type="number" placeholder="0.00" step="0.01">
   </div>
   <button class="btn btn-primary" style="width:100%;font-weight:700" onclick="guardarCajaChica()">Guardar</button>`;
+};
+
+window.onCajaFechaChange = function (nuevaFecha) {
+  document.getElementById('cajaFecha').value = nuevaFecha;
+  state._fechaCobrador = nuevaFecha;
+  const u = state._cajaCobrador;
+  const cajas = DB._cache['cajas'] || [];
+  const existe = cajas.find(c => c.cobradorId === u.id && c.fecha === nuevaFecha);
+  const el = document.getElementById('cajaMontoActual');
+  if (el) el.textContent = existe ? 'S/ ' + Number(existe.monto).toFixed(2) : 'S/ 0.00';
 };
 
 window.guardarCajaChica = async function () {

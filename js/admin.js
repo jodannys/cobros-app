@@ -869,7 +869,8 @@ window.renderModalAgregarFeriado = function () {
   </div>
   <div class="form-group">
     <label>Fecha *</label>
-    <input class="form-control" id="feriadoFecha" type="date" value="${today()}">
+    <input type="hidden" id="feriadoFecha" value="${today()}">
+    ${renderDatePicker({ value: today(), onChange: "document.getElementById('feriadoFecha').value=VALUE" })}
   </div>
   <div class="form-group">
     <label>Descripción (opcional)</label>

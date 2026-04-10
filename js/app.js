@@ -258,18 +258,20 @@ window.renderHistorial = function renderHistorial() {
         <div>
           <div style="font-size:11px; color:var(--muted); font-weight:700;
                       text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px">Fecha</div>
-          <input type="date" class="form-control" value="${filtroFecha}"
-            onchange="state._hFecha=this.value; render()">
+          ${renderDatePicker({ value: filtroFecha, placeholder: 'Seleccionar...', onChange: "state._hFecha=VALUE; render()" })}
         </div>
         <div>
           <div style="font-size:11px; color:var(--muted); font-weight:700;
                       text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px">Cobrador</div>
-          <select class="form-control" onchange="state._hCobrador=this.value; render()">
-            <option value="todos" ${filtroCobradorId === 'todos' ? 'selected' : ''}>Todos</option>
-            ${cobradores.map(u => `
-              <option value="${u.id}" ${filtroCobradorId === u.id ? 'selected' : ''}>${u.nombre}</option>
-            `).join('')}
-          </select>
+          ${renderCustomSelect({
+            id: 'hCobrador',
+            value: filtroCobradorId,
+            onChange: "state._hCobrador=VALUE; render()",
+            options: [
+              { value: 'todos', label: 'Todos' },
+              ...cobradores.map(u => ({ value: u.id, label: u.nombre }))
+            ]
+          })}
         </div>
       </div>
       <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px">
