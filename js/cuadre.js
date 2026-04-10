@@ -621,9 +621,9 @@ const clientesPendientes = meta.detalle.filter(d =>
           + ' font-weight:' + (_filtroRuta === f.key ? '700' : '400') + '">'
           + f.label + '</button>';
       }).join('');
-     const filtroBar = 
-  '<div style="display:flex; gap:6px; overflow-x:auto; padding:10px 0 6px; margin-bottom:4px">'
-  + _btns +
+     const filtroBar =
+  '<div style="display:flex; gap:6px; overflow-x:auto; padding:14px 0 10px; margin-top:6px; margin-bottom:4px">' 
+  + _btns + 
   '</div>';
        
 
