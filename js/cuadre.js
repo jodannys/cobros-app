@@ -606,6 +606,7 @@ const clientesPendientes = meta.detalle.filter(d =>
         : clientesPendientes;
 
       const _btns = [
+        
         { key: 'todos', label: 'Todos' },
         { key: 'pendiente', label: '⏳ Pendientes' },
         { key: 'atrasado', label: '🔴 Atrasados' },
@@ -620,7 +621,10 @@ const clientesPendientes = meta.detalle.filter(d =>
           + ' font-weight:' + (_filtroRuta === f.key ? '700' : '400') + '">'
           + f.label + '</button>';
       }).join('');
-      const filtroBar = '<div style="display:flex; gap:6px; overflow-x:auto; padding:10px 0 6px; margin-bottom:2px">' + _btns + '</div>';
+     const filtroBar = 
+  '<div style="display:flex; gap:6px; overflow-x:auto; padding:10px 0 6px; margin-bottom:2px">'
+  + _btns +
+  '</div>';
        
 
       const listaHTML = listaFiltrada.length === 0
