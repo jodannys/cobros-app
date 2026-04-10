@@ -371,7 +371,11 @@ window.renderCuadre = function () {
 // LOGS DE DEPURACIÓN (Pon esto en tu renderCuadre)
 // ────────────────────────────────────────────────────────────────
 const clientesPendientes = meta.detalle.filter(d =>
-  !d.completo || Number(d.montoPagadoHoy) > 0
+  d.atrasado ||
+  d.estadoVisual === 'pendiente' ||
+  d.estadoVisual === 'parcial' ||
+  d.estadoVisual === 'pagado' ||
+  (d.estadoVisual === 'saldado' && d.montoPagadoHoy > 0)
 );
 
   if (state.miUbicacion) {
@@ -696,6 +700,17 @@ ${d.estadoVisual === 'atrasado' ? `
     padding:2px 6px;
     border-radius:4px">
     🔴 Atrasado (${d.cuotasAtraso})
+  </span>
+` : ''}
+${d.estadoVisual === 'pendiente' ? `
+  <span style="
+    background:#f1f5f9;
+    color:#64748b;
+    font-size:10px;
+    font-weight:700;
+    padding:2px 6px;
+    border-radius:4px">
+    ⏳ Pendiente
   </span>
 ` : ''}
                   ${distLabel ? `
