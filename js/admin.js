@@ -435,7 +435,7 @@ window.renderAdminCobrador = function renderAdminCobrador() {
           : listaOrdenada;
 
         const filtroBar = `
-          <div style="display:flex; gap:6px; overflow-x:auto; padding:10px 0; margin-bottom:4px">
+         <div style="display:flex; gap:6px; overflow-x:auto; padding:14px 0 10px; margin-top:6px; margin-bottom:4px">
             ${[
               { key: 'todos', label: 'Todos' },
               { key: 'pendiente', label: '⏳ Pendientes' },
