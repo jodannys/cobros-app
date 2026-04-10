@@ -93,6 +93,7 @@ window.verImagen = function (src) {
 
 window.openModal = function openModal(m) { state.modal = m; render(); };
 window.closeModal = function closeModal(e) {
+  document.dispatchEvent(new Event('modalClosed'));
   state.modal = null;
   state.selectedCredito = null;
   state._editingAdmin = null;

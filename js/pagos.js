@@ -140,6 +140,7 @@ window.guardarPago = async function () {
       tipo,
       fecha,
       nota,
+      eliminado: false,
       creadoEn: ts,
       updatedAt: new Date()
     };

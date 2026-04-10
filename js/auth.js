@@ -117,6 +117,8 @@ window.bindLogin = function () {
     );
 
     if (found) {
+      // Limpiar contraseñas del cache en memoria para todos los usuarios
+      (DB._cache['users'] || []).forEach(u => { delete u.pass; });
 
       const userSafe = { ...found };
       delete userSafe.pass;

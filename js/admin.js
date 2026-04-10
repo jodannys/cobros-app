@@ -422,7 +422,6 @@ window.renderAdminCobrador = function renderAdminCobrador() {
         }   
         function getEstadoFiltro(d) {
           if (d.estadoVisual === 'saldado') return 'saldado';
-          if (d.deudaAcumulada > 0.5 && d.estadoVisual === 'pagado') return 'pagado_con_deuda';
           if (d.estadoVisual === 'pagado') return 'pagado';
           if (d.estadoVisual === 'parcial') return 'parcial';
           if (d.estadoVisual === 'atrasado') return 'atrasado';
@@ -835,9 +834,13 @@ window.guardarCreditoEditado = async function guardarCreditoEditado() {
   const cr = state._editandoCredito;
   const monto = parseMonto(document.getElementById('ecMonto').value);
   if (!monto || monto <= 0) { alert('Ingresa un monto válido'); return; }
-  const total = monto * 1.2;
-  const cuota = total / cr.diasTotal;
-  const updates = { monto, total, cuotaDiaria: cuota };
+  const total = Math.round(monto * 1.2 * 100) / 100;
+  const cuotaDiaria = Math.round((total / cr.diasTotal) * 100) / 100;
+  const montoSeguro = cr.seguro
+    ? Math.round(monto * ((cr.porcentajeSeguro || 5) / 100))
+    : 0;
+  const montoEntregado = monto - montoSeguro;
+  const updates = { monto, total, cuotaDiaria, montoSeguro, montoEntregado };
   try {
     await DB.update('creditos', cr.id, updates);
     const idx = (DB._cache['creditos'] || []).findIndex(c => c.id === cr.id);

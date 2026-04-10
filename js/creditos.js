@@ -33,14 +33,14 @@ window.registrarPagoSeguro = function (btn, creditoId) {
   btn.dataset.loading = 'true';
   btn.style.opacity = '0.55';
   btn.innerHTML = '⌛ Procesando…';
-
   openRegistrarPago(creditoId);
-
-  setTimeout(() => {
+  // El modal se encarga — restaurar botón al cerrarse
+  const restore = () => {
     btn.dataset.loading = 'false';
     btn.style.opacity = '1';
     btn.innerHTML = '💰 Registrar pago';
-  }, 2000);
+  };
+  document.addEventListener('modalClosed', restore, { once: true });
 };
 
 // ── renderSeccionCreditosCliente ──────────────────────────────
@@ -469,12 +469,14 @@ window.guardarCredito = async function () {
     const nuevoCredito = {
       id,
       clienteId: state.selectedClient.id,
+      cobradorId: state.selectedClient.cobradorId || null,
       monto, total, cuotaDiaria, diasTotal, fechaInicio, fechaFin,
       activo: true,
       metodoPago: document.getElementById('crMetodoPago')?.value || 'Efectivo',
       seguro: seguroActivo, porcentajeSeguro, montoSeguro,
       montoEntregado: monto - montoSeguro,
-      creadoEn: new Date().toISOString()
+      creadoEn: new Date().toISOString(),
+      updatedAt: new Date()
     };
 
     await DB.set('creditos', id, nuevoCredito);
@@ -529,7 +531,7 @@ window.eliminarCredito = async function (crId) {
     await DB.delete('creditos', crId);
 
     const cobradorId = cliente?.cobradorId || null;
-    const fechaAjuste = today();
+    const fechaAjuste = cr.fechaInicio;
 
     // 3. Ajuste cartera admin: devolver monto + seguro
     if (montoTotal > 0) {
@@ -596,9 +598,11 @@ window.extenderCredito = async function () {
   const nuevoTotalDias = Number(cr.diasTotal) + diasExtra;
   const nuevaFechaFin = sumarDiasHabiles(cr.fechaInicio, nuevoTotalDias);
 
+  const nuevaCuota = Math.round((cr.total / nuevoTotalDias) * 100) / 100;
+
   try {
-    await DB.update('creditos', cr.id, { diasTotal: nuevoTotalDias, fechaFin: nuevaFechaFin });
-    state.selectedCredito = { ...state.selectedCredito, diasTotal: nuevoTotalDias, fechaFin: nuevaFechaFin };
+    await DB.update('creditos', cr.id, { diasTotal: nuevoTotalDias, fechaFin: nuevaFechaFin, cuotaDiaria: nuevaCuota });
+    state.selectedCredito = { ...state.selectedCredito, diasTotal: nuevoTotalDias, fechaFin: nuevaFechaFin, cuotaDiaria: nuevaCuota };
     showToast(`✅ Plazo extendido hasta ${formatDate(nuevaFechaFin)}`);
     render();
   } catch (error) { console.error(error); }
@@ -796,10 +800,18 @@ window.eliminarPago = async function (pagoId) {
 
 // ── reabrirCredito ────────────────────────────────────────────
 window.reabrirCredito = async function (crId) {
+  if (window._reabriendo) return;
   if (!await showConfirm('¿Reabrir este crédito? Volverá a estar activo y aparecerá en los cobros.', { confirmText: 'Reabrir' })) return;
-  await DB.update('creditos', crId, { activo: true });
-  showToast('✅ Crédito reabierto');
-  render();
+  window._reabriendo = true;
+  try {
+    await DB.update('creditos', crId, { activo: true });
+    showToast('✅ Crédito reabierto');
+    render();
+  } catch (e) {
+    alert('Error al reabrir: ' + e.message);
+  } finally {
+    window._reabriendo = false;
+  }
 };
 
 // ── nuevoCreditoRapido ────────────────────────────────────────

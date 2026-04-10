@@ -493,7 +493,7 @@ window.guardarCajaChica = async function () {
   const u = state._cajaCobrador;
   const monto = parseFloat(document.getElementById('cajaMonto').value);
   const fecha = document.getElementById('cajaFecha').value;
-  if (!u || isNaN(monto) || monto < 0) { alert('Ingresa un monto válido'); return; }
+  if (!u || isNaN(monto) || monto <= 0) { alert('Ingresa un monto válido (mayor a cero)'); return; }
   const cajas = DB._cache['cajas'] || [];
   const existente = cajas.find(c => c.cobradorId === u.id && c.fecha === fecha);
   try {
