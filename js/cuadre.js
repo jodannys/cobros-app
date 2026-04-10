@@ -835,7 +835,7 @@ ${d.estadoVisual === 'pendiente' ? `
 
     <!-- BOTÓN FLOTANTE MAPA -->
     <button onclick="abrirMapaRutaCobrador('${userId}', '${hoyC}')"
-      style="position:fixed; bottom:90px; right:20px; z-index:999;
+      style="position:fixed; bottom:90px; right:20px; z-index:199;
              width:56px; height:56px; border-radius:50%; border:none;
              background:#0f172a; color:white; font-size:22px;
              box-shadow:0 4px 16px rgba(0,0,0,0.35); cursor:pointer;
