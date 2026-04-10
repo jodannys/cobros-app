@@ -1,4 +1,4 @@
-const CACHE = 'cobrosapp-v3';
+const CACHE = 'cobrosapp-v4';
 const ARCHIVOS = [
   '/',
   '/index.html',
@@ -18,6 +18,12 @@ const ARCHIVOS = [
   '/js/cajachica.js',
   '/js/admin.js',
   '/js/modals.js',
+  '/js/infoCobrador.js',
+  '/js/infoAdmin.js',
+  '/js/customSelect.js',
+  '/js/datePicker.js',
+  '/js/botonFab.js',
+  '/js/dialogs.js',
   '/js/app.js',
   '/manifest.json'
 ];
