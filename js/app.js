@@ -128,6 +128,10 @@ window.render = function render() {
 
   // Restaurar posición del FAB (se pierde en cada render porque el DOM se reconstruye)
   if (typeof restoreFabPosition === 'function') restoreFabPosition();
+
+  // Scroll al filtro activo en barras horizontales
+  const filtroActivo = document.querySelector('[data-filtro-activo]');
+  if (filtroActivo) filtroActivo.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'instant' });
 };
 // ── CONFIRMAR SALIDA (overlay custom) ────────────────────────
 window.confirmarSalida = function () {

@@ -444,6 +444,7 @@ window.renderAdminCobrador = function renderAdminCobrador() {
               { key: 'saldado', label: '🏆 Saldados' },
             ].map(f => `
               <button onclick="event.stopPropagation(); state['${rutaFiltroKey}']='${f.key}'; render()"
+                ${rutaFiltro === f.key ? 'data-filtro-activo="1"' : ''}
                 style="padding:5px 10px; border-radius:15px; font-size:11px;
                        border:${rutaFiltro === f.key ? '2px solid #1a56db' : '1px solid #e2e8f0'};
                        background:${rutaFiltro === f.key ? '#eff6ff' : 'white'};

@@ -634,11 +634,13 @@ const listaFiltrada = _filtroRuta !== 'todos'
         { key: 'pagado', label: '✅ Pagaron' },
         { key: 'saldado', label: '🏆 Saldados' },
       ].map(function(f) {
+        const isActive = _filtroRuta === f.key;
         return '<button onclick="event.stopPropagation(); state[\'' + _filtroKey + '\']=\'' + f.key + '\'; render()"'
+          + (isActive ? ' data-filtro-activo="1"' : '')
           + ' style="padding:5px 10px; border-radius:15px; font-size:11px; flex-shrink:0; cursor:pointer; white-space:nowrap;'
-          + ' border:' + (_filtroRuta === f.key ? '2px solid #1a56db' : '1px solid #e2e8f0') + ';'
-          + ' background:' + (_filtroRuta === f.key ? '#eff6ff' : 'white') + ';'
-          + ' font-weight:' + (_filtroRuta === f.key ? '700' : '400') + '">'
+          + ' border:' + (isActive ? '2px solid #1a56db' : '1px solid #e2e8f0') + ';'
+          + ' background:' + (isActive ? '#eff6ff' : 'white') + ';'
+          + ' font-weight:' + (isActive ? '700' : '400') + '">'
           + f.label + '</button>';
       }).join('');
      const filtroBar =
