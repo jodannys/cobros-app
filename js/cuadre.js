@@ -622,7 +622,7 @@ const clientesPendientes = meta.detalle.filter(d =>
           + f.label + '</button>';
       }).join('');
      const filtroBar = 
-  '<div style="display:flex; gap:6px; overflow-x:auto; padding:10px 0 6px; margin-bottom:2px">'
+  '<div style="display:flex; gap:6px; overflow-x:auto; padding:10px 0 6px; margin-bottom:4px">'
   + _btns +
   '</div>';
        
