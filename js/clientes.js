@@ -279,7 +279,7 @@ window.renderEsquemaCuotas = function (cr) {
   const cuotaDiaria = Number(cr.cuotaDiaria);
   const cuotasCubiertas = Math.floor((totalPagado + 0.5) / cuotaDiaria);
   const hoyStr = today();
-  const diasTranscurridos = Math.max(0, contarDiasHabiles(cr.fechaInicio, hoyStr));
+  const diasTranscurridos = Math.max(0, contarDiasHabiles(cr.fechaInicio, hoyStr) - 1);
 
   const primerDia = new Date(cr.fechaInicio + 'T00:00:00');
   primerDia.setDate(primerDia.getDate() + 1);

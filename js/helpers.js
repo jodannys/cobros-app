@@ -296,7 +296,7 @@ window.calcularEstadoAtraso = function (cr, pagos, fecha) {
              cuotasAtraso: 0, montoAtraso: 0, saldoRestante: 0 };
   }
 
-  const diasTranscurridos = Math.max(0, contarDiasHabiles(cr.fechaInicio, fechaRef));
+  const diasTranscurridos = Math.max(0, contarDiasHabiles(cr.fechaInicio, fechaRef) - 1);
 
   if (diasTranscurridos <= 0) {
     return { atrasado: false, cuotasDebidas: 0, cuotasCubiertas: 0,

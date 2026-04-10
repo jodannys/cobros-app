@@ -77,7 +77,7 @@ window.calcularMetaReal = function (cobradorId, fecha) {
       return;
     }
 
-    const diasTranscurridos = Math.max(0, contarDiasHabiles(cr.fechaInicio, fecha));
+    const diasTranscurridos = Math.max(0, contarDiasHabiles(cr.fechaInicio, fecha) - 1);
 
     const estado = calcularEstadoAtraso(cr, pagosNoEliminados, fecha);
 
