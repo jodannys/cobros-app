@@ -18,8 +18,8 @@ window.guardarUbicacionCliente = function () {
 window.renderMapaCliente = function renderMapaCliente(lat, lng) {
   if (!lat || !lng) return '';
   return `
-  <div style="margin-bottom:12px">
-    <a href="https://www.google.com/maps?q=${lat},${lng}" target="_blank"
+ <div style="margin-top: 16px; margin-bottom: 12px">
+    <a href="https://www.google.com/maps/search/?api=1&query=${lat},${lng}" target="_blank"
       style="display:inline-flex;align-items:center;gap:8px;background:#eff6ff;
       color:var(--primary);padding:10px 16px;border-radius:10px;font-size:14px;
       font-weight:600;text-decoration:none">
