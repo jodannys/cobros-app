@@ -59,7 +59,7 @@ const _SECCIONES_COBRADOR = [
     tab: 'cuadre',
     titulo: '🗺️ Mapa de ruta',
     keywords: ['mapa','ruta mapa','circulo azul','circulo rojo','gps mapa','ver mapa','ubicacion mapa'],
-    contenido: 'Toca el ícono 🗺️ para ver todos los clientes pendientes en el mapa. <b>Tú eres el círculo azul</b> y los clientes son <b>círculos rojos</b>. Puedes pausar y reanudar el GPS — al reanudar los clientes se reorganizan según tu nueva posición.'
+    contenido: 'Toca el ícono 🗺️ para ver los clientes pendientes en el mapa. <b>Tú eres el círculo azul</b>. Los clientes aparecen con colores según su estado: 🔴 rojo = pendiente/atrasado, 🟡 naranja = abonó, 🟢 verde = pagó. Puedes pausar y reanudar el GPS — al reanudar los clientes se reorganizan según tu nueva posición.'
   },
   {
     tab: 'cuadre',
@@ -184,11 +184,20 @@ window.abrirAyudaCobrador = function () {
     </span>
     <input id="ayuda-search" type="text"
       placeholder="Buscar: pago, ruta, gasto, crédito..."
-      oninput="_filtrarAyuda(this.value)"
+      oninput="_filtrarAyuda(this.value);
+               document.getElementById('btn-clear-ayuda-cobrador').style.display=this.value?'block':'none';"
       style="width:100%; border:none; background:#ffffff; border-radius:20px;
              padding:9px 36px 9px 40px; font-size:13.5px; color:#2d3748;
              font-weight:500; outline:none; box-shadow:0 2px 8px rgba(0,0,0,0.08);
              box-sizing:border-box;">
+    <span id="btn-clear-ayuda-cobrador"
+      onclick="document.getElementById('ayuda-search').value='';
+               _filtrarAyuda('');
+               this.style.display='none';"
+      style="position:absolute; right:14px; cursor:pointer; color:#a0aec0;
+             font-size:13px; font-weight:700; line-height:1; display:none">
+      ✕
+    </span>
   </div>
 </div>
 

@@ -164,9 +164,7 @@ window.DB = {
     const pagos = this._cache['pagos'] || [];
     creditos.forEach(cr => {
       if (cr.activo && (!cr.fechaFin || cr.fechaFin === 'undefined')) {
-        const fInicio = new Date(cr.fechaInicio + 'T00:00:00');
-        fInicio.setDate(fInicio.getDate() + Number(cr.diasTotal || 0));
-        const nuevaFechaFin = fInicio.toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
+        const nuevaFechaFin = sumarDiasHabiles(cr.fechaInicio, Number(cr.diasTotal || 0));
         DB.update('creditos', cr.id, { fechaFin: nuevaFechaFin }).catch(e => console.error(e));
       }
       if (cr.activo === true) {

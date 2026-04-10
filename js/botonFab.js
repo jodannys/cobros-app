@@ -24,6 +24,7 @@ document.addEventListener('pointerdown', e => {
 
   const SIZE   = fab.offsetWidth
   const MARGIN = 8
+  const navH   = document.querySelector('.bottom-nav')?.offsetHeight || 65
 
   let moved = false
 
@@ -40,7 +41,7 @@ document.addEventListener('pointerdown', e => {
     )
     const y = Math.min(
       Math.max(MARGIN, e.clientY - startY),
-      window.innerHeight - SIZE - MARGIN
+      window.innerHeight - SIZE - MARGIN - navH
     )
 
     fab.style.left   = x + 'px'
@@ -54,7 +55,7 @@ document.addEventListener('pointerdown', e => {
     const x = r.left < window.innerWidth / 2
       ? MARGIN
       : window.innerWidth - SIZE - MARGIN
-    const y = Math.min(Math.max(MARGIN, r.top), window.innerHeight - SIZE - MARGIN)
+    const y = Math.min(Math.max(MARGIN, r.top), window.innerHeight - SIZE - MARGIN - navH)
 
     fab.style.left = x + 'px'
     fab.style.top  = y + 'px'

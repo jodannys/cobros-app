@@ -277,9 +277,9 @@ window.renderEsquemaCuotas = function (cr) {
   const pagos = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id && !p.eliminado);
   const totalPagado = pagos.reduce((s, p) => s + Number(p.monto), 0);
   const cuotaDiaria = Number(cr.cuotaDiaria);
-  const cuotasCubiertas = Math.floor(totalPagado / cuotaDiaria);
+  const cuotasCubiertas = Math.floor((totalPagado + 0.5) / cuotaDiaria);
   const hoyStr = today();
-  const diasTranscurridos = Math.max(0, contarDiasHabiles(cr.fechaInicio, hoyStr) - 1);
+  const diasTranscurridos = Math.max(0, contarDiasHabiles(cr.fechaInicio, hoyStr));
 
   const primerDia = new Date(cr.fechaInicio + 'T00:00:00');
   primerDia.setDate(primerDia.getDate() + 1);

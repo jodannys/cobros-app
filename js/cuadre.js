@@ -77,10 +77,7 @@ window.calcularMetaReal = function (cobradorId, fecha) {
       return;
     }
 
-    const diasTranscurridos = Math.max(
-      0,
-      contarDiasHabiles(cr.fechaInicio, fecha) - 1
-    );
+    const diasTranscurridos = Math.max(0, contarDiasHabiles(cr.fechaInicio, fecha));
 
     const estado = calcularEstadoAtraso(cr, pagosNoEliminados, fecha);
 
@@ -608,9 +605,21 @@ const clientesPendientes = meta.detalle.filter(d =>
 }
 
 const prioridad = { atrasado: 1, pendiente: 2, parcial: 3, pagado: 4, saldado: 5 };
-const listaOrdenada = [...clientesPendientes].sort((a, b) =>
-  (prioridad[_getEstado(a)] || 99) - (prioridad[_getEstado(b)] || 99)
-);
+const listaOrdenada = [...clientesPendientes].sort((a, b) => {
+  const pA = prioridad[_getEstado(a)] || 99;
+  const pB = prioridad[_getEstado(b)] || 99;
+  // Grupo 0 = por cobrar (atrasado/pendiente/parcial), grupo 1 = ya pagaron
+  const grupoA = pA <= 3 ? 0 : 1;
+  const grupoB = pB <= 3 ? 0 : 1;
+  if (grupoA !== grupoB) return grupoA - grupoB;
+  // Dentro del mismo grupo: por cercanía si hay GPS, si no por prioridad
+  if (state.miUbicacion) {
+    const dA = calcularDistancia(state.miUbicacion.lat, state.miUbicacion.lng, a.cliente?.lat, a.cliente?.lng);
+    const dB = calcularDistancia(state.miUbicacion.lat, state.miUbicacion.lng, b.cliente?.lat, b.cliente?.lng);
+    return dA - dB;
+  }
+  return pA - pB;
+});
 
 const listaFiltrada = _filtroRuta !== 'todos'
   ? listaOrdenada.filter(d => _getEstado(d) === _filtroRuta)
@@ -825,7 +834,7 @@ ${d.estadoVisual === 'pendiente' ? `
     </div>
 
     <!-- BOTÓN FLOTANTE MAPA -->
-    <button onclick="abrirMapaRuta()"
+    <button onclick="abrirMapaRutaCobrador('${userId}', '${hoyC}')"
       style="position:fixed; bottom:90px; right:20px; z-index:999;
              width:56px; height:56px; border-radius:50%; border:none;
              background:#0f172a; color:white; font-size:22px;

@@ -162,10 +162,8 @@ window.abrirMapaRuta = function () {
   window.addEventListener('popstate', window._mapaRutaPopState, { once: true });
 
   setTimeout(() => {
-    // Admin ve toda la ruta (incluye pagados/saldados), cobrador solo los pendientes
-    const pendientes = esAdmin
-      ? (window._metaDetalle || [])
-      : (window._metaDetalle || []).filter(d => !d.completo);
+    // Ambos ven solo los pendientes (por cobrar)
+    const pendientes = (window._metaDetalle || []).filter(d => !d.completo);
 
     // ── FIX 2: calcular centro a partir de los clientes con coordenadas ──
     // Si hay GPS activo úsalo, si no usa el centroide de los clientes,
