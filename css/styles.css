@@ -1,4 +1,8 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
+html {
+  min-height: 100%;
+  background: linear-gradient(135deg, #1a56db 0%, #0ea96d 100%);
+}
 :root {
   --primary: #2563eb;       /* Azul más frío y corporativo */
   --primary-dark: #1d4ed8;
