@@ -89,7 +89,7 @@ window.getCapitalInvertido = function () {
 window.getTotalEnMochilas = function () {
   return (DB._cache['users'] || [])
     .filter(u => u.role === 'cobrador')
-    .reduce((s, u) => s + Math.max(0, getSaldoMochila(u.id)), 0);
+    .reduce((s, u) => s + getSaldoMochila(u.id), 0);
 };
 
 window.getTotalEnLaCalle = function () {

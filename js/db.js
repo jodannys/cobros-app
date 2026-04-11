@@ -164,19 +164,19 @@ window.DB = {
   async _corregirCreditosSaldados() {
     const creditos = this._cache['creditos'] || [];
     const pagos = this._cache['pagos'] || [];
-    creditos.forEach(cr => {
+    for (const cr of creditos) {
       if (cr.activo && (!cr.fechaFin || cr.fechaFin === 'undefined')) {
         const nuevaFechaFin = sumarDiasHabiles(cr.fechaInicio, Number(cr.diasTotal || 0));
-        DB.update('creditos', cr.id, { fechaFin: nuevaFechaFin }).catch(e => console.error(e));
+        await DB.update('creditos', cr.id, { fechaFin: nuevaFechaFin }).catch(e => console.error(e));
       }
       if (cr.activo === true) {
         const pagosCr = pagos.filter(p => p.creditoId === cr.id && !p.eliminado);
         const totalPagado = pagosCr.reduce((s, p) => s + (Number(p.monto) || 0), 0);
         if (totalPagado >= Number(cr.total || 0) && cr.total > 0) {
-          DB.update('creditos', cr.id, { activo: false }).catch(e => console.error(e));
+          await DB.update('creditos', cr.id, { activo: false }).catch(e => console.error(e));
         }
       }
-    });
+    }
     if (typeof render === 'function') render();
   },
 
