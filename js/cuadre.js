@@ -140,8 +140,9 @@ window.calcularMetaReal = function (cobradorId, fecha) {
       const cuotaPagadaHoy = Math.min(montoPagadoHoy, cuota);
       pagadoHoy += cuotaPagadaHoy;
 
-      if (cuotaPagadaHoy < cuota) {
-        pendiente += (cuota - cuotaPagadaHoy);
+      // Solo cuenta como pendiente si no pagó NADA hoy (abono parcial no es déficit)
+      if (montoPagadoHoy === 0) {
+        pendiente += cuota;
       }
     }
 
@@ -538,7 +539,9 @@ window.renderCuadre = function () {
       ? '✅ Meta cumplida'
       : meta.metaTotal === 0
         ? '✨ Sin cobros pendientes'
-        : 'Faltan ' + formatMoney(meta.pendiente)}
+        : meta.pendiente === 0
+          ? '✅ Todos visitados'
+          : 'Faltan ' + formatMoney(meta.pendiente)}
         </div>
       </div>
     </div>
@@ -615,7 +618,7 @@ window.renderCuadre = function () {
   <!-- CLIENTES POR COBRAR -->
 <div class="card" style="margin-bottom:12px; padding:0; overflow:hidden; border-radius:12px">
   <!-- Header ruta cobrador -->
-  <div style="padding:14px 16px; display:flex; justify-content:space-between; align-items:center;
+  <div style="padding:14px 16px; min-height:56px; box-sizing:border-box; display:flex; justify-content:space-between; align-items:center;
               cursor:pointer; background:linear-gradient(135deg,#1a56db,#0ea96d)"
        onclick="state._clientesPendientesOpen = !state._clientesPendientesOpen; render()">
 

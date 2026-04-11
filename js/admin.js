@@ -369,7 +369,7 @@ window.renderAdminCobrador = function renderAdminCobrador() {
 
        <div class="card" style="padding:0; overflow:hidden; border-radius:12px">
   <!-- Header ruta -->
-  <div style="padding:14px 16px; display:flex; justify-content:space-between; align-items:center;
+  <div style="padding:14px 16px; min-height:56px; box-sizing:border-box; display:flex; justify-content:space-between; align-items:center;
               cursor:pointer; background:linear-gradient(135deg,#1a56db,#0ea96d)"
        onclick="state['_verRutaAdmin_${cobrador.id}']=!state['_verRutaAdmin_${cobrador.id}']; render()">
 
@@ -523,15 +523,16 @@ ${c.nota ? `
     <!-- CLIENTES CON FILTROS -->
 <div class="card" style="padding:0; overflow:hidden; border-radius:12px; margin-top:20px">
 
+
   <!-- Header colapsable -->
-  <div style="padding:14px 16px; display:flex; justify-content:space-between; align-items:center;
+  <div style="padding:14px 16px; min-height:56px; box-sizing:border-box; display:flex; justify-content:space-between; align-items:center;
               cursor:pointer; background:linear-gradient(135deg,#1a56db,#0ea96d)"
        onclick="state['_verClientesAdmin_${cobrador.id}']=!state['_verClientesAdmin_${cobrador.id}']; render()">
     <div style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;
-                white-space:nowrap; color:white">
+                white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1; min-width:0; color:white">
       👥 Clientes de ${cobrador.nombre}
     </div>
-    <div style="display:flex; align-items:center; gap:8px">
+    <div style="display:flex; align-items:center; gap:8px; flex-shrink:0; margin-left:8px">
       <span style="font-size:10px; padding:2px 8px; border-radius:10px; font-weight:700;
                    white-space:nowrap; background:rgba(255,255,255,0.2); color:white">
         ${listaClientes.length} / ${clientes.length}
