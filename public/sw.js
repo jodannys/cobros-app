@@ -1,4 +1,4 @@
-const CACHE = 'cobrosapp-v5';
+const CACHE = 'cobrosapp-v6';
 
 self.addEventListener('install', e => {
   self.skipWaiting();
