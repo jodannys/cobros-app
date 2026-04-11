@@ -14,7 +14,12 @@ window.getSaldoMochilaHasta = function (cobradorId, fechaExclusiva) {
   return _calcularMochila(cobradorId, fechaExclusiva);
 };
 
+const _mochilaCache = {};
+
 function _calcularMochila(cobradorId, fechaLimite) {
+  const key = cobradorId + '|' + (fechaLimite || '') + '|' + DB._cacheVersion;
+  if (_mochilaCache[key] !== undefined) return _mochilaCache[key];
+
   const movs = DB._cache['movimientos_cartera'] || [];
   const pagos = DB._cache['pagos'] || [];
   const creditos = DB._cache['creditos'] || [];
@@ -61,7 +66,9 @@ function _calcularMochila(cobradorId, fechaLimite) {
     })
     .reduce((s, m) => s + Number(m.monto || 0), 0);
 
-  return enviado + cobros + ajustesCobros + seguros + cajasAsignadas - prestamos - totalGastos - devuelto;
+  const resultado = enviado + cobros + ajustesCobros + seguros + cajasAsignadas - prestamos - totalGastos - devuelto;
+  _mochilaCache[key] = resultado;
+  return resultado;
 }
 
 // ── CARTERA: Saldo del admin ──────────────────────────────────

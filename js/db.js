@@ -14,6 +14,7 @@ function _renderSeguro() {
 
 window.DB = {
   _listeners: {},
+  _cacheVersion: 0,
   _cache: {
     users: [],
     clientes: [],
@@ -129,6 +130,7 @@ window.DB = {
       if (this._listeners[col]) return;
       this._listeners[col] = fbEscuchar(col, (datos) => {
         this._cache[col] = datos;
+        this._cacheVersion++;
         this._guardarCacheLocal();
         console.log(`🔄 ${col} actualizado en tiempo real`);
         _renderSeguro();
