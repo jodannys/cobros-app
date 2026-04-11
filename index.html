@@ -54,24 +54,21 @@
 <script>
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').then(reg => {
-      // Detectar cuando hay un nuevo SW esperando
+      // Revisar si ya hay uno esperando al cargar
+      if (reg.waiting) mostrarBannerActualizacion(reg.waiting);
+
       reg.addEventListener('updatefound', () => {
         const nuevo = reg.installing;
         nuevo.addEventListener('statechange', () => {
           if (nuevo.state === 'installed' && navigator.serviceWorker.controller) {
-            mostrarBannerActualizacion();
+            mostrarBannerActualizacion(nuevo);
           }
         });
       });
     });
-
-    // Cuando el nuevo SW toma control → recargar automático
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      window.location.reload();
-    });
   }
 
-  function mostrarBannerActualizacion() {
+  function mostrarBannerActualizacion(swEsperando) {
     if (document.getElementById('banner-update')) return;
     const banner = document.createElement('div');
     banner.id = 'banner-update';
@@ -84,23 +81,21 @@
       border:1px solid rgba(255,255,255,0.1)`;
     banner.innerHTML = `
       <span>🔄 Nueva versión disponible</span>
-      <button onclick="aplicarActualizacion()" style="
+      <button id="btn-actualizar" style="
         background:#2563eb; color:white; border:none; border-radius:8px;
         padding:6px 14px; font-size:13px; font-weight:700; cursor:pointer">
         Actualizar
       </button>`;
     document.body.appendChild(banner);
-  }
 
-  window.aplicarActualizacion = function() {
-    navigator.serviceWorker.getRegistration().then(reg => {
-      if (reg && reg.waiting) {
-        reg.waiting.postMessage({ type: 'SKIP_WAITING' });
-      } else {
+    document.getElementById('btn-actualizar').addEventListener('click', () => {
+      // Escuchar cuando el nuevo SW toma control y recargar
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
         window.location.reload();
-      }
+      });
+      swEsperando.postMessage({ type: 'SKIP_WAITING' });
     });
-  };
+  }
 </script>
 </body>
 </html>

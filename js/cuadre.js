@@ -62,7 +62,7 @@ window.calcularMetaReal = function (cobradorId, fecha) {
   // Incluir también créditos cerrados HOY (para mostrar badge de pago en la lista)
   const creditosConPagoHoy = new Set(
     pagos.filter(p => p.cobradorId === cobradorId && p.fecha === fecha && !p.eliminado)
-         .map(p => p.creditoId)
+      .map(p => p.creditoId)
   );
 
   const creditosTodos = creditos.filter(cr =>
@@ -302,8 +302,20 @@ window._renderCajaChicaPro = function (caja, cuadre, fecha) {
                       width:${Math.min(100, Math.max(0, Math.abs(caja.saldo / caja.cajaInicial * 100)))}%;
                       transition:width 0.5s cubic-bezier(0.4,0,0.2,1)"></div>` : ''}
       </div>
+      
     </div>
-
+${(caja.totalSeguros || 0) > 0 ? `
+    <div style="background:rgba(251,146,60,0.15); border-top:1px solid rgba(251,146,60,0.3);
+                padding:10px 18px; display:flex;
+                justify-content:space-between; align-items:center; gap:12px">
+      <div style="font-size:10px; font-weight:700; color:#fb923c;
+                  text-transform:uppercase; letter-spacing:0.5px">
+        🛡️ Micro Seguros del día
+      </div>
+      <div style="font-size:18px; font-weight:900; color:#fb923c; flex-shrink:0">
+        +${formatMoney(caja.totalSeguros)}
+      </div>
+    </div>` : ''}
     <div style="background:white; padding:16px 16px 12px">
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:14px">
         <div style="background:var(--bg); border-radius:8px; padding:12px">
@@ -352,21 +364,7 @@ window._renderCajaChicaPro = function (caja, cuadre, fecha) {
     </div>
   </div>
 
-  ${(caja.totalSeguros || 0) > 0 ? `
-  <div style="background:#fff7ed; border:1.5px solid #fed7aa; border-radius:10px;
-              padding:12px 16px; margin-bottom:12px; display:flex;
-              justify-content:space-between; align-items:center; gap:12px">
-    <div>
-      <div style="font-size:10px; font-weight:700; color:#ea580c;
-                  text-transform:uppercase; letter-spacing:0.5px; margin-bottom:2px">
-        🛡️ Micro Seguros del día
-      </div>
-    
-    </div>
-    <div style="font-size:20px; font-weight:900; color:#ea580c; flex-shrink:0">
-      +${formatMoney(caja.totalSeguros)}
-    </div>
-  </div>` : ''}`;
+  `;
 }
 
 window.abrirEditarGasto = function (id) {
@@ -414,17 +412,17 @@ window.renderCuadre = function () {
   // ── Ordenar clientes por distancia o por nombre ──
   //const clientesPendientes = meta.detalle.filter(d => !d.completo);
   // Ahora incluimos a los que ya pagaron hoy para poder ver el badge verde
-// SUSTITUYE LA LÍNEA DE clientesPendientes POR ESTA:
-// ────────────────────────────────────────────────────────────────
-// LOGS DE DEPURACIÓN (Pon esto en tu renderCuadre)
-// ────────────────────────────────────────────────────────────────
-const clientesPendientes = meta.detalle.filter(d =>
-  d.estadoVisual === 'pendiente' ||
-  d.estadoVisual === 'parcial' ||
-  d.estadoVisual === 'pagado' ||
-  d.estadoVisual === 'atrasado' ||
-  (d.estadoVisual === 'saldado' && d.montoPagadoHoy > 0)
-);
+  // SUSTITUYE LA LÍNEA DE clientesPendientes POR ESTA:
+  // ────────────────────────────────────────────────────────────────
+  // LOGS DE DEPURACIÓN (Pon esto en tu renderCuadre)
+  // ────────────────────────────────────────────────────────────────
+  const clientesPendientes = meta.detalle.filter(d =>
+    d.estadoVisual === 'pendiente' ||
+    d.estadoVisual === 'parcial' ||
+    d.estadoVisual === 'pagado' ||
+    d.estadoVisual === 'atrasado' ||
+    (d.estadoVisual === 'saldado' && d.montoPagadoHoy > 0)
+  );
 
   if (state.miUbicacion) {
     clientesPendientes.sort((a, b) => {
@@ -643,71 +641,71 @@ const clientesPendientes = meta.detalle.filter(d =>
   ${state._clientesPendientesOpen ? `
   <div style="border-top:1px solid #f1f5f9; padding:0 16px 8px; background:white">
     ${(() => {
-      const _filtroRuta = state._filtroRutaCobrador || 'todos';
-      const _filtroKey = '_filtroRutaCobrador';
+        const _filtroRuta = state._filtroRutaCobrador || 'todos';
+        const _filtroKey = '_filtroRutaCobrador';
 
-      function _getEstado(d) {
-  if (d.estadoVisual === 'saldado') return 'saldado';
-  if (d.estadoVisual === 'pagado') return 'pagado';
-  if (d.estadoVisual === 'parcial') return 'parcial';
-  if (d.estadoVisual === 'atrasado') return 'atrasado';
-  if (d.estadoVisual === 'pendiente') return 'pendiente';
-  return 'otros';
-}
+        function _getEstado(d) {
+          if (d.estadoVisual === 'saldado') return 'saldado';
+          if (d.estadoVisual === 'pagado') return 'pagado';
+          if (d.estadoVisual === 'parcial') return 'parcial';
+          if (d.estadoVisual === 'atrasado') return 'atrasado';
+          if (d.estadoVisual === 'pendiente') return 'pendiente';
+          return 'otros';
+        }
 
-const prioridad = { atrasado: 1, pendiente: 2, parcial: 3, pagado: 4, saldado: 5 };
-const listaOrdenada = [...clientesPendientes].sort((a, b) => {
-  const pA = prioridad[_getEstado(a)] || 99;
-  const pB = prioridad[_getEstado(b)] || 99;
-  // Grupo 0 = por cobrar (atrasado/pendiente/parcial), grupo 1 = ya pagaron
-  const grupoA = pA <= 3 ? 0 : 1;
-  const grupoB = pB <= 3 ? 0 : 1;
-  if (grupoA !== grupoB) return grupoA - grupoB;
-  // Dentro del mismo grupo: por cercanía si hay GPS, si no por prioridad
-  if (state.miUbicacion) {
-    const dA = calcularDistancia(state.miUbicacion.lat, state.miUbicacion.lng, a.cliente?.lat, a.cliente?.lng);
-    const dB = calcularDistancia(state.miUbicacion.lat, state.miUbicacion.lng, b.cliente?.lat, b.cliente?.lng);
-    return dA - dB;
-  }
-  return pA - pB;
-});
+        const prioridad = { atrasado: 1, pendiente: 2, parcial: 3, pagado: 4, saldado: 5 };
+        const listaOrdenada = [...clientesPendientes].sort((a, b) => {
+          const pA = prioridad[_getEstado(a)] || 99;
+          const pB = prioridad[_getEstado(b)] || 99;
+          // Grupo 0 = por cobrar (atrasado/pendiente/parcial), grupo 1 = ya pagaron
+          const grupoA = pA <= 3 ? 0 : 1;
+          const grupoB = pB <= 3 ? 0 : 1;
+          if (grupoA !== grupoB) return grupoA - grupoB;
+          // Dentro del mismo grupo: por cercanía si hay GPS, si no por prioridad
+          if (state.miUbicacion) {
+            const dA = calcularDistancia(state.miUbicacion.lat, state.miUbicacion.lng, a.cliente?.lat, a.cliente?.lng);
+            const dB = calcularDistancia(state.miUbicacion.lat, state.miUbicacion.lng, b.cliente?.lat, b.cliente?.lng);
+            return dA - dB;
+          }
+          return pA - pB;
+        });
 
-const listaFiltrada = _filtroRuta !== 'todos'
-  ? listaOrdenada.filter(d => _getEstado(d) === _filtroRuta)
-  : listaOrdenada;
+        const listaFiltrada = _filtroRuta !== 'todos'
+          ? listaOrdenada.filter(d => _getEstado(d) === _filtroRuta)
+          : listaOrdenada;
 
-      const _btns = [
-        
-        { key: 'todos', label: 'Todos' },
-        { key: 'pendiente', label: '⏳ Pendientes' },
-        { key: 'atrasado', label: '🔴 Atrasados' },
-        { key: 'parcial', label: '🟡 Abonos' },
-        { key: 'pagado', label: '✅ Pagaron' },
-        { key: 'saldado', label: '🏆 Saldados' },
-      ].map(function(f) {
-        const isActive = _filtroRuta === f.key;
-        return '<button onclick="event.stopPropagation(); state[\'' + _filtroKey + '\']=\'' + f.key + '\'; render()"'
-          + (isActive ? ' data-filtro-activo="1"' : '')
-          + ' style="padding:5px 10px; border-radius:15px; font-size:11px; flex-shrink:0; cursor:pointer; white-space:nowrap;'
-          + ' border:' + (isActive ? '2px solid #1a56db' : '1px solid #e2e8f0') + ';'
-          + ' background:' + (isActive ? '#eff6ff' : 'white') + ';'
-          + ' font-weight:' + (isActive ? '700' : '400') + '">'
-          + f.label + '</button>';
-      }).join('');
-     const filtroBar =
-  '<div style="display:flex; gap:6px; overflow-x:auto; padding:14px 0 10px; margin-top:6px; margin-bottom:4px">' 
-  + _btns + 
-  '</div>';
-       
+        const _btns = [
 
-      const listaHTML = listaFiltrada.length === 0
-        ? `<div style="text-align:center; padding:20px 0; color:#94a3b8; font-size:13px">Sin clientes en este filtro</div>`
-        : listaFiltrada.map(d => {
-          const dist = state.miUbicacion
-            ? calcularDistancia(state.miUbicacion.lat, state.miUbicacion.lng, d.cliente?.lat, d.cliente?.lng)
-            : null;
-          const distLabel = dist !== null ? _fmtDistancia(dist) : null;
-          return `
+          { key: 'todos', label: 'Todos' },
+          { key: 'pendiente', label: '⏳ Pendientes' },
+          { key: 'atrasado', label: '🔴 Atrasados' },
+          { key: 'parcial', label: '🟡 Abonos' },
+          { key: 'pagado', label: '✅ Pagaron' },
+          { key: 'saldado', label: '🏆 Saldados' },
+        ].map(function (f) {
+          const isActive = _filtroRuta === f.key;
+          return '<button onclick="event.stopPropagation(); state[\'' + _filtroKey + '\']=\'' + f.key + '\'; render()"'
+            + (isActive ? ' data-filtro-activo="1"' : '')
+            + ' style="padding:5px 10px; border-radius:15px; font-size:11px; flex-shrink:0; cursor:pointer; white-space:nowrap;'
+            + ' border:' + (isActive ? '2px solid #1a56db' : '1px solid #e2e8f0') + ';'
+            + ' background:' + (isActive ? '#eff6ff' : 'white') + ';'
+            + ' font-weight:' + (isActive ? '700' : '400') + '">'
+            + f.label + '</button>';
+        }).join('');
+        const filtroBar =
+          '<div style="display:flex; gap:6px; overflow-x:auto; padding:14px 0 10px; margin-top:6px; margin-bottom:4px">'
+          + _btns +
+          '</div>';
+
+
+        const listaHTML = listaFiltrada.length === 0
+          ? `<div style="text-align:center; padding:20px 0; color:#94a3b8; font-size:13px">Sin clientes en este filtro</div>`
+          : listaFiltrada.map(d => {
+            const dist = state.miUbicacion
+              ? calcularDistancia(state.miUbicacion.lat, state.miUbicacion.lng, d.cliente?.lat, d.cliente?.lng)
+              : null;
+            const distLabel = dist !== null ? _fmtDistancia(dist) : null;
+            return `
             <div style="display:flex; justify-content:space-between; align-items:center;
                         padding:11px 0; border-bottom:1px solid var(--border)">
               <div>
@@ -802,16 +800,16 @@ ${d.estadoVisual === 'pendiente' ? `
                 </button>
               `}
             </div>`;
-        }).join('');
+          }).join('');
 
-      if (clientesPendientes.length === 0) {
-        return `<div style="text-align:center; padding:28px 0">
+        if (clientesPendientes.length === 0) {
+          return `<div style="text-align:center; padding:28px 0">
           <div style="font-size:28px; margin-bottom:8px">✅</div>
           <p style="color:#16a34a; font-weight:700; margin:0; font-size:13.5px">¡Ruta completada!</p>
         </div>`;
-      }
-      return filtroBar + listaHTML;
-    })()}
+        }
+        return filtroBar + listaHTML;
+      })()}
   </div>` : ''}
 </div>
 
