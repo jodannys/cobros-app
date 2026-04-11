@@ -839,7 +839,7 @@ window.guardarCreditoEditado = async function guardarCreditoEditado() {
   const total = Math.round(monto * 1.2 * 100) / 100;
   const cuotaDiaria = Math.round((total / cr.diasTotal) * 100) / 100;
   const montoSeguro = cr.seguro
-    ? Math.round(monto * ((cr.porcentajeSeguro || 5) / 100))
+    ? Math.round(monto * ((cr.porcentajeSeguro || 5) / 100) * 100) / 100
     : 0;
   const montoEntregado = monto - montoSeguro;
   const updates = { monto, total, cuotaDiaria, montoSeguro, montoEntregado };

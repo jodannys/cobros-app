@@ -463,7 +463,7 @@ window.guardarCredito = async function () {
 
     const seguroActivo = state._crSeguro !== false;
     const porcentajeSeguro = seguroActivo ? (state._crPctSeguro ?? 5) : 0;
-    const montoSeguro = seguroActivo ? Math.round(monto * (porcentajeSeguro / 100)) : 0;
+    const montoSeguro = seguroActivo ? Math.round(monto * (porcentajeSeguro / 100) * 100) / 100 : 0;
 
     const id = genId();
     const nuevoCredito = {
