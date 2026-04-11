@@ -105,6 +105,14 @@ window.bindLogin = function () {
     const passVal = loginPassInput.value.trim();
     const remember = document.getElementById('rememberMe')?.checked;
 
+    // Siempre recargar users desde Firebase — el caché puede estar desactualizado
+    // si se creó un usuario nuevo después de que la app cargó
+    try {
+      DB._cache['users'] = await fbGetAll('users');
+    } catch (e) {
+      console.warn('No se pudo refrescar users desde Firebase:', e);
+    }
+
     const users = DB._cache['users'] || [];
 
     const userExists = users.find(u =>

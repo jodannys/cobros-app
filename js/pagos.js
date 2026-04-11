@@ -70,6 +70,8 @@ window.pagoRapido = function (crId) {
   console.log(`[PAGO RÁPIDO] Crédito: ${crId}`);
   state._pagoProcesando = true;
   deshabilitarBotonesPago(true);
+  // Guardar de dónde se abrió el modal para restaurar al cerrar
+  state._pagoDesdeCobradorId = state.selectedCobrador || null;
 
   const cr = (DB._cache['creditos'] || []).find(x => x.id === crId);
   if (!cr) {
@@ -169,6 +171,11 @@ window.guardarPago = async function () {
 
     state.modal = null;
     state.selectedCredito = null;
+    // Restaurar cobrador si el pago fue abierto desde esa vista
+    if (state._pagoDesdeCobradorId && !state.selectedCobrador) {
+      state.selectedCobrador = state._pagoDesdeCobradorId;
+    }
+    state._pagoDesdeCobradorId = null;
     render();
 
   } catch (error) {

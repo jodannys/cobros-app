@@ -109,6 +109,11 @@ window.closeModal = function closeModal(e) {
     state._gestionCreditoDesdeAdmin = false;
     state._selectedClientAntes = null;
   }
+  // Si el modal de pago fue abierto desde la vista de cobrador, restaurar cobrador
+  if (state._pagoDesdeCobradorId && !state.selectedCobrador) {
+    state.selectedCobrador = state._pagoDesdeCobradorId;
+  }
+  state._pagoDesdeCobradorId = null;
   render();
 };
 window.togglePass = function togglePass(id) {

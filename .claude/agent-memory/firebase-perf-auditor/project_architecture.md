@@ -43,6 +43,7 @@ El saldo de mochila = enviado + cobros + ajustesCobros + seguros + cajasAsignada
 2. guardarCreditoEditado NO recalcula montoSeguro/montoEntregado — queda inconsistente con el nuevo monto
 3. cuotaDiaria se redondea en guardarCredito pero NO en guardarCreditoEditado — descuadre de centavos
 4. guardarCredito NO escribe cobradorId en el crédito — _calcularMochila usa clientesIds para filtrar, lo cual es correcto pero frágil
+5. Bug de navegación post-pago: guardarPago() en pagos.js llama render() sin restaurar state.selectedCobrador, lo que hace que la vista del cobrador "R" en admin desaparezca y quede en renderAdmin() general. Causa: render() cuando state.nav='admin' y state.selectedCobrador=null muestra el panel admin vacío, no el perfil del cobrador.
 
 **Why:** Conocimiento estructural necesario para auditar cualquier bug de saldo o caja chica.
 **How to apply:** Usar como referencia antes de buscar bugs relacionados con saldos de cobrador.

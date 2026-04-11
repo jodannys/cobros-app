@@ -1,7 +1,42 @@
 // ══════════════════════════════════════════════════════════════
 // GESTIÓN DE CUADRE Y RENDIMIENTO
 // ══════════════════════════════════════════════════════════════
-window.getCuadreDelDia = function (cobradorId, fecha) { const pagos = DB._cache['pagos'] || []; const creditos = DB._cache['creditos'] || []; const clientes = DB._cache['clientes'] || []; const pagosDia = pagos.filter(p => p.cobradorId === cobradorId && p.fecha === fecha && !p.eliminado); let yape = pagosDia.filter(p => p.tipo === 'yape').reduce((s, p) => s + Number(p.monto), 0); let efectivo = pagosDia.filter(p => p.tipo === 'efectivo').reduce((s, p) => s + Number(p.monto), 0); let transferencia = pagosDia.filter(p => p.tipo === 'transferencia').reduce((s, p) => s + Number(p.monto), 0); const misClientesIds = clientes.filter(c => c.cobradorId === cobradorId).map(c => c.id); const prestamosHoy = creditos.filter(cr => cr.fechaInicio === fecha && misClientesIds.includes(cr.clienteId)); prestamosHoy.forEach(cr => { const montoSeguro = Number(cr.montoSeguro || 0); const metodo = (cr.metodoPago || 'Efectivo').toLowerCase(); if (metodo.includes('yape')) yape += montoSeguro; else if (metodo.includes('transferencia')) transferencia += montoSeguro; else efectivo += montoSeguro; }); const notas = DB._cache['notas_cuadre'] || []; const notaObj = notas.find(n => n.cobradorId === cobradorId && n.fecha === fecha); return { yape, efectivo, transferencia, total: yape + efectivo + transferencia, nota: notaObj ? notaObj.nota : '', pagos: pagosDia }; };
+window.getCuadreDelDia = function (cobradorId, fecha) {
+  const pagos = DB._cache['pagos'] || [];
+  const creditos = DB._cache['creditos'] || [];
+  const clientes = DB._cache['clientes'] || [];
+
+  // Pagos reales (cobros de cuotas)
+  const pagosDia = pagos.filter(p => p.cobradorId === cobradorId && p.fecha === fecha && !p.eliminado);
+  const yape = pagosDia.filter(p => p.tipo === 'yape').reduce((s, p) => s + Number(p.monto), 0);
+  const efectivo = pagosDia.filter(p => p.tipo === 'efectivo').reduce((s, p) => s + Number(p.monto), 0);
+  const transferencia = pagosDia.filter(p => p.tipo === 'transferencia').reduce((s, p) => s + Number(p.monto), 0);
+
+  // Seguros — separados de los cobros
+  const misClientesIds = clientes.filter(c => c.cobradorId === cobradorId).map(c => c.id);
+  const prestamosHoy = creditos.filter(cr => cr.fechaInicio === fecha && misClientesIds.includes(cr.clienteId));
+  let segurosYape = 0, segurosEfectivo = 0, segurosTransferencia = 0;
+  prestamosHoy.forEach(cr => {
+    const montoSeguro = Number(cr.montoSeguro || 0);
+    const metodo = (cr.metodoPago || 'Efectivo').toLowerCase();
+    if (metodo.includes('yape')) segurosYape += montoSeguro;
+    else if (metodo.includes('transferencia')) segurosTransferencia += montoSeguro;
+    else segurosEfectivo += montoSeguro;
+  });
+  const totalSeguros = segurosYape + segurosEfectivo + segurosTransferencia;
+
+  const notas = DB._cache['notas_cuadre'] || [];
+  const notaObj = notas.find(n => n.cobradorId === cobradorId && n.fecha === fecha);
+
+  return {
+    yape, efectivo, transferencia,
+    total: yape + efectivo + transferencia + totalSeguros, // total real para saldo
+    totalPagos: yape + efectivo + transferencia,           // solo cobros
+    totalSeguros,
+    nota: notaObj ? notaObj.nota : '',
+    pagos: pagosDia
+  };
+};
 
 window.calcularMetaReal = function (cobradorId, fecha) {
   const creditos = DB._cache['creditos'] || [];
@@ -279,7 +314,7 @@ window._renderCajaChicaPro = function (caja, cuadre, fecha) {
         <div style="background:#f0fdf4; border-radius:8px; padding:12px">
           <div style="font-size:10px; color:#16a34a; font-weight:700;
                       text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px">+ Cobros</div>
-          <div style="font-size:17px; font-weight:800; color:#16a34a">${formatMoney(caja.cobrosDelDia)}</div>
+          <div style="font-size:17px; font-weight:800; color:#16a34a">${formatMoney(cuadre.totalPagos != null ? cuadre.totalPagos : caja.cobrosDelDia - (caja.totalSeguros || 0))}</div>
         </div>
         <div style="background:#fff1f2; border-radius:8px; padding:12px">
           <div style="font-size:10px; color:#9f1239; font-weight:700;
@@ -315,7 +350,23 @@ window._renderCajaChicaPro = function (caja, cuadre, fecha) {
         </div>
       </div>
     </div>
-  </div>`;
+  </div>
+
+  ${(caja.totalSeguros || 0) > 0 ? `
+  <div style="background:#fff7ed; border:1.5px solid #fed7aa; border-radius:10px;
+              padding:12px 16px; margin-bottom:12px; display:flex;
+              justify-content:space-between; align-items:center; gap:12px">
+    <div>
+      <div style="font-size:10px; font-weight:700; color:#ea580c;
+                  text-transform:uppercase; letter-spacing:0.5px; margin-bottom:2px">
+        🛡️ Micro Seguros del día
+      </div>
+    
+    </div>
+    <div style="font-size:20px; font-weight:900; color:#ea580c; flex-shrink:0">
+      +${formatMoney(caja.totalSeguros)}
+    </div>
+  </div>` : ''}`;
 }
 
 window.abrirEditarGasto = function (id) {

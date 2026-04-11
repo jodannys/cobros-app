@@ -4,10 +4,12 @@ const _MODALES_CON_FORMULARIO = [
   'nuevo-gasto', 'editar-gasto', 'registrar-pago'
 ];
 
+let _renderTimer = null;
 function _renderSeguro() {
   if (typeof render !== 'function') return;
   if (state.modal && _MODALES_CON_FORMULARIO.includes(state.modal)) return;
-  render();
+  clearTimeout(_renderTimer);
+  _renderTimer = setTimeout(render, 50);
 }
 
 window.DB = {
