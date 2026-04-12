@@ -488,7 +488,7 @@ window.renderAdminCobrador = function renderAdminCobrador() {
           </div>
 
           ${!terminado ? `
-            <button onclick="pagoRapido('${d.cr.id}')"
+         onclick="(async()=>{ const y=window.scrollY; await pagoRapido('${d.cr.id}'); requestAnimationFrame(()=>window.scrollTo(0,y)); })()"
               style="flex-shrink:0; margin-left:8px; border:none; padding:6px 14px; border-radius:8px;
                      cursor:pointer; background:#f0fdf4; color:#16a34a; font-size:12px; font-weight:700">
               💰 Cobrar

@@ -792,9 +792,9 @@ ${d.estadoVisual === 'pendiente' ? `
               ` : `
                 <button
                   onclick="if(this.getAttribute('data-loading')) return;
-                           this.setAttribute('data-loading','true');
-                           this.style.opacity='0.5';
-                           pagoRapido('${d.cr.id}');"
+         this.setAttribute('data-loading','true');
+         this.style.opacity='0.5';
+         (async()=>{ const y=window.scrollY; await pagoRapido('${d.cr.id}'); requestAnimationFrame(()=>window.scrollTo(0,y)); })();"
                   style="cursor:pointer; border:none; padding:0; background:none; outline:none">
                   <span style="font-size:10.5px; font-weight:700; padding:5px 12px; border-radius:6px;
                                background:#fff1f2; color:#9f1239; display:inline-block; white-space:nowrap">
