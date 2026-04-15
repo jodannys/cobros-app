@@ -403,7 +403,34 @@ window.renderAdminCobrador = function renderAdminCobrador() {
         const prioridad = { atrasado: 1, pendiente: 2, parcial: 3, pagado: 4, saldado: 5 };
 
         const listaOrdenada = [...meta.detalle].sort((a, b) => {
-          return (prioridad[a.estadoVisual] || 99) - (prioridad[b.estadoVisual] || 99);
+          const estadoA = getEstadoFiltro(a);
+          const estadoB = getEstadoFiltro(b);
+
+          const pA = prioridad[estadoA] || 99;
+          const pB = prioridad[estadoB] || 99;
+
+          // 1. Clasificación por grupos (0: Por cobrar, 1: Finalizados)
+          const grupoA = pA <= 3 ? 0 : 1;
+          const grupoB = pB <= 3 ? 0 : 1;
+
+          if (grupoA !== grupoB) return grupoA - grupoB;
+
+          // 2. Si hay ubicación, prioridad por cercanía
+          if (state.miUbicacion && a.cliente?.lat && b.cliente?.lat) {
+            const dA = calcularDistancia(state.miUbicacion.lat, state.miUbicacion.lng, a.cliente.lat, a.cliente.lng);
+            const dB = calcularDistancia(state.miUbicacion.lat, state.miUbicacion.lng, b.cliente.lat, b.cliente.lng);
+            if (dA !== dB) return dA - dB;
+          }
+
+          // 3. Si no hay GPS o están a la misma distancia, por Prioridad de Estado
+          if (pA !== pB) return pA - pB;
+
+          // 4. DESEMPATE ALFABÉTICO (Nombre del cliente)
+          // Usamos localeCompare para manejar tildes y eñes correctamente
+          const nombreA = (a.cliente?.nombre || "").toLowerCase();
+          const nombreB = (b.cliente?.nombre || "").toLowerCase();
+
+          return nombreA.localeCompare(nombreB);
         });
 
         if (meta.detalle.length === 0) {
@@ -419,7 +446,7 @@ window.renderAdminCobrador = function renderAdminCobrador() {
                     ¡Ruta completada!
                   </div>
                 </div>`;
-        }   
+        }
         function getEstadoFiltro(d) {
           if (d.estadoVisual === 'saldado') return 'saldado';
           if (d.estadoVisual === 'pagado') return 'pagado';
@@ -436,13 +463,13 @@ window.renderAdminCobrador = function renderAdminCobrador() {
         const filtroBar = `
          <div style="display:flex; gap:6px; overflow-x:auto; padding:14px 0 10px; margin-top:6px; margin-bottom:4px">
             ${[
-              { key: 'todos', label: 'Todos' },
-              { key: 'pendiente', label: '⏳ Pendientes' },
-              { key: 'atrasado', label: '🔴 Atrasados' },
-              { key: 'parcial', label: '🟡 Abonos' },
-              { key: 'pagado', label: '✅ Pagaron' },
-              { key: 'saldado', label: '🏆 Saldados' },
-            ].map(f => `
+            { key: 'todos', label: 'Todos' },
+            { key: 'pendiente', label: '⏳ Pendientes' },
+            { key: 'atrasado', label: '🔴 Atrasados' },
+            { key: 'parcial', label: '🟡 Abonos' },
+            { key: 'pagado', label: '✅ Pagaron' },
+            { key: 'saldado', label: '🏆 Saldados' },
+          ].map(f => `
               <button onclick="event.stopPropagation(); state['${rutaFiltroKey}']='${f.key}'; render()"
                 ${rutaFiltro === f.key ? 'data-filtro-activo="1"' : ''}
                 style="padding:5px 10px; border-radius:15px; font-size:11px;
@@ -460,8 +487,8 @@ window.renderAdminCobrador = function renderAdminCobrador() {
                Sin clientes en este filtro
              </div>`
           : listaFiltrada.map(d => {
-              const terminado = d.estadoVisual === 'saldado' && d.deudaAcumulada <= 0.5;
-              return `
+            const terminado = d.estadoVisual === 'saldado' && d.deudaAcumulada <= 0.5;
+            return `
         <div style="display:flex; justify-content:space-between; align-items:center;
                     padding:10px 0; border-bottom:1px solid #f8fafc;
                     ${terminado ? 'opacity:0.6' : ''}">
@@ -493,14 +520,14 @@ window.renderAdminCobrador = function renderAdminCobrador() {
                      cursor:pointer; background:#f0fdf4; color:#16a34a; font-size:12px; font-weight:700">
               💰 Cobrar
             </button>`
-              :
-              `<div style="flex-shrink:0; margin-left:8px; width:70px; display:flex; justify-content:center;
+                :
+                `<div style="flex-shrink:0; margin-left:8px; width:70px; display:flex; justify-content:center;
                          align-items:center; color:#16a34a; font-size:16px">
               ✅
             </div>`
-            }
+              }
         </div>`;
-            }).join('');
+          }).join('');
 
         return filtroBar + listaHTML;
 

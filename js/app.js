@@ -22,6 +22,16 @@ window.abrirChatWhatsApp = function (telefono, nombre) {
 window.render = function render() {
   const root = document.getElementById('root');
 
+
+if (state._scrollToFiltroActivo) {
+  requestAnimationFrame(() => {
+    const el = document.querySelector('[data-filtro-activo]');
+    if (el) el.scrollIntoView({ block: 'nearest' });
+
+    state._scrollToFiltroActivo = false;
+  });
+}
+
   if (!state.currentUser && state.screen !== 'login') {
     state.screen = 'login';
   }
@@ -42,7 +52,6 @@ window.render = function render() {
     return;
   }
 
-  const scrollAntes = window.scrollY; // ← NUEVO
 
   const isAdmin = state.currentUser.role === 'admin';
   root.innerHTML = `
@@ -59,6 +68,7 @@ window.render = function render() {
         state.nav === 'cuadre' ? renderCuadre() :
           state.nav === 'admin' && isAdmin ? renderAdmin() :
             state.nav === 'historial' && isAdmin ? renderHistorial() : renderClientes()}
+
     ${!state.selectedClient ? `
     <nav class="bottom-nav">
       <div class="nav-item ${state.nav === 'clientes' ? 'active' : ''}" onclick="navigate('clientes')">
@@ -119,7 +129,6 @@ window.render = function render() {
     ` : ''}
   </div>`;
 
-  window.scrollTo({ top: scrollAntes, behavior: 'instant' }); // ← NUEVO
 
   // Re-poblar resultados de búsqueda si el historial tiene texto activo
   if (state.nav === 'historial' && state._hBusqueda) {
@@ -129,10 +138,7 @@ window.render = function render() {
   // Restaurar posición del FAB (se pierde en cada render porque el DOM se reconstruye)
   if (typeof restoreFabPosition === 'function') restoreFabPosition();
 
-  // Scroll al filtro activo en barras horizontales
-  const filtroActivo = document.querySelector('[data-filtro-activo]');
-  if (filtroActivo) filtroActivo.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'instant' });
-};
+}
 // ── CONFIRMAR SALIDA (overlay custom) ────────────────────────
 window.confirmarSalida = function () {
   if (document.querySelector('[data-overlay="salida"]')) return;
@@ -504,39 +510,56 @@ window.verHistorialCliente = function verHistorialCliente(clienteId) {
 
 // ── NAVEGACIÓN ────────────────────────────────────────────────
 window.navigate = function navigate(nav) {
+  state._scrollGlobal = window.scrollY; // guardar SOLO aquí
+
   state.nav = nav;
   state.selectedClient = null;
   state.selectedCobrador = null;
   state.filtroClientes = 'todos';
   state._hBusqueda = '';
-  history.pushState({ nav }, '', '#' + nav); // ← ya lo tienes
-  render();
-};
 
+  history.pushState({ nav }, '', '#' + nav);
+
+  render();
+
+  requestAnimationFrame(() => {
+    window.scrollTo(0, state._scrollGlobal || 0);
+  });
+};
 // ── BOTÓN ATRÁS DEL DISPOSITIVO ──────────────────────────────
 window.addEventListener('popstate', () => {
   if (state.modal) {
     state.modal = null;
     state.selectedCredito = null;
-    state._pagoProcesando = false;
+    state._pagoProcesando =false;
     deshabilitarBotonesPago(false);
     render();
     return;
   }
+
   if (state.selectedClient) {
     state.selectedClient = null;
     render();
-    window.scrollTo({ top: state._scrollClientes || 0, behavior: 'instant' }); // ← NUEVO
-    state._scrollClientes = 0; // ← NUEVO
+
+    window.scrollTo({
+      top: state._scrollGlobal || 0,
+      behavior: 'instant'
+    });
+
+    state._scrollClientes = 0;
     return;
   }
+
   if (state.selectedCobrador) {
     state.selectedCobrador = null;
     render();
     return;
   }
-  history.pushState({ nav: state.nav }, '', '#' + state.nav);
+
+  // ❌ ELIMINAR ESTO COMPLETAMENTE:
+  // history.pushState({ nav: state.nav }, '', '#' + state.nav);
 });
+
 
 // ── INIT ASYNC ────────────────────────────────────────────────
 (async () => {
