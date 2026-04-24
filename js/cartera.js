@@ -134,6 +134,7 @@ window.renderPanelCartera = function () {
   let totalRecaudado = 0, totalObjetivo = 0, totalSeguros = 0;
   let totalPrestado = 0, totalGastos = 0;
   let totalYape = 0, totalEfectivo = 0, totalTransferencia = 0;
+  let totalPagadoMeta = 0; 
   const creditos = DB._cache['creditos'] || [];
   const usuarios = DB._cache['users'] || [];
   const hoy = today();
@@ -149,8 +150,10 @@ window.renderPanelCartera = function () {
     totalTransferencia = cuadresCobradores.reduce((s, c) => s + c.transferencia, 0);
     totalRecaudado = totalYape + totalEfectivo + totalTransferencia;
 
-    totalObjetivo = cobradores_admin.reduce((s, u) => s + calcularMetaReal(u.id, hoy).metaTotal, 0);
-    porcentaje = totalObjetivo > 0 ? Math.round((totalRecaudado / totalObjetivo) * 100) : 0;
+    const metasCobradores = cobradores_admin.map(u => calcularMetaReal(u.id, hoy));
+    const totalPagadoMeta = metasCobradores.reduce((s, m) => s + m.pagadoHoy, 0);
+    totalObjetivo = metasCobradores.reduce((s, m) => s + m.metaTotal, 0);
+    porcentaje = totalObjetivo > 0 ? Math.round((totalPagadoMeta / totalObjetivo) * 100) : 0;
 
     totalSeguros = creditos
       .filter(cr => cr.fechaInicio === hoy)
@@ -302,7 +305,7 @@ window.renderPanelCartera = function () {
       <span style="font-size:11.5px; color:rgba(255,255,255,0.5)">${porcentaje}% de la meta</span>
       <span style="font-size:11.5px; font-weight:700;
                    color:${totalRecaudado >= totalObjetivo ? '#4ade80' : '#fbbf24'}">
-        ${totalRecaudado >= totalObjetivo ? '✅ Completado' : '⏳ En proceso'}
+     ${totalPagadoMeta >= totalObjetivo ? '✅ Completado' : '⏳ En proceso'}
       </span>
     </div>
   </div>
@@ -409,10 +412,10 @@ window.renderPanelCartera = function () {
     <div style="display:flex; gap:8px; align-items:center">
       <div style="flex:1; position:relative">
         ${renderDatePicker({
-          value: state._filtroFechaMovs || '',
-          placeholder: 'Selecciona una fecha...',
-          onChange: "state._filtroFechaMovs=VALUE||null; state._verMovsCartera=true; render()"
-        })}
+    value: state._filtroFechaMovs || '',
+    placeholder: 'Selecciona una fecha...',
+    onChange: "state._filtroFechaMovs=VALUE||null; state._verMovsCartera=true; render()"
+  })}
         ${!state._filtroFechaMovs ? `
         <div style="display:none"><!-- placeholder handled by datePicker -->
         </div>` : ''}
@@ -425,23 +428,23 @@ window.renderPanelCartera = function () {
     </div>
   </div>
   ${(() => {
-    const todos = (DB._cache['movimientos_cartera'] || []).slice().sort((a, b) => b.fecha.localeCompare(a.fecha));
-    const filtrados = state._filtroFechaMovs ? todos.filter(m => m.fecha === state._filtroFechaMovs) : todos;
-    const lista = (mostrarMovs || state._filtroFechaMovs) ? filtrados : filtrados.slice(0, 5);
-    return lista.length === 0
-      ? `<div style="text-align:center; color:var(--muted); font-size:13px; padding:16px 0">Sin movimientos</div>`
-      : lista.map(m => {
-        const cob = (DB._cache['users'] || []).find(u => u.id === m.cobradorId);
-        const labels = {
-          inyeccion: { icon: '➕', color: '#16a34a', label: 'Inyección' },
-          envio_cobrador: { icon: '💰', color: '#1d4ed8', label: `Envío → ${cob?.nombre || '—'}` },
-          gasto_admin: { icon: '💸', color: '#9f1239', label: 'Gasto Admin' },
-          retiro: { icon: '🏠', color: '#92400e', label: 'Retiro Personal' },
-          confirmar_yape: { icon: '✅', color: '#16a34a', label: `Depósito de ${cob?.nombre || '—'}` },
-          deposito_cobrador: { icon: '📤', color: '#92400e', label: `Envío de ${cob?.nombre || '—'}` },
-        };
-        const cfg = labels[m.tipo] || { icon: '📌', color: 'var(--muted)', label: m.tipo };
-        return `
+      const todos = (DB._cache['movimientos_cartera'] || []).slice().sort((a, b) => b.fecha.localeCompare(a.fecha));
+      const filtrados = state._filtroFechaMovs ? todos.filter(m => m.fecha === state._filtroFechaMovs) : todos;
+      const lista = (mostrarMovs || state._filtroFechaMovs) ? filtrados : filtrados.slice(0, 5);
+      return lista.length === 0
+        ? `<div style="text-align:center; color:var(--muted); font-size:13px; padding:16px 0">Sin movimientos</div>`
+        : lista.map(m => {
+          const cob = (DB._cache['users'] || []).find(u => u.id === m.cobradorId);
+          const labels = {
+            inyeccion: { icon: '➕', color: '#16a34a', label: 'Inyección' },
+            envio_cobrador: { icon: '💰', color: '#1d4ed8', label: `Envío → ${cob?.nombre || '—'}` },
+            gasto_admin: { icon: '💸', color: '#9f1239', label: 'Gasto Admin' },
+            retiro: { icon: '🏠', color: '#92400e', label: 'Retiro Personal' },
+            confirmar_yape: { icon: '✅', color: '#16a34a', label: `Depósito de ${cob?.nombre || '—'}` },
+            deposito_cobrador: { icon: '📤', color: '#92400e', label: `Envío de ${cob?.nombre || '—'}` },
+          };
+          const cfg = labels[m.tipo] || { icon: '📌', color: 'var(--muted)', label: m.tipo };
+          return `
         <div style="display:flex; justify-content:space-between; align-items:center;
                     padding:10px 0; border-bottom:1px solid var(--border)">
           <div style="display:flex; align-items:center; gap:10px">
@@ -457,8 +460,8 @@ window.renderPanelCartera = function () {
             ${formatMoney(m.monto)}
           </div>
         </div>`;
-      }).join('');
-  })()}
+        }).join('');
+    })()}
 </div>
 
 <!-- MOCHILAS -->
@@ -908,15 +911,15 @@ window.renderModalRetiroCobrador = function () {
     <label>Cobrador *</label>
     <input type="hidden" id="rcCobrador" value="${presel || ''}">
     ${renderCustomSelect({
-      id: 'cs-rcCobrador',
-      value: presel || '',
-      onChange: "document.getElementById('rcCobrador').value=VALUE",
-      options: [
-        { value: '', label: 'Selecciona cobrador...' },
-        ...cobradores.map(u => ({ value: u.id, label: u.nombre + ' — ' + formatMoney(getSaldoMochila(u.id)) + ' en caja' }))
-      ],
-      placeholder: 'Selecciona cobrador...'
-    })}
+    id: 'cs-rcCobrador',
+    value: presel || '',
+    onChange: "document.getElementById('rcCobrador').value=VALUE",
+    options: [
+      { value: '', label: 'Selecciona cobrador...' },
+      ...cobradores.map(u => ({ value: u.id, label: u.nombre + ' — ' + formatMoney(getSaldoMochila(u.id)) + ' en caja' }))
+    ],
+    placeholder: 'Selecciona cobrador...'
+  })}
   </div>
 
   <div class="form-group">
