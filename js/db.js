@@ -157,11 +157,15 @@ window.DB = {
     this._detenerListeners();
   },
 
-  async reanudarListeners() {
-    const dinamicas = ['pagos', 'movimientos_cartera', 'gastos', 'cajas', 'notas_cuadre', 'creditos', 'clientes'];
-    this._arrancarListeners(dinamicas);
-    console.log('▶️ Listeners reanudados');
-  },
+ async reanudarListeners() {
+  if (Object.keys(this._listeners).length > 0) {
+    console.log('⚠️ Listeners ya activos, no se rearrancan');
+    return;
+  }
+  const dinamicas = ['movimientos_cartera', 'gastos', 'cajas', 'notas_cuadre', 'creditos', 'clientes'];
+  this._arrancarListeners(dinamicas);
+  console.log('▶️ Listeners reanudados');
+},
 
   async ejecutarMantenimientoManual() {
     console.warn('⚠️ Ejecutando mantenimiento manual...');
@@ -221,12 +225,16 @@ window.DB = {
 
 if (!window._visibilityListenerAdded) {
   window._visibilityListenerAdded = true;
+  let _visTimer = null;
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') {
-      DB.pausarListeners();
-    } else {
-      DB.reanudarListeners();
-    }
+    clearTimeout(_visTimer);
+    _visTimer = setTimeout(() => {
+      if (document.visibilityState === 'hidden') {
+        DB.pausarListeners();
+      } else {
+        DB.reanudarListeners();
+      }
+    }, 300);
   });
 }
 
