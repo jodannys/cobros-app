@@ -87,44 +87,51 @@ window.DB = {
   },
 
   async init() {
-    console.log('🚀 Iniciando CobrosApp...');
+  console.log('🚀 Iniciando CobrosApp...');
 
-    const estaticas = ['users', 'configuracion'];
-    const dinamicas = ['pagos', 'movimientos_cartera', 'gastos', 'cajas', 'notas_cuadre', 'creditos', 'clientes'];
+  const estaticas = ['users', 'configuracion'];
+  const dinamicas = ['movimientos_cartera', 'gastos', 'cajas', 'notas_cuadre', 'creditos', 'clientes'];
 
-    const cacheValido = this._cargarCacheLocal();
-    if (cacheValido) {
-      console.log('⚡ Cache local válido — mostrando datos guardados');
-    }
+  const cacheValido = this._cargarCacheLocal();
+  if (cacheValido) {
+    console.log('⚡ Cache local válido — mostrando datos guardados');
+  }
 
-    // Siempre recargar users desde Firebase (nunca confiar en caché para auth)
-    await fbGetAll('users').then(data => { this._cache['users'] = data; }).catch(() => {});
+  // users siempre fresco
+  await fbGetAll('users').then(data => {
+    this._cache['users'] = data;
+  }).catch(() => {});
 
-    if (!cacheValido) {
-      await Promise.all(estaticas.map(async col => {
-        if (col === 'users') return; // ya cargado arriba
-        try {
-          this._cache[col] = await fbGetAll(col);
-        } catch (e) {
-          console.error(`Error cargando ${col}:`, e);
-          this._cache[col] = [];
-        }
-      }));
-    }
+  // pagos siempre fresco desde Firestore (ignorar cache)
+  await fbGetAll('pagos').then(data => {
+    this._cache['pagos'] = data;
+    console.log(`💰 Pagos cargados: ${data.length}`);
+  }).catch(() => {});
 
-    this._arrancarListeners(dinamicas);
+  if (!cacheValido) {
+    await Promise.all(estaticas.map(async col => {
+      if (col === 'users') return;
+      try {
+        this._cache[col] = await fbGetAll(col);
+      } catch (e) {
+        console.error(`Error cargando ${col}:`, e);
+        this._cache[col] = [];
+      }
+    }));
+  }
 
-    const usersValidos = this._cache['users'].length > 0 &&
-      this._cache['users'].every(u => u.pass !== undefined);
-    if (usersValidos) {
-      this._guardarCacheLocal();
-    } else {
-      localStorage.removeItem(this._CACHE_KEY);
-      console.warn('⚠️ Users sin pass — caché no guardado');
-    }
-    console.log('✅ App lista');
-  },
+  this._arrancarListeners(dinamicas);
 
+  const usersValidos = this._cache['users'].length > 0 &&
+    this._cache['users'].every(u => u.pass !== undefined);
+  if (usersValidos) {
+    this._guardarCacheLocal();
+  } else {
+    localStorage.removeItem(this._CACHE_KEY);
+    console.warn('⚠️ Users sin pass — caché no guardado');
+  }
+  console.log('✅ App lista');
+},
   _arrancarListeners(colecciones) {
     colecciones.forEach(col => {
       if (this._listeners[col]) return;
