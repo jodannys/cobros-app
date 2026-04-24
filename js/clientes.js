@@ -18,13 +18,6 @@ window.renderClientes = function () {
     ? clientes
     : clientes.filter(c => c.cobradorId === state.currentUser.id);
 
-  // Cobrador: ocultar clientes cuyo crédito inició hoy (día 0, sin cuota pendiente aún)
-  if (!isAdmin) {
-    lista = lista.filter(c => {
-      const crActivo = creditos.find(cr => cr.clienteId === c.id && cr.activo);
-      return !(crActivo && crActivo.fechaInicio === today());
-    });
-  }
 
   if (filtro === 'activos') {
     lista = lista.filter(c => creditos.some(cr => cr.clienteId === c.id && cr.activo));
@@ -435,13 +428,6 @@ window._renderListaClientes = function () {
     ? clientes
     : clientes.filter(c => c.cobradorId === state.currentUser.id);
 
-  if (!isAdmin) {
-    lista = lista.filter(c => {
-      const crActivo = creditos.find(cr => cr.clienteId === c.id && cr.activo);
-      if (crActivo && crActivo.fechaInicio === today()) return false;
-      return true;
-    });
-  }
 
   if (filtro === 'activos') {
     lista = lista.filter(c => creditos.some(cr => cr.clienteId === c.id && cr.activo));
@@ -692,8 +678,17 @@ window.guardarCliente = async function () {
     if (clientes.find(c => c.dni === dni)) { alert('Ya existe un cliente con ese DNI'); return; }
 
     const isAdmin = state.currentUser.role === 'admin';
-    const cobradorId = isAdmin ? document.getElementById('nCobrador').value : state.currentUser.id;
-    
+
+    const cobradorEl = document.getElementById('nCobrador');
+    const cobradorId = isAdmin
+      ? (cobradorEl?.value || state._nCobradorSeleccionado || '')
+      : state.currentUser.id;
+
+    if (isAdmin && !cobradorId) {
+      alert('Debes seleccionar un cobrador');
+      return;
+    }
+
     const id = genId();
 
     const fotoEl = document.getElementById('previewNFoto');
@@ -710,11 +705,14 @@ window.guardarCliente = async function () {
       direccion: document.getElementById('nDireccion').value.trim(),
       lat: window._coordsSeleccionadas?.lat || null,
       lng: window._coordsSeleccionadas?.lng || null,
-      cobradorId, foto, creado: today()
+      cobradorId,
+      foto,
+      creado: today()
     };
 
     await DB.set('clientes', id, nuevoCliente);
     window._coordsSeleccionadas = null;
+    state._nCobradorSeleccionado = null;
 
     if (state.abrirCreditoAlGuardar) {
       state.selectedClient = nuevoCliente;
@@ -733,7 +731,6 @@ window.guardarCliente = async function () {
     if (btn) { btn.disabled = false; btn.textContent = 'Guardar Cliente'; }
   }
 };
-
 // ============================================================
 // ACTUALIZAR CLIENTE
 // ============================================================

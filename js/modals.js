@@ -102,6 +102,7 @@ window.closeModal = function closeModal(e) {
   state._movCarteraTipo = null;
   state._movCarteraCobrador = null;
   state._pagoProcesando = false;
+  state._nCobradorSeleccionado = null;
   deshabilitarBotonesPago(false);
   // Si el modal fue abierto desde admin (alertas), restaurar selectedClient anterior
   if (state._gestionCreditoDesdeAdmin) {
@@ -174,6 +175,11 @@ window.renderModal = function renderModal() {
 window.renderModalNuevoCliente = function renderModalNuevoCliente() {
   const cobradores = (DB._cache['users'] || []).filter(u => u.role === 'cobrador');
   const isAdmin = state.currentUser.role === 'admin';
+  
+  const cobradorDefault = cobradores[0]?.id || '';
+  if (isAdmin && !state._nCobradorSeleccionado) {
+    state._nCobradorSeleccionado = cobradorDefault;
+  }
 
   return `
   <div class="modal-handle"></div>
@@ -208,12 +214,12 @@ window.renderModalNuevoCliente = function renderModalNuevoCliente() {
 
   ${isAdmin ? `
   <div class="form-group">
-    <label>Cobrador asignado</label>
-    <input type="hidden" id="nCobrador" value="${cobradores[0]?.id || ''}">
+    <label>Cobrador asignado *</label>
+    <input type="hidden" id="nCobrador" value="${state._nCobradorSeleccionado || cobradorDefault}">
     ${renderCustomSelect({
       id: 'cs-nCobrador',
-      value: cobradores[0]?.id || '',
-      onChange: "document.getElementById('nCobrador').value=VALUE",
+      value: state._nCobradorSeleccionado || cobradorDefault,
+      onChange: "state._nCobradorSeleccionado=VALUE; document.getElementById('nCobrador').value=VALUE",
       options: cobradores.map(u => ({ value: u.id, label: u.nombre })),
       placeholder: 'Seleccionar cobrador'
     })}
@@ -252,7 +258,6 @@ window.renderModalNuevoCliente = function renderModalNuevoCliente() {
     <button class="btn btn-primary" onclick="guardarCliente()">Guardar Cliente</button>
   </div>`;
 };
-
 // ── MODAL EDITAR CLIENTE ──────────────────────────────────────
 window.renderModalEditarCliente = function renderModalEditarCliente() {
   const c = state.selectedClient;
