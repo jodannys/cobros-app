@@ -248,7 +248,7 @@ window.renderHistorial = function renderHistorial() {
          padding:9px 36px 9px 40px; font-size:13.5px; color:#2d3748;
          font-weight:500; outline:none; box-shadow:0 2px 8px rgba(0,0,0,0.08)"
   placeholder="Buscar cliente por nombre..."
-  value="${filtroBusqueda}"
+  value="${esc(filtroBusqueda)}"
   oninput="state._hBusqueda=this.value; renderBusquedaClientes();
            document.getElementById('btn-clear-historial').style.display=this.value?'block':'none';">
 <span id="btn-clear-historial"
@@ -579,14 +579,26 @@ window.addEventListener('popstate', () => {
     }
 
     state._cargando = true;
-    await DB.init();
 
-    // Verificar que el usuario aún existe en DB y refrescar datos (sin exponer pass)
-    if (state.currentUser) {
+    // La sesión real es la de Firebase Auth; sin ella las reglas no dejan leer datos
+    const authUser = await fbUsuarioActual();
+    if (!authUser) {
+      localStorage.removeItem('sessionUser');
+      sessionStorage.removeItem('sessionUser');
+      DB._borrarCacheLocal();
+      state.currentUser = null;
+      state.screen = 'login';
+    } else {
+      await DB.init();
+    }
+
+    // Verificar que el usuario aún existe en DB y refrescar datos
+    if (authUser) {
       const users = DB._cache['users'] || [];
       if (users.length > 0) {
-        const userActual = users.find(u => u.id === state.currentUser.id);
+        const userActual = users.find(u => u.id === authUser.uid);
         if (!userActual) {
+          await fbLogout();
           localStorage.removeItem('sessionUser');
           sessionStorage.removeItem('sessionUser');
           state.currentUser = null;
@@ -595,6 +607,7 @@ window.addEventListener('popstate', () => {
           const userSafe = { ...userActual };
           delete userSafe.pass;
           state.currentUser = userSafe;
+          state.screen = 'main';
         }
       }
     }

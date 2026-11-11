@@ -331,8 +331,6 @@ const monto = parseMonto(document.getElementById('gMonto').value);
 
   try {
     await DB.set('gastos', id, nuevoGasto);
-    if (!DB._cache['gastos']) DB._cache['gastos'] = [];
-    DB._cache['gastos'].push(nuevoGasto);
     state.modal = null;
     state._gastoCobradorId = null;
     showToast('Gasto registrado');
@@ -391,7 +389,7 @@ window.renderModalEditarGasto = function () {
 
   <div class="form-group">
     <label>Descripción *</label>
-    <input class="form-control" id="gDescripcionEdit" value="${gasto.descripcion}">
+    <input class="form-control" id="gDescripcionEdit" value="${esc(gasto.descripcion)}">
   </div>
 
   <div class="form-group">
@@ -513,8 +511,6 @@ window.guardarCajaChica = async function () {
       const id = genId();
       const nuevaCaja = { id, cobradorId: u.id, monto, fecha, asignadoPor: state.currentUser.id };
       await DB.set('cajas', id, nuevaCaja);
-      if (!DB._cache['cajas']) DB._cache['cajas'] = [];
-      DB._cache['cajas'].push(nuevaCaja);
     }
     state.modal = null;
     state._cajaCobrador = null;
@@ -538,3 +534,7 @@ window.abrirNuevoGastoAdmin = function (cobradorId) {
   state.modal = 'nuevo-gasto';
   render();
 };
+// Bloqueo contra doble toque
+window.guardarGasto = unaVez(window.guardarGasto);
+window.guardarEdicionGasto = unaVez(window.guardarEdicionGasto);
+window.guardarCajaChica = unaVez(window.guardarCajaChica);

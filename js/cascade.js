@@ -42,9 +42,6 @@ window.eliminarClienteCascade = async function (clienteId) {
         fecha: fechaAjuste, cobradorId,
         registradoPor: state.currentUser.id
       });
-      if (!DB._cache['movimientos_cartera']) DB._cache['movimientos_cartera'] = [];
-      DB._cache['movimientos_cartera'].push({ id, tipo: 'inyeccion', monto: montoTotal,
-        descripcion: `Baja cliente`, fecha: fechaAjuste, cobradorId });
     }
 
     // Quitar cuotas cobradas de la mochila del cobrador
@@ -56,8 +53,6 @@ window.eliminarClienteCascade = async function (clienteId) {
         fecha: fechaAjuste, cobradorId,
         registradoPor: state.currentUser.id
       });
-      DB._cache['movimientos_cartera'].push({ id: id2, tipo: 'gasto_cobrador',
-        monto: totalPagado, descripcion: `Baja cliente`, fecha: fechaAjuste, cobradorId });
     }
   }
 
@@ -120,7 +115,7 @@ window.eliminarCobradorCascade = async function (cobradorId) {
   const notasDelCobrador = (DB._cache['notas_cuadre'] || []).filter(n => n.cobradorId === cobradorId);
   await _borrarLote('notas_cuadre', notasDelCobrador);
 
-  await DB.delete('users', cobradorId);
+  await fbFuncion('eliminarUsuario', { id: cobradorId }); // borra cuenta de Auth + documento
 
   DB._cache['gastos']               = (DB._cache['gastos']               || []).filter(x => x.cobradorId !== cobradorId);
   DB._cache['movimientos_cartera']  = (DB._cache['movimientos_cartera']  || []).filter(x => x.cobradorId !== cobradorId);

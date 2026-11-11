@@ -687,8 +687,6 @@ window.guardarMovimientoCartera = async function () {
 
   try {
     await DB.set('movimientos_cartera', id, nuevo);
-    if (!DB._cache['movimientos_cartera']) DB._cache['movimientos_cartera'] = [];
-    DB._cache['movimientos_cartera'].push(nuevo);
     state.modal = null;
     state._movCarteraTipo = null;
     state._movCarteraCobrador = null;
@@ -725,8 +723,6 @@ window.guardarDepositoCobrador = async function () {
     confirmado: false
   };
   await DB.set('movimientos_cartera', id, nuevoDeposito);
-  if (!DB._cache['movimientos_cartera']) DB._cache['movimientos_cartera'] = [];
-  DB._cache['movimientos_cartera'].push(nuevoDeposito);
 
   state.modal = null;
   showToast('📲 Depósito registrado — esperando confirmación');
@@ -974,8 +970,6 @@ window.guardarRetiroCobrador = async function () {
 
   try {
     await DB.set('movimientos_cartera', id, nuevo);
-    if (!DB._cache['movimientos_cartera']) DB._cache['movimientos_cartera'] = [];
-    DB._cache['movimientos_cartera'].push(nuevo);
     state.modal = null;
     state._retiroCobrador = null;
     showToast(`💼 Retiro de ${formatMoney(monto)} registrado`);
@@ -984,3 +978,8 @@ window.guardarRetiroCobrador = async function () {
     alert('Error: ' + e.message);
   }
 };
+// Bloqueo contra doble toque
+window.confirmarDeposito = unaVez(window.confirmarDeposito);
+window.guardarMovimientoCartera = unaVez(window.guardarMovimientoCartera);
+window.guardarDepositoCobrador = unaVez(window.guardarDepositoCobrador);
+window.guardarRetiroCobrador = unaVez(window.guardarRetiroCobrador);

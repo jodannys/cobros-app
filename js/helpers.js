@@ -84,18 +84,6 @@ window.showToast = function (msg, type = 'success') {
     setTimeout(() => { state.toast = null; render(); }, 2500);
 };
 
-window.previewFoto = function (input, previewId) {
-    const file = input.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        const img = document.getElementById(previewId);
-        img.src = e.target.result;
-        img.style.display = 'block';
-    };
-    reader.readAsDataURL(file);
-};
-
 window.calcularFechaFin = function(fechaInicio, dias) {
   if (!fechaInicio) return '—';
   const fechaFin = sumarDiasHabiles(fechaInicio, dias);
@@ -332,3 +320,25 @@ window.estaRealmenteAtrasado = function (clienteId) {
   if (!cr) return false;
   return calcularEstadoAtraso(cr, pagos).atrasado;
 };
+// Evita guardar dos veces por doble toque: ignora clics mientras la función anterior sigue en curso
+// y desactiva el botón pulsado hasta que termine.
+window.unaVez = function (fn) {
+  let ocupado = false;
+  return async function (...args) {
+    if (ocupado) return;
+    ocupado = true;
+    const btn = document.activeElement?.tagName === 'BUTTON' ? document.activeElement : null;
+    if (btn) btn.disabled = true;
+    try {
+      return await fn.apply(this, args);
+    } finally {
+      ocupado = false;
+      if (btn && btn.isConnected) btn.disabled = false;
+    }
+  };
+};
+
+// Escapa texto para meterlo en HTML/atributos (evita que comillas o < > rompan formularios)
+window.esc = (v) => String(v ?? '')
+  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;').replace(/'/g, '&#39;');

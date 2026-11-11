@@ -9,4 +9,5 @@ dist/
 .code-review-graph
 .claude\settings.json
 .claude\settings.local.json
-.package.json
+.package.jsonfunctions/node_modules/
+.firebase/

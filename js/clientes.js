@@ -82,7 +82,7 @@ window.renderClientes = function () {
             font-weight:500; outline:none; box-shadow:0 2px 8px rgba(0,0,0,0.08);
             transition:background 0.2s;"
           placeholder="Buscar por nombre, DNI o negocio..."
-          value="${state.search || ''}"
+          value="${esc(state.search || '')}"
           oninput="updateSearch(this.value)">
        <span id="btn-clear-search"
   onclick="state.search=''; 
@@ -676,6 +676,11 @@ window.guardarCliente = async function () {
 
     const clientes = DB._cache['clientes'] || [];
     if (clientes.find(c => c.dni === dni)) { alert('Ya existe un cliente con ese DNI'); return; }
+    // El cobrador solo tiene sus clientes en el celular: preguntar a Firebase por el DNI
+    if (DB._soloMios) {
+      const existentes = await fbQuery('clientes', 'dni', dni);
+      if (existentes.length) { alert('Ya existe un cliente con ese DNI (de otro cobrador)'); return; }
+    }
 
     const isAdmin = state.currentUser.role === 'admin';
 
@@ -734,6 +739,23 @@ window.guardarCliente = async function () {
 // ============================================================
 // ACTUALIZAR CLIENTE
 // ============================================================
+// Marca cartera = nuevo cobrador en todos los créditos y pagos del cliente.
+// Solo cambia el campo `cartera` (no toca cobradorId, montos ni historial del cuadre).
+window.reasignarCarteraCliente = async function (clienteId, nuevoCobradorId) {
+  const ahora = new Date();
+  const creditos = (DB._cache['creditos'] || []).filter(cr => cr.clienteId === clienteId);
+  const crIds = new Set(creditos.map(cr => cr.id));
+  const pagos = (DB._cache['pagos'] || []).filter(p => p.clienteId === clienteId || crIds.has(p.creditoId));
+  const ops = [
+    ...creditos.map(cr => ({ op: 'update', col: 'creditos', id: cr.id, data: { cartera: nuevoCobradorId, updatedAt: ahora } })),
+    ...pagos.map(p => ({ op: 'update', col: 'pagos', id: p.id, data: { cartera: nuevoCobradorId, updatedAt: ahora } }))
+  ];
+  for (let i = 0; i < ops.length; i += 400) await fbBatch(ops.slice(i, i + 400)); // límite de 500 por lote
+  creditos.forEach(cr => { cr.cartera = nuevoCobradorId; });
+  pagos.forEach(p => { p.cartera = nuevoCobradorId; });
+  console.log(`🔁 Cartera reasignada: ${creditos.length} créditos, ${pagos.length} pagos`);
+};
+
 window.actualizarCliente = async function () {
   if (window._actualizandoCliente) return;
   window._actualizandoCliente = true;
@@ -769,6 +791,10 @@ window.actualizarCliente = async function () {
     };
 
     await DB.set('clientes', c.id, updated);
+    // Si cambió de cobrador, sus créditos y pagos pasan a la cartera del nuevo
+    if ((updated.cobradorId || null) !== (c.cobradorId || null)) {
+      await reasignarCarteraCliente(c.id, updated.cobradorId || null);
+    }
     state.selectedClient = updated;
     window._coordsSeleccionadas = null;
     showToast('✅ Cliente actualizado'); 

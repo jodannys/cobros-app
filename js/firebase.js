@@ -12,6 +12,57 @@ if (!firebase.apps.length) {
   firebase.initializeApp(firebaseConfig);
 }
 const fsdb = firebase.firestore();
+const fbAuth = firebase.auth();
+
+// Caché de Firestore en el celular (IndexedDB). Si un listener se reanuda dentro de 30 min,
+// Firebase solo cobra los documentos que cambiaron, no la colección entera.
+fsdb.enablePersistence({ synchronizeTabs: true }).catch(e => {
+  console.warn('Caché offline de Firestore no disponible:', e.code);
+});
+
+// ── Autenticación ────────────────────────────────────────────
+// Deben coincidir con functions/index.js
+window.emailDeUsuario = (user) =>
+  `${String(user).trim().toLowerCase().replace(/[^a-z0-9._-]/g, '_')}@${firebaseConfig.projectId}.firebaseapp.com`;
+const claveAuth = (pass) => 'cobros#' + String(pass);
+
+// Llama a una Cloud Function y devuelve su resultado (lanza Error con mensaje legible)
+window.fbFuncion = async function (nombre, datos) {
+  try {
+    const res = await firebase.functions().httpsCallable(nombre)(datos);
+    return res.data;
+  } catch (e) {
+    throw new Error(e.message || 'Error en el servidor');
+  }
+};
+
+// Inicia sesión. Si el usuario aún no está migrado a Firebase Auth, lo migra y reintenta.
+// Devuelve { ok: true, uid } o { ok: false, motivo: 'no-existe' | 'clave' | 'red' }
+window.fbLogin = async function (user, pass, recordar) {
+  await fbAuth.setPersistence(recordar
+    ? firebase.auth.Auth.Persistence.LOCAL
+    : firebase.auth.Auth.Persistence.SESSION);
+  const email = emailDeUsuario(user);
+  const intentar = () => fbAuth.signInWithEmailAndPassword(email, claveAuth(pass));
+  try {
+    const cred = await intentar();
+    return { ok: true, uid: cred.user.uid };
+  } catch (e) {
+    if (e.code === 'auth/network-request-failed') return { ok: false, motivo: 'red' };
+    if (e.code === 'auth/too-many-requests') return { ok: false, motivo: 'bloqueado' };
+  }
+  const r = await fbFuncion('migrarLogin', { user, pass });
+  if (!r.ok) return r;
+  const cred = await intentar();
+  return { ok: true, uid: cred.user.uid };
+};
+
+window.fbLogout = () => fbAuth.signOut();
+
+// Resuelve con el usuario de Auth actual (o null) una vez que Firebase restauró la sesión
+window.fbUsuarioActual = () => new Promise(resolve => {
+  const unsub = fbAuth.onAuthStateChanged(u => { unsub(); resolve(u); });
+});
 
 // EXPOSICIÓN GLOBAL (Para que db.js no dé error)
 window.fbGetAll = async function (colName) {
@@ -65,6 +116,34 @@ window.fbEscuchar = function (colName, callback) {
     callback(datos);
   }, (error) => {
     console.error(`Error escuchando ${colName}:`, error);
+  });
+};
+
+// Escucha en vivo solo los documentos donde campo == valor (ej. los de un cobrador).
+window.fbEscucharDonde = function (colName, campo, valor, callback, onError) {
+  return fsdb.collection(colName).where(campo, '==', valor).onSnapshot(snap => {
+    callback(snap.docs.map(d => ({ ...d.data(), id: d.id })));
+  }, (error) => {
+    console.error(`Error escuchando ${colName} (${campo}):`, error);
+    if (onError) onError(error);
+  });
+};
+
+// Escucha en vivo solo los documentos con updatedAt > desde.
+// El arranque cobra solo esos cambios, y después cada documento nuevo/editado cuesta 1 lectura.
+// onCambios recibe solo los documentos añadidos o modificados en cada actualización.
+// Opcional: campo/valor añade un filtro de igualdad (requiere índice compuesto, ver firestore.indexes.json).
+window.fbEscucharDesde = function (colName, desde, onCambios, onError, campo, valor) {
+  let q = fsdb.collection(colName);
+  if (campo) q = q.where(campo, '==', valor);
+  return q.where('updatedAt', '>', desde).onSnapshot(snap => {
+    const cambios = snap.docChanges()
+      .filter(c => c.type !== 'removed') // "removed" = salió del filtro, no fue borrado
+      .map(c => ({ ...c.doc.data(), id: c.doc.id }));
+    onCambios(cambios, snap.metadata.fromCache);
+  }, (error) => {
+    console.error(`Error escuchando ${colName}:`, error);
+    if (onError) onError(error);
   });
 };
 

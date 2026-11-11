@@ -132,6 +132,24 @@ window.previewFoto = function previewFoto(input, previewId) {
   reader.readAsDataURL(file);
 };
 
+// Dos botones: Cámara (capture) y Galería (sin capture). Android ignora la elección si solo hay uno.
+window.renderBotonesFoto = function (idBase, previewId) {
+  const btn = (forId, icon, txt) => `
+    <label class="upload-btn" for="${forId}"
+      style="display:flex; align-items:center; justify-content:center; gap:6px; margin:0">
+      <span>${icon}</span><span>${txt}</span>
+    </label>`;
+  return `
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px">
+    ${btn(idBase + 'Cam', '📷', 'Cámara')}
+    ${btn(idBase, '🖼️', 'Galería')}
+  </div>
+  <input type="file" id="${idBase}Cam" accept="image/*" capture="environment"
+         style="display:none" onchange="previewFoto(this,'${previewId}')">
+  <input type="file" id="${idBase}" accept="image/*"
+         style="display:none" onchange="previewFoto(this,'${previewId}')">`;
+};
+
 window.renderModal = function renderModal() {
   const m = state.modal;
   if (!m) return '';
@@ -227,16 +245,7 @@ window.renderModalNuevoCliente = function renderModalNuevoCliente() {
 
   <div class="form-group">
     <label>Foto de casa / negocio</label>
-    <label class="upload-btn" for="nFoto"
-      style="display:flex; align-items:center; justify-content:center; gap:8px">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-           stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0">
-        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-        <circle cx="12" cy="13" r="4"/>
-      </svg>
-      <span>Tomar o subir foto</span>
-    </label>
-    <input type="file" id="nFoto" accept="image/*" onchange="previewFoto(this,'previewNFoto')">
+    ${renderBotonesFoto('nFoto', 'previewNFoto')}
     <img id="previewNFoto" onclick="verImagen(this.src)"
       style="display:none; cursor:zoom-in" class="uploaded-img">
   </div>
@@ -270,27 +279,27 @@ window.renderModalEditarCliente = function renderModalEditarCliente() {
 
   <div class="form-group">
     <label>DNI</label>
-    <input class="form-control" id="eDNI" value="${c.dni}">
+    <input class="form-control" id="eDNI" value="${esc(c.dni)}">
   </div>
 
   <div class="form-group">
     <label>Nombre completo</label>
-    <input class="form-control" id="eNombre" value="${c.nombre}">
+    <input class="form-control" id="eNombre" value="${esc(c.nombre)}">
   </div>
 
   <div class="form-group">
     <label>Nombre del negocio</label>
-    <input class="form-control" id="eNegocio" value="${c.negocio || ''}">
+    <input class="form-control" id="eNegocio" value="${esc(c.negocio || '')}">
   </div>
 
   <div class="form-group">
     <label>Teléfono</label>
-    <input class="form-control" id="eTelefono" value="${c.telefono || ''}">
+    <input class="form-control" id="eTelefono" value="${esc(c.telefono || '')}">
   </div>
 
   <div class="form-group">
     <label>Dirección</label>
-    <input class="form-control" id="eDireccion" value="${c.direccion || ''}">
+    <input class="form-control" id="eDireccion" value="${esc(c.direccion || '')}">
   </div>
 
   ${renderMapaSelector(c.lat || null, c.lng || null)}
@@ -310,17 +319,7 @@ window.renderModalEditarCliente = function renderModalEditarCliente() {
 
   <div class="form-group" style="display:flex; flex-direction:column; align-items:center; gap:12px">
     <label style="align-self:flex-start; margin-bottom:4px">Foto</label>
-    <label class="upload-btn" for="eFoto"
-           style="display:flex; align-items:center; justify-content:center; gap:8px; width:100%">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-           stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0">
-        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-        <circle cx="12" cy="13" r="4"/>
-      </svg>
-      <span>Cambiar foto</span>
-    </label>
-    <input type="file" id="eFoto" accept="image/*" capture="environment"
-           style="display:none" onchange="previewFoto(this,'previewEFoto')">
+    <div style="width:100%">${renderBotonesFoto('eFoto', 'previewEFoto')}</div>
     <div style="width:100%; display:flex; justify-content:center">
       ${c.foto
       ? `<img src="${c.foto}" class="uploaded-img" id="previewEFoto"
@@ -706,18 +705,18 @@ window.renderModalEditarUsuario = function renderModalEditarUsuario() {
 
   <div class="form-group">
     <label>Nombre completo</label>
-    <input class="form-control" id="euNombre" value="${u.nombre}">
+    <input class="form-control" id="euNombre" value="${esc(u.nombre)}">
   </div>
 
   <div class="form-group">
     <label>Usuario</label>
-    <input class="form-control" id="euUser" value="${u.user}">
+    <input class="form-control" id="euUser" value="${esc(u.user)}">
   </div>
 
   <div class="form-group">
     <label>Teléfono (WhatsApp)</label>
     <input class="form-control" id="euTelefono" type="tel" maxlength="9"
-      value="${u.telefono || ''}" placeholder="Ej: 987654321">
+      value="${esc(u.telefono || '')}" placeholder="Ej: 987654321">
   </div>
 
   <div class="form-group">
@@ -778,13 +777,13 @@ window.renderModalEditarAdmin = function renderModalEditarAdmin() {
   <div class="form-group">
     <label>Nombre completo *</label>
     <input class="form-control" id="adNombre"
-      value="${u ? u.nombre : ''}" placeholder="Nombre del admin">
+      value="${esc(u ? u.nombre : '')}" placeholder="Nombre del admin">
   </div>
 
   <div class="form-group">
     <label>Usuario *</label>
     <input class="form-control" id="adUser"
-      value="${u ? u.user : ''}" placeholder="usuario" autocomplete="off">
+      value="${esc(u ? u.user : '')}" placeholder="usuario" autocomplete="off">
   </div>
 
   <div class="form-group">
@@ -814,6 +813,28 @@ window.renderModalEditarAdmin = function renderModalEditarAdmin() {
     ${isNew ? 'Crear Administrador' : 'Actualizar'}
   </button>
 
+  ${!isNew && u.id === state.currentUser.id ? `
+    <div style="margin-top:14px; padding-top:14px; border-top:1px solid var(--border)">
+      <div style="font-size:13px; font-weight:700; margin-bottom:6px">🔑 Código de recuperación</div>
+      ${state._codigoRecuperacion ? `
+        <div style="background:#fef9c3; border:1px dashed #ca8a04; border-radius:10px;
+                    padding:12px; text-align:center">
+          <div style="font-size:22px; font-weight:800; letter-spacing:3px; font-family:monospace">
+            ${state._codigoRecuperacion}
+          </div>
+          <div style="font-size:12px; color:#854d0e; margin-top:6px">
+            Anótalo en papel y guárdalo. No se volverá a mostrar.<br>
+            Sirve para cambiar tu clave si la olvidas (un solo uso).
+          </div>
+        </div>` : `
+        <div style="font-size:12px; color:var(--muted); margin-bottom:8px">
+          Si olvidas tu clave, podrás cambiarla desde el login con este código.
+        </div>
+        <button class="btn btn-outline" onclick="generarCodigoRecuperacion()">
+          Generar código
+        </button>`}
+    </div>` : ''}
+
   ${!isNew ? `
     <div style="margin-top:14px; padding-top:14px; border-top:1px solid var(--border)">
       <button class="btn btn-danger" onclick="eliminarAdmin('${u.id}')">
@@ -828,7 +849,10 @@ window.eliminarAdmin = async function eliminarAdmin(id) {
   if (admins.length <= 1) { alert('No puedes eliminar el único administrador del sistema.'); return; }
   if (id === state.currentUser.id) { alert('No puedes eliminarte a ti mismo.'); return; }
   if (!await showConfirm('¿Eliminar este administrador? Esta acción no se puede deshacer.', { danger: true, confirmText: 'Eliminar' })) return;
-  await DB.delete('users', id);
+  try {
+    await fbFuncion('eliminarUsuario', { id });
+    DB._cache['users'] = users.filter(u => u.id !== id);
+  } catch (e) { alert('Error al eliminar: ' + e.message); return; }
   state._editingAdmin = null;
   state.modal = null;
   showToast('Administrador eliminado');
@@ -841,23 +865,26 @@ window.guardarAdmin = async function guardarAdmin(idExistente) {
   const pass = document.getElementById('adPass').value.trim();
   if (!nombre || !user) { alert('Nombre y usuario son obligatorios'); return; }
   const users = DB._cache['users'] || [];
-  if (!idExistente) {
-    if (!pass) { alert('La contraseña es obligatoria para un nuevo admin'); return; }
-    if (users.find(u => u.user === user)) { alert('Ese nombre de usuario ya existe'); return; }
-    const id = genId();
-    await DB.set('users', id, { id, nombre, user, pass, role: 'admin' });
-    showToast('Administrador creado');
-  } else {
-    const existing = users.find(u => u.id === idExistente);
-    if (!existing) return;
-    if (users.find(u => u.user === user && u.id !== idExistente)) { alert('Ese nombre de usuario ya está en uso'); return; }
-    const updates = { nombre, user };
-    if (pass) updates.pass = pass;
-    await DB.update('users', idExistente, updates);
-    if (state.currentUser.id === idExistente) {
-      state.currentUser = { ...state.currentUser, nombre, user, ...(pass ? { pass } : {}) };
+  try {
+    if (!idExistente) {
+      if (!pass) { alert('La contraseña es obligatoria para un nuevo admin'); return; }
+      if (users.find(u => u.user === user)) { alert('Ese nombre de usuario ya existe'); return; }
+      await fbFuncion('crearUsuario', { nombre, user, pass, role: 'admin' });
+      showToast('Administrador creado');
+    } else {
+      const existing = users.find(u => u.id === idExistente);
+      if (!existing) return;
+      if (users.find(u => u.user === user && u.id !== idExistente)) { alert('Ese nombre de usuario ya está en uso'); return; }
+      await fbFuncion('actualizarUsuario', { id: idExistente, nombre, user, pass });
+      if (state.currentUser.id === idExistente) {
+        state.currentUser = { ...state.currentUser, nombre, user };
+      }
+      showToast('Administrador actualizado');
     }
-    showToast('Administrador actualizado');
+    DB._cache['users'] = await fbGetAll('users');
+  } catch (e) {
+    alert('Error al guardar: ' + e.message);
+    return;
   }
   state._editingAdmin = null;
   state.modal = null;

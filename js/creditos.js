@@ -470,6 +470,7 @@ window.guardarCredito = async function () {
       id,
       clienteId: state.selectedClient.id,
       cobradorId: state.selectedClient.cobradorId || null,
+      cartera: state.selectedClient.cobradorId || null, // cobrador dueño del cliente (descarga filtrada)
       monto, total, cuotaDiaria, diasTotal, fechaInicio, fechaFin,
       activo: true,
       metodoPago: document.getElementById('crMetodoPago')?.value || 'Efectivo',

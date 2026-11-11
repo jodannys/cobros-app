@@ -1,0 +1,24 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function logueado() {
+      return request.auth != null;
+    }
+
+    // Usuarios: se leen con sesión; solo las Cloud Functions los crean/editan/borran.
+    match /users/{id} {
+      allow read: if logueado();
+      allow write: if false;
+    }
+
+    // Códigos de recuperación (hash): solo las Cloud Functions.
+    match /recuperacion/{id} {
+      allow read, write: if false;
+    }
+
+    // Resto de colecciones: solo usuarios con sesión iniciada.
+    match /{coleccion}/{id} {
+      allow read, write: if logueado() && !(coleccion in ['users', 'recuperacion']);
+    }
+  }
+}

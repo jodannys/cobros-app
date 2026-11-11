@@ -136,6 +136,7 @@ window.guardarPago = async function () {
       clienteId: cr.clienteId,
       registradoPor: state.currentUser.id,
       cobradorId: cobradorDelPago,
+      cartera: clienteDePago?.cobradorId || null, // cobrador dueño del cliente (descarga filtrada)
       monto,
       aplicadoSaldo,
       aplicadoMora,
@@ -262,3 +263,5 @@ window.renderModalRegistrarPago = function () {
     💰 Confirmar Pago
   </button>`;
 };
+// Bloqueo contra doble toque
+window.guardarPago = unaVez(window.guardarPago);

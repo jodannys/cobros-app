@@ -249,9 +249,6 @@ window.guardarNota = async function () {
       const id = genId();
       const nueva = { id, cobradorId: state.currentUser.id, fecha: hoy, nota };
       await DB.set('notas_cuadre', id, nueva);
-      // Actualizar cache para evitar duplicados si el listener no ha disparado aún
-      if (!DB._cache['notas_cuadre']) DB._cache['notas_cuadre'] = [];
-      DB._cache['notas_cuadre'].push(nueva);
     }
     showToast('Nota guardada');
     render();
@@ -912,3 +909,5 @@ window.toggleRuta = function () {
   }
   render();
 };
+// Bloqueo contra doble toque
+window.guardarNota = unaVez(window.guardarNota);

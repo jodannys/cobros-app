@@ -199,6 +199,7 @@ window.abrirNuevoAdmin = function abrirNuevoAdmin() {
 window.abrirEditarAdmin = function abrirEditarAdmin(id) {
   const users = DB._cache['users'] || [];
   state._editingAdmin = users.find(u => u.id === id) || null;
+  state._codigoRecuperacion = null; // el código solo se muestra justo después de generarlo
   state.modal = 'editar-admin';
   render();
 };
@@ -592,7 +593,7 @@ ${c.nota ? `
            padding:9px 36px; font-size:13px; color:#1e293b;
            font-weight:500; outline:none; background:#f8fafc"
     placeholder="Buscar por nombre o DNI..."
-    value="${state[`_searchClientes_${cobrador.id}`] || ''}"
+    value="${esc(state[`_searchClientes_${cobrador.id}`] || '')}"
     oninput="
       const val = this.value;
       const inputId = this.id;
@@ -758,9 +759,8 @@ window.guardarUsuario = async function guardarUsuario() {
     if (!nombre || !user || !pass) { alert('Todos los campos son obligatorios'); return; }
     const users = DB._cache['users'] || [];
     if (users.find(u => u.user === user)) { alert('Ese nombre de usuario ya existe'); return; }
-    const id = genId();
-    const nuevoUser = { id, nombre, user, pass, role, telefono };
-    await DB.set('users', id, nuevoUser);
+    await fbFuncion('crearUsuario', { nombre, user, pass, role, telefono });
+    DB._cache['users'] = await fbGetAll('users');
     state.modal = null;
     showToast('Usuario creado exitosamente');
     render();
@@ -788,11 +788,8 @@ window.actualizarUsuario = async function actualizarUsuario() {
     const telefono = document.getElementById('euTelefono').value.replace(/\D/g, '').trim();
     if (!nombre || !user) { alert('Nombre y usuario son obligatorios'); return; }
     if (users.find(x => x.user === user && x.id !== u.id)) { alert('Ese usuario ya existe'); return; }
-    const updates = { nombre, user, role, telefono };
-    if (pass) updates.pass = pass;
-    await DB.update('users', u.id, updates);
-    const idx = (DB._cache['users'] || []).findIndex(x => x.id === u.id);
-    if (idx !== -1) DB._cache['users'][idx] = { ...DB._cache['users'][idx], ...updates };
+    await fbFuncion('actualizarUsuario', { id: u.id, nombre, user, pass, role, telefono });
+    DB._cache['users'] = await fbGetAll('users');
     state.modal = null;
     showToast('Usuario actualizado');
     render();
