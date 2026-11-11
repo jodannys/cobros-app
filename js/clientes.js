@@ -1,3 +1,16 @@
+// Lista vacía: si los clientes aún no llegaron de Firebase, decir "Cargando" en vez de "sin clientes"
+function _listaVaciaHTML() {
+  if (!DB._listo.clientes) {
+    return `<div class="empty-state">
+      <div style="width:32px;height:32px;margin:0 auto 10px;border:4px solid #e2e8f0;
+        border-top-color:#1a56db;border-radius:50%;animation:girarCarga 0.8s linear infinite"></div>
+      <style>@keyframes girarCarga{to{transform:rotate(360deg)}}</style>
+      <p>Cargando clientes...</p>
+    </div>`;
+  }
+  return '<div class="empty-state"><div class="icon">👤</div><p>No se encontraron clientes</p></div>';
+}
+
 window.renderClientes = function () {
   if (state._cargando) {
     return `
@@ -108,7 +121,7 @@ window.renderClientes = function () {
 
       <div id="lista-clientes">
         ${lista.length === 0
-      ? `<div class="empty-state"><div class="icon">👤</div><p>No se encontraron clientes</p></div>`
+      ? _listaVaciaHTML()
       : lista.map(c => _renderClienteItem(c, creditos, users, pagos, isAdmin)).join('')}
       </div>
     </div>
@@ -459,7 +472,7 @@ window._renderListaClientes = function () {
 
   if (contador) contador.textContent = `${lista.length} cliente${lista.length !== 1 ? 's' : ''}`;
   contenedor.innerHTML = lista.length === 0
-    ? '<div class="empty-state"><div class="icon">👤</div><p>No se encontraron clientes</p></div>'
+    ? _listaVaciaHTML()
     : lista.map(c => _renderClienteItem(c, creditos, users, pagos, isAdmin)).join('');
 };
 

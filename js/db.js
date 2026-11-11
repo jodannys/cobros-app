@@ -71,6 +71,7 @@ window.DB = {
         .forEach(k => localStorage.removeItem(k));
     } catch (e) { }
     this._soloMios = null;
+    this._listo = {};
     Object.keys(this._cache).forEach(k => { this._cache[k] = []; });
   },
   _CACHE_TTL: 15 * 60 * 1000,
@@ -136,8 +137,8 @@ window.DB = {
   this._soloMios = this._calcularSoloMios();
   console.log(this._soloMios ? '🎯 Modo cobrador: solo datos propios' : '🌐 Descargando todos los datos');
 
-  await this._sincronizarPagos();
-  this._arrancarListeners(dinamicas);
+  // Pagos y el resto en paralelo; la pantalla de carga se mantiene hasta que lleguen
+  await Promise.all([this._sincronizarPagos(), this._arrancarListeners(dinamicas)]);
 
   if (this._cache['users'].length > 0) this._guardarCacheLocal();
   this._repararCarteraDiaria();
@@ -288,15 +289,23 @@ window.DB = {
     }
   },
 
+  // Colecciones que ya recibieron su primera carga desde Firebase (para no mostrar
+  // "sin clientes" mientras todavía están llegando)
+  _listo: {},
+
+  // Devuelve una promesa que se cumple cuando todas las colecciones recibieron su primera
+  // carga (o a los 8 s, para no trabar la app si no hay señal)
   _arrancarListeners(colecciones) {
     const uid = this._soloMios;
-    colecciones.forEach(col => {
-      if (this._listeners[col]) return;
+    const esperas = colecciones.map(col => new Promise(listo => {
+      if (this._listeners[col]) return listo();
       const alActualizar = () => {
+        this._listo[col] = true;
         this._cacheVersion++;
         this._guardarCacheLocal();
         console.log(`🔄 ${col} actualizado en tiempo real`);
         _renderSeguro();
+        listo();
       };
 
       if (!uid) {
@@ -308,16 +317,17 @@ window.DB = {
       }
 
       // Cobrador: un listener por campo; el caché es la unión (se reemplaza entero en cada
-      // actualización, así los borrados también se reflejan)
+      // actualización, así los borrados también se reflejan). Lista cuando llegaron todas las partes.
       const campos = this._FILTROS_COBRADOR[col] || ['cobradorId'];
       const partes = {};
       const unsubs = campos.map(campo => fbEscucharDonde(col, campo, uid, (datos) => {
         partes[campo] = datos;
         this._cache[col] = this._unir(Object.values(partes));
-        alActualizar();
+        if (Object.keys(partes).length === campos.length) alActualizar();
       }));
       this._listeners[col] = () => unsubs.forEach(u => typeof u === 'function' && u());
-    });
+    }));
+    return Promise.race([Promise.all(esperas), new Promise(r => setTimeout(r, 8000))]);
   },
 
   _detenerListeners() {
