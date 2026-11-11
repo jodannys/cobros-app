@@ -72,6 +72,7 @@ window.DB = {
     } catch (e) { }
     this._soloMios = null;
     this._listo = {};
+    this._eliminados = null;
     Object.keys(this._cache).forEach(k => { this._cache[k] = []; });
   },
   _CACHE_TTL: 15 * 60 * 1000,
@@ -287,6 +288,21 @@ window.DB = {
       // Sin espacio en el celular: la próxima vez se hará descarga completa
       try { localStorage.removeItem(key); } catch (_) { }
     }
+  },
+
+  // ── Clientes eliminados (archivo) ──
+  // null = aún no cargado. Se carga una sola vez, cuando el admin usa el buscador del historial.
+  _eliminados: null,
+  _cargandoEliminados: null,
+  cargarClientesEliminados() {
+    if (Array.isArray(this._eliminados)) return Promise.resolve(this._eliminados);
+    if (!this._cargandoEliminados) {
+      this._cargandoEliminados = fbGetAll('clientes_eliminados')
+        .then(lista => { this._eliminados = lista; return lista; })
+        .catch(e => { console.warn('No se pudo cargar clientes eliminados:', e); this._eliminados = []; return []; })
+        .finally(() => { this._cargandoEliminados = null; });
+    }
+    return this._cargandoEliminados;
   },
 
   // Colecciones que ya recibieron su primera carga desde Firebase (para no mostrar

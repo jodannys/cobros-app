@@ -56,6 +56,27 @@ window.eliminarClienteCascade = async function (clienteId) {
     }
   }
 
+  // Copia de archivo para poder ver su historial después de borrarlo (buscador del historial).
+  // Solo la leen el buscador y el historial: no afecta mochila, cuadre ni caja.
+  if (cliente) {
+    const { foto, ...datosCliente } = cliente; // la foto se borra de Storage más abajo
+    const archivo = {
+      ...datosCliente,
+      creditos: creditos.map(cr => ({ ...cr })),
+      pagosVigentes: pagos.filter(p => !p.eliminado).map(p => p.id), // los que contaban al borrarlo
+      eliminadoEn: new Date().toISOString(),
+      eliminadoPor: state.currentUser?.id || null
+    };
+    try {
+      await DB.set('clientes_eliminados', clienteId, archivo);
+      if (Array.isArray(DB._eliminados)) {
+        DB._eliminados = DB._eliminados.filter(x => x.id !== clienteId).concat({ ...archivo, id: clienteId });
+      }
+    } catch (e) {
+      console.warn('No se pudo archivar el cliente (se elimina igual):', e);
+    }
+  }
+
   // Marcar pagos como eliminados (no borrar para preservar cuadre histórico)
   // Solo los que aún no están marcados para evitar escrituras duplicadas
   await _marcarEliminados(pagos.filter(p => !p.eliminado));

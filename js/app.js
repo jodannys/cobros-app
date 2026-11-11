@@ -524,15 +524,54 @@ window.renderBusquedaClientes = function renderBusquedaClientes() {
 
   if (filtroBusqueda.length < 1) { contenedor.innerHTML = ''; return; }
 
-  const clientesBuscados = clientes.filter(c =>
+  const coincide = (c) =>
     String(c.nombre || '').toLowerCase().includes(filtroBusqueda) ||
-    String(c.dni || '').toLowerCase().includes(filtroBusqueda)
-  );
+    String(c.dni || '').toLowerCase().includes(filtroBusqueda);
+  const clientesBuscados = clientes.filter(coincide);
 
-  if (clientesBuscados.length === 0) {
-    contenedor.innerHTML = `<p style="text-align:center;color:var(--muted);font-size:13px;padding:8px">No se encontró ningún cliente</p>`;
+  // Clientes eliminados: se cargan una sola vez al buscar y luego se repinta
+  const cargandoEliminados = !Array.isArray(DB._eliminados);
+  if (cargandoEliminados) {
+    DB.cargarClientesEliminados().then(() => {
+      if ((state._hBusqueda || '').trim()) renderBusquedaClientes();
+    });
+  }
+  const idsActivos = new Set(clientes.map(c => c.id));
+  const eliminadosBuscados = cargandoEliminados ? []
+    : DB._eliminados.filter(c => !idsActivos.has(c.id) && coincide(c))
+        .sort((a, b) => String(b.eliminadoEn || '').localeCompare(String(a.eliminadoEn || '')));
+
+  const avisoCargando = cargandoEliminados
+    ? `<p style="text-align:center;color:var(--muted);font-size:12px;padding:4px">Buscando también en clientes eliminados...</p>`
+    : '';
+
+  if (clientesBuscados.length === 0 && eliminadosBuscados.length === 0) {
+    contenedor.innerHTML = cargandoEliminados
+      ? avisoCargando
+      : `<p style="text-align:center;color:var(--muted);font-size:13px;padding:8px">No se encontró ningún cliente</p>`;
     return;
   }
+
+  const htmlEliminados = eliminadosBuscados.map(c => {
+    const vigentes = new Set(c.pagosVigentes || []);
+    const pagosCliente = pagos.filter(p => p.clienteId === c.id && vigentes.has(p.id));
+    const totalPagado = pagosCliente.reduce((s, p) => s + (Number(p.monto) || 0), 0);
+    const fechaBaja = c.eliminadoEn ? formatDate(String(c.eliminadoEn).slice(0, 10)) : '';
+    return `
+    <div style="padding:12px;background:#fff5f5;border:1px dashed #fca5a5;border-radius:10px;margin-bottom:8px;cursor:pointer"
+      onclick="verHistorialCliente('${esc(c.id)}')">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-weight:700;font-size:15px">${esc(c.nombre)}
+            <span style="background:#fee2e2;color:#b91c1c;font-size:10px;font-weight:700;
+              padding:1px 6px;border-radius:10px;margin-left:4px;vertical-align:middle">Eliminado</span>
+          </div>
+          <div style="font-size:12px;color:var(--muted)">DNI: ${esc(c.dni)} · ${pagosCliente.length} pagos${fechaBaja ? ` · Baja: ${fechaBaja}` : ''}</div>
+        </div>
+        <div style="font-weight:800;color:var(--muted);font-size:14px">${formatMoney(totalPagado)}</div>
+      </div>
+    </div>`;
+  }).join('');
 
   contenedor.innerHTML = clientesBuscados.map(c => {
     const pagosCliente = pagos.filter(p => p.clienteId === c.id && !p.eliminado);
@@ -557,16 +596,30 @@ window.renderBusquedaClientes = function renderBusquedaClientes() {
         </div>
       </div>
     </div>`;
-  }).join('');
+  }).join('') + htmlEliminados + avisoCargando;
 };
 
 // ── VER HISTORIAL DE CLIENTE ──────────────────────────────────
 window.verHistorialCliente = function verHistorialCliente(clienteId) {
-  const c = (DB._cache['clientes'] || []).find(x => x.id === clienteId);
-  if (!c) return;
-  const creditos = (DB._cache['creditos'] || []).filter(cr => cr.clienteId === clienteId);
-  const pagos = (DB._cache['pagos'] || []).filter(p => p.clienteId === clienteId && !p.eliminado);
-  const pagosEliminados = (DB._cache['pagos'] || []).filter(p => p.clienteId === clienteId && p.eliminado);
+  let c = (DB._cache['clientes'] || []).find(x => x.id === clienteId);
+  let creditos, pagos, pagosEliminados;
+  const pagosDelCliente = (DB._cache['pagos'] || []).filter(p => p.clienteId === clienteId);
+
+  if (c) {
+    creditos = (DB._cache['creditos'] || []).filter(cr => cr.clienteId === clienteId);
+    pagos = pagosDelCliente.filter(p => !p.eliminado);
+    pagosEliminados = pagosDelCliente.filter(p => p.eliminado);
+  } else {
+    // Cliente eliminado: reconstruir desde el archivo. Al borrarlo, todos sus pagos quedaron
+    // marcados como eliminados; los que estaban vigentes en ese momento se muestran como pagos normales.
+    const archivo = (DB._eliminados || []).find(x => x.id === clienteId);
+    if (!archivo) return;
+    const vigentes = new Set(archivo.pagosVigentes || []);
+    c = { ...archivo, _eliminado: true };
+    creditos = archivo.creditos || [];
+    pagos = pagosDelCliente.filter(p => vigentes.has(p.id));
+    pagosEliminados = pagosDelCliente.filter(p => !vigentes.has(p.id));
+  }
   const totalPagado = pagos.reduce((s, p) => s + p.monto, 0);
   const cobrador = (DB._cache['users'] || []).find(u => u.id === c.cobradorId);
 
@@ -578,7 +631,7 @@ window.verHistorialCliente = function verHistorialCliente(clienteId) {
   texto += `\n`;
 
   creditos.forEach(cr => {
-    const pagosCr = pagos.filter(p => p.creditoId === cr.id && !p.eliminado);
+    const pagosCr = pagos.filter(p => p.creditoId === cr.id); // pagos ya viene sin eliminados
     const pagadoCr = pagosCr.reduce((s, p) => s + p.monto, 0);
     const saldoCr = Math.max(0, cr.total - pagadoCr);
     texto += `💳 *Crédito ${formatDate(cr.fechaInicio)}*\n`;
