@@ -333,8 +333,13 @@ window.renderHistorial = function renderHistorial() {
                       text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px">Fecha</div>
           <div style="display:flex; align-items:center; gap:4px">
             ${btnDia(-1, '‹', false)}
-            <div style="flex:1; min-width:0">
-              ${renderDatePicker({ value: filtroFecha, placeholder: 'Seleccionar...', onChange: "state._hFecha=VALUE; render()" })}
+            <!-- Sin calendario (descuadraba el diseño): solo la fecha; tocarla vuelve a hoy -->
+            <div onclick="${esHoy ? '' : 'state._hFecha=null; render()'}"
+              style="flex:1; min-width:0; height:38px; display:flex; align-items:center; justify-content:center;
+                     border:1px solid #e2e8f0; border-radius:8px; background:white; white-space:nowrap;
+                     overflow:hidden; text-overflow:ellipsis; font-size:13px; font-weight:700;
+                     color:var(--text); cursor:${esHoy ? 'default' : 'pointer'}">
+              ${esHoy ? 'Hoy' : formatDate(filtroFecha)}
             </div>
             ${btnDia(1, '›', esHoy)}
           </div>
