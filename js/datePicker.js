@@ -57,8 +57,9 @@ window.abrirDatePicker = function (valueEncoded, onChangeEncoded) {
 };
 
 function _dpRender() {
-  const old = document.getElementById('dp-overlay');
-  if (old) old.remove();
+  // Si el calendario ya está abierto (cambio de mes), solo se actualiza su contenido:
+  // recrearlo repetía las animaciones de entrada y producía un parpadeo.
+  const existente = document.getElementById('dp-overlay');
 
   const { value, dispYear, dispMonth, todayStr } = window._dp;
 
@@ -84,25 +85,19 @@ function _dpRender() {
         ${d}
       </div>`;
   }
+  // Siempre 6 filas (42 casillas): así el calendario no cambia de alto entre meses
+  for (let i = firstDay + daysInMonth; i < 42; i++) cells += '<div style="aspect-ratio:1"></div>';
 
   const prevM = dispMonth === 0  ? 11 : dispMonth - 1;
   const prevY = dispMonth === 0  ? dispYear - 1 : dispYear;
   const nextM = dispMonth === 11 ? 0  : dispMonth + 1;
   const nextY = dispMonth === 11 ? dispYear + 1 : dispYear;
 
-  const overlay = document.createElement('div');
-  overlay.id = 'dp-overlay';
-  overlay.style.cssText = `
-    position:fixed; inset:0;
-    background:rgba(15,23,42,0.45); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px);
-    z-index:9999; display:flex; align-items:center; justify-content:center;
-    padding:20px; animation:fadeIn 0.15s ease`;
-
-  overlay.innerHTML = `
+  const contenido = `
     <div style="background:white; border-radius:20px; width:100%; max-width:320px;
                 padding:20px 18px 16px;
                 box-shadow:0 20px 60px rgba(15,23,42,0.25);
-                animation:popIn 0.2s cubic-bezier(0.34,1.56,0.64,1)">
+                ${existente ? '' : 'animation:popIn 0.2s cubic-bezier(0.34,1.56,0.64,1)'}">
 
       <!-- Navegación mes -->
       <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px">
@@ -146,6 +141,20 @@ function _dpRender() {
         </button>
       </div>
     </div>`;
+
+  if (existente) {
+    existente.innerHTML = contenido; // cambio de mes: sin animación ni parpadeo
+    return;
+  }
+
+  const overlay = document.createElement('div');
+  overlay.id = 'dp-overlay';
+  overlay.style.cssText = `
+    position:fixed; inset:0;
+    background:rgba(15,23,42,0.45); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px);
+    z-index:9999; display:flex; align-items:center; justify-content:center;
+    padding:20px; animation:fadeIn 0.15s ease`;
+  overlay.innerHTML = contenido;
 
   overlay.addEventListener('click', e => {
     if (e.target === overlay) _cerrarDatePicker();
