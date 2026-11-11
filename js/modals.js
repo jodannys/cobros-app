@@ -170,6 +170,7 @@ window.renderModal = function renderModal() {
   else if (m === 'asignar-caja') content = renderModalAsignarCaja();
   else if (m === 'editar-credito') content = renderModalEditarCredito ? renderModalEditarCredito() : '';
   else if (m === 'historial-cliente') content = renderModalHistorialCliente();
+  else if (m === 'revisar-bajas') content = renderModalRevisarBajas();
   else if (m === 'editar-gasto') content = renderModalEditarGasto();
   else if (m === 'movimiento-cartera') content = renderModalMovimientoCartera();
   else if (m === 'deposito-cobrador') content = renderModalDepositoCobrador();
@@ -539,15 +540,14 @@ window.renderModalGestionarCredito = function renderModalGestionarCredito() {
   const c = state.selectedClient;
   if (!cr || !c) return '';
 
-  const pagos = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id && !p.eliminado);
-  const totalPagado = pagos.reduce((s, p) => s + (Number(p.monto) || 0), 0);
-  const saldoBase = Number(cr.total || 0) - totalPagado;
+  const estado = estadoCredito(cr);
+  const saldoBase = estado.saldo;
 
   const infoMora = (typeof obtenerDatosMora === 'function')
     ? obtenerDatosMora(cr)
     : { total: 0, dias: 0, esVencido: false, diasInactivo: 0, diasVencido: 0 };
 
-  const mora = Number(infoMora?.total || 0);
+  const mora = estado.moraPendiente; // mora que falta pagar
   const mostrarAlertaRoja = infoMora.esVencido || infoMora.diasInactivo >= 2;
 
   let textoBadge = "";
@@ -911,9 +911,11 @@ window.renderModalHistorialCliente = function renderModalHistorialCliente() {
   </div>
   ${creditos.slice().sort((a, b) => b.fechaInicio.localeCompare(a.fechaInicio)).map((cr, idx, arr) => {
     const pagosCr = pagos.filter(p => p.creditoId === cr.id); // pagos ya viene sin eliminados
-    const pagadoCr = pagosCr.reduce((s, p) => s + p.monto, 0);
-    const saldoCr = Math.max(0, cr.total - pagadoCr);
-    const esCerrado = saldoCr <= 0;
+    // pagosCr ya son los pagos válidos (en clientes eliminados vienen marcados como eliminados)
+    const est = estadoCredito(cr, pagosCr.map(p => ({ ...p, eliminado: false })));
+    const pagadoCr = est.pagado;
+    const saldoCr = est.saldo;
+    const esCerrado = cr.activo === false || est.pendienteTotal <= 0;
     const num = arr.length - idx;
     const borderColor = esCerrado ? '#22c55e' : 'var(--primary)';
     const headerBg = esCerrado ? '#f0fff4' : '#eff6ff';

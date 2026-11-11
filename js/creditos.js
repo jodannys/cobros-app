@@ -100,16 +100,18 @@ window.renderCreditoCard = function (cr) {
     .filter(p => p.creditoId === cr.id && !p.eliminado)
     .sort((a, b) => a.fecha.localeCompare(b.fecha));
 
-  const totalPagado = pagos.reduce((s, p) => s + (Number(p.monto) || 0), 0);
-  const saldo = Math.max(0, cr.total - totalPagado);
-  const pagadoReal = saldo <= 0;
+  // Saldo y mora separados correctamente (la mora pagada no reduce el préstamo)
+  const estado = estadoCredito(cr);
+  const totalPagado = estado.pagadoCapital;
+  const saldo = estado.saldo;
   const progreso = Math.min(100, Math.round((totalPagado / cr.total) * 100));
   const isAdmin = state.currentUser.role === 'admin';
   const hoyStr = today();
   const vencido = cr.activo && estaVencido(cr.fechaInicio, cr.diasTotal);
   const infoMora = obtenerDatosMora(cr);
-  const mora = infoMora.total;
-  const totalConMora = saldo + mora;
+  const mora = estado.moraPendiente;
+  const totalConMora = estado.pendienteTotal;
+  const pagadoReal = totalConMora <= 0; // "✓ Pagado" solo si no debe saldo NI mora
   const cuotasCubiertas = Math.floor(totalPagado / cr.cuotaDiaria);
 
   return `
@@ -126,7 +128,7 @@ window.renderCreditoCard = function (cr) {
       <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px">
         <span class="tag ${!pagadoReal ? 'tag-blue' : 'tag-green'}"
               style="font-size:12px; padding:5px 14px; border-radius:8px; font-weight:700">
-          ${!pagadoReal ? 'Debe ' + formatMoney(saldo) : '✓ Pagado'}
+          ${!pagadoReal ? 'Debe ' + formatMoney(totalConMora) : '✓ Pagado'}
         </span>
         ${cr.seguro ? `
           <span style="${_S.surfaceAmber}; padding:3px 10px; border-radius:6px;
@@ -505,17 +507,23 @@ window.eliminarCredito = async function (crId) {
   const pagos = (DB._cache['pagos'] || []).filter(p => p.creditoId === crId && !p.eliminado);
   const totalPagado = pagos.reduce((s, p) => s + Number(p.monto), 0);
   const montoSeguro = Number(cr.montoSeguro || 0);
-  const montoTotal = Number(cr.monto) + montoSeguro;
-  const cliente = (DB._cache['clientes'] || []).find(c => c.id === cr.clienteId);
+  // Eliminar = deshacer el crédito. El cliente devuelve lo que recibió menos lo que ya pagó;
+  // ese dinero vuelve a la mochila del cobrador (la app lo recalcula sola).
+  const recibido = Number(cr.monto) - montoSeguro;
+  const devuelve = Math.round((recibido - totalPagado) * 100) / 100;
 
   const lineas = [
     `Monto prestado: ${formatMoney(cr.monto)}`,
-    montoSeguro > 0 ? `Seguro: ${formatMoney(montoSeguro)}` : null,
+    montoSeguro > 0 ? `Seguro: ${formatMoney(montoSeguro)} (el cliente recibió ${formatMoney(recibido)})` : null,
     `Cuotas cobradas: ${formatMoney(totalPagado)}`,
     `Fecha del crédito: ${formatDate(cr.fechaInicio)}`,
     ``,
-    `Se eliminarán ${pagos.length} pago(s) y se ajustará la caja.`,
-    `Esta acción no se puede deshacer.`
+    devuelve >= 0
+      ? `El cliente devuelve ${formatMoney(devuelve)} → vuelven a la mochila del cobrador.`
+      : `El cliente ya pagó ${formatMoney(-devuelve)} más de lo recibido → se restan de la mochila del cobrador.`,
+    `Si el cobrador entrega el dinero al admin, regístralo como "Depósito".`,
+    ``,
+    `Se anularán ${pagos.length} pago(s). Esta acción no se puede deshacer.`
   ].filter(l => l !== null).join('\n');
 
   if (!await showConfirm(`¿Eliminar este crédito completamente?\n\n${lineas}`, { danger: true, confirmText: 'Eliminar' })) return;
@@ -528,35 +536,13 @@ window.eliminarCredito = async function (crId) {
       await DB.update('pagos', p.id, { eliminado: true });
     }
 
-    // 2. Eliminar el crédito
+    // 2. Eliminar el crédito. No se crean ajustes: la mochila se recalcula sola
+    //    (antes se sumaba monto+seguro al admin y las cuotas se restaban dos veces).
     await DB.delete('creditos', crId);
 
-    const cobradorId = cliente?.cobradorId || null;
-    const fechaAjuste = cr.fechaInicio;
-
-    // 3. Ajuste cartera admin: devolver monto + seguro
-    if (montoTotal > 0) {
-      const idAdmin = genId();
-      await DB.set('movimientos_cartera', idAdmin, {
-        id: idAdmin, tipo: 'inyeccion', monto: montoTotal,
-        descripcion: 'Baja crédito',
-        fecha: fechaAjuste, cobradorId,
-        registradoPor: state.currentUser.id
-      });
-    }
-
-    // 4. Quitar cuotas ya cobradas de la mochila del cobrador
-    if (totalPagado > 0 && cobradorId) {
-      const idCob = genId();
-      await DB.set('movimientos_cartera', idCob, {
-        id: idCob, tipo: 'gasto_cobrador', monto: totalPagado,
-        descripcion: 'Baja crédito',
-        fecha: fechaAjuste, cobradorId,
-        registradoPor: state.currentUser.id
-      });
-    }
-
-    showToast('✅ Crédito eliminado y caja ajustada');
+    showToast(devuelve > 0
+      ? `✅ Crédito eliminado · ${formatMoney(devuelve)} vuelven a la mochila`
+      : '✅ Crédito eliminado');
     render();
   } catch (e) {
     alert('Error al eliminar: ' + e.message);
@@ -570,9 +556,7 @@ window.cerrarCredito = async function (crId) {
   const cr = (DB._cache['creditos'] || []).find(c => c.id === crId);
   if (!cr) return;
 
-  const pagos = (DB._cache['pagos'] || []).filter(p => p.creditoId === crId && !p.eliminado);
-  const totalPagado = pagos.reduce((s, p) => s + (Number(p.monto) || 0), 0);
-  const saldo = cr.total - totalPagado;
+  const saldo = estadoCredito(cr).pendienteTotal; // saldo + mora pendiente
 
   if (saldo > 0) {
     if (!await showConfirm(`¡CUIDADO! Aún debe ${formatMoney(saldo)}. ¿Cerrar de todos modos?`, { danger: true, confirmText: 'Cerrar igualmente' })) return;
@@ -742,24 +726,16 @@ window.guardarPagoEditado = async function () {
     const montoViejo = Number(p.monto);
     const diferencia = Math.round((montoNuevo - montoViejo) * 100) / 100;
 
-    // 1. Actualizar el pago
-    await DB.update('pagos', p.id, { monto: montoNuevo, tipo });
-
-    // 2. Ajustar mochila del cobrador si el monto cambió
-    if (Math.abs(diferencia) >= 0.01 && p.cobradorId) {
-      const idAjuste = genId();
-      // diferencia > 0 → cobrador cobró MÁS → sumar (cobro_ajuste)
-      // diferencia < 0 → cobrador cobró MENOS → restar (gasto_cobrador)
-      await DB.set('movimientos_cartera', idAjuste, {
-        id: idAjuste,
-        tipo: diferencia > 0 ? 'cobro_ajuste' : 'gasto_cobrador',
-        monto: Math.abs(diferencia),
-        descripcion: `Corrección pago (${diferencia > 0 ? '+' : ''}${diferencia.toFixed(2)})`,
-        fecha: p.fecha,
-        cobradorId: p.cobradorId,
-        registradoPor: state.currentUser.id
-      });
-    }
+    // Actualizar el pago. La mochila y el cuadre se recalculan solos con el monto nuevo
+    // (antes además se creaba un ajuste por la diferencia y se contaba dos veces).
+    // Reparto mora/capital: la mora cobrada no puede superar el monto nuevo; el resto va al capital.
+    const aplicadoMora = Math.min(Number(p.aplicadoMora) || 0, montoNuevo);
+    await DB.update('pagos', p.id, {
+      monto: montoNuevo, tipo,
+      aplicadoMora,
+      aplicadoSaldo: Math.round((montoNuevo - aplicadoMora) * 100) / 100
+    });
+    if (Math.abs(diferencia) >= 0.01) console.log(`✏️ Pago ${p.id} corregido (${diferencia > 0 ? '+' : ''}${diferencia.toFixed(2)})`);
 
     state._editandoPago = null;
     state.modal = null;
@@ -781,20 +757,10 @@ window.eliminarPago = async function (pagoId) {
   if (!p) return;
 
   try {
-    // Marcar como eliminado (NO borrar — preserva cuadre histórico)
+    // Marcar como eliminado (NO borrar — queda en el historial como "pago eliminado").
+    // Al quedar eliminado deja de contar en la mochila y el cuadre por sí solo; antes además
+    // se creaba un ajuste "Baja pago" y el monto se descontaba dos veces.
     await DB.update('pagos', pagoId, { eliminado: true });
-
-    // Ajuste mochila cobrador: quitar ese cobro
-    if (p.cobradorId && p.monto > 0) {
-      const idAjuste = genId();
-      await DB.set('movimientos_cartera', idAjuste, {
-        id: idAjuste, tipo: 'gasto_cobrador', monto: Number(p.monto),
-        descripcion: 'Baja pago',
-        fecha: p.fecha,
-        cobradorId: p.cobradorId,
-        registradoPor: state.currentUser.id
-      });
-    }
 
     state._editandoPago = null;
     state.modal = null;

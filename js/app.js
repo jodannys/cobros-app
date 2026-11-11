@@ -186,7 +186,7 @@ window.renderHistorial = function renderHistorial() {
   const creditos = DB._cache['creditos'] || [];
   const pagos = DB._cache['pagos'] || [];
   const gastos = DB._cache['gastos'] || [];
-  const movimientos = DB._cache['movimientos_cartera'] || [];
+  const movimientos = movsCartera();
   const cobradores = usuarios.filter(u => u.role === 'cobrador');
 
   // Índices por id: evitan recorrer listas completas por cada fila
@@ -235,7 +235,8 @@ window.renderHistorial = function renderHistorial() {
       .filter(m => m.fecha === filtroFecha)
       .filter(m => (m.tipo === 'gasto_admin' || m.tipo === 'retiro')
         ? filtroCobradorId === 'todos'               // son del admin, no de un cobrador
-        : m.tipo === 'gasto_cobrador' && coincideCobrador(m.cobradorId))
+        : m.tipo === 'gasto_cobrador' && coincideCobrador(m.cobradorId) && !esAjusteDePago(m))
+        // (los ajustes de pago eliminado/corregido no son gastos: el pago ya se descontó solo)
       .map(m => ({
         id: m.id,
         clase: m.tipo === 'gasto_admin' ? 'admin' : m.tipo === 'retiro' ? 'retiro' : 'ajuste',
@@ -257,11 +258,6 @@ window.renderHistorial = function renderHistorial() {
     if (cr.fechaInicio !== filtroFecha) return false;
     if (filtroCobradorId === 'todos') return true;
     return clientePorId.get(cr.clienteId)?.cobradorId === filtroCobradorId;
-  });
-  const pagosPorCredito = new Map();
-  pagos.forEach(p => {
-    if (p.eliminado) return;
-    pagosPorCredito.set(p.creditoId, (pagosPorCredito.get(p.creditoId) || 0) + (Number(p.monto) || 0));
   });
 
   // ── Resumen del día ──
@@ -461,10 +457,10 @@ window.renderHistorial = function renderHistorial() {
         : creditosFiltrados.map(cr => {
           const cl = clientePorId.get(cr.clienteId);
           const total = Number(cr.total) || 0;
-          const totalPagado = pagosPorCredito.get(cr.id) || 0;
-          const saldo = Math.max(0, total - totalPagado);
-          const mora = cr.activo !== false && typeof obtenerDatosMora === 'function'
-            ? (obtenerDatosMora(cr).total || 0) : 0;
+          const est = estadoCredito(cr, pagos);
+          const totalPagado = est.pagadoCapital;
+          const saldo = est.saldo;
+          const mora = cr.activo !== false ? est.moraPendiente : 0;
           // Estado real: cerrado solo si el crédito está inactivo; si el saldo llegó a 0 pero hay mora, aún debe
           const estado = cr.activo === false
             ? { texto: '✓ Cerrado', fondo: '#f0fff4', color: '#276749' }
@@ -588,9 +584,7 @@ window.renderBusquedaClientes = function renderBusquedaClientes() {
     const totalPagado = sumar(pagosCliente);
     // Saldo del crédito activo (el que sigue abierto)
     const creditoActivo = creditos.find(cr => cr.clienteId === c.id && cr.activo !== false);
-    const saldo = creditoActivo
-      ? Math.max(0, (Number(creditoActivo.total) || 0) - sumar(pagosCliente.filter(p => p.creditoId === creditoActivo.id)))
-      : 0;
+    const saldo = creditoActivo ? estadoCredito(creditoActivo, pagos).pendienteTotal : 0;
     return `
     <div style="padding:12px;background:#f8fafc;border-radius:10px;margin-bottom:8px;cursor:pointer"
       onclick="verHistorialCliente('${esc(c.id)}')">
@@ -641,8 +635,9 @@ window.verHistorialCliente = function verHistorialCliente(clienteId) {
 
   creditos.forEach(cr => {
     const pagosCr = pagos.filter(p => p.creditoId === cr.id); // pagos ya viene sin eliminados
-    const pagadoCr = pagosCr.reduce((s, p) => s + p.monto, 0);
-    const saldoCr = Math.max(0, cr.total - pagadoCr);
+    const est = estadoCredito(cr, pagosCr.map(p => ({ ...p, eliminado: false })));
+    const pagadoCr = est.pagado;
+    const saldoCr = est.saldo;
     texto += `💳 *Crédito ${formatDate(cr.fechaInicio)}*\n`;
     texto += `Prestado: S/${cr.monto} | Total: S/${cr.total}\n`;
     texto += `Pagado: S/${pagadoCr.toFixed(2)} | Saldo: S/${saldoCr.toFixed(2)}\n`;

@@ -2,12 +2,14 @@ window.getCajaChicaDelDia = function (cobradorId, fecha) {
   const gastos = DB._cache['gastos'] || [];
   const creditos = DB._cache['creditos'] || [];
   const clientes = DB._cache['clientes'] || [];
-  const movimientos = DB._cache['movimientos_cartera'] || [];
+  const movimientos = movsCartera();
   const cajas = DB._cache['cajas'] || [];
 
   // 1. ARRASTRE ANTERIOR
+ // Valor real (puede ser negativo si el cobrador debe): antes se mostraba 0 y la caja del día
+ // no coincidía con la mochila
  let arrastreAnterior = typeof getSaldoMochilaHasta === 'function'
-  ? Math.max(0, getSaldoMochilaHasta(cobradorId, fecha))
+  ? getSaldoMochilaHasta(cobradorId, fecha)
   : 0;
   // 2. ENVÍOS (Dinero que el Admin le da al Cobrador)
   const enviadoHoyMov = movimientos
@@ -58,7 +60,8 @@ window.getCajaChicaDelDia = function (cobradorId, fecha) {
   const ajustesDelDia = movimientos.filter(m =>
     m.cobradorId === cobradorId &&
     m.fecha === fecha &&
-    m.tipo === 'gasto_cobrador'
+    m.tipo === 'gasto_cobrador' &&
+    !esAjusteDePago(m) // el pago eliminado/corregido ya se refleja en los cobros del día
   );
   const ajustesHoy = ajustesDelDia.reduce((s, m) => s + (Number(m.monto) || 0), 0);
 

@@ -52,7 +52,7 @@ const _SECCIONES_ADMIN = [
     tab: 'clientes',
     titulo: '❌ Eliminar un crédito',
     keywords: ['eliminar credito', 'borrar credito', 'pagos', 'capital', 'mochila', 'ajuste'],
-    contenido: 'Elimina el crédito y todos sus pagos. Esto también ajusta automáticamente la mochila del cobrador y el capital disponible del admin. <b>Esta acción es irreversible.</b>'
+    contenido: 'Deshace el crédito como si nunca hubiera existido y anula sus pagos. Lo que el cliente devuelve (lo que recibió menos lo que ya pagó) vuelve a la <b>mochila del cobrador</b>. Si el cobrador te entrega ese dinero, regístralo como <b>Depósito</b>. <b>Esta acción es irreversible.</b>'
   },
   {
     tab: 'clientes',

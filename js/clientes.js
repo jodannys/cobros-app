@@ -610,12 +610,13 @@ window.enviarEstadoWhatsApp = async function (clienteId) {
   }
 
   const cr = creditosActivos[creditosActivos.length - 1];
-  const pagosCr = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id && !p.eliminado);
-  const totalPagadoCr = pagosCr.reduce((s, p) => s + p.monto, 0);
-  const saldoCapital = Math.max(0, cr.total - totalPagadoCr);
+  const estado = estadoCredito(cr);
+  const pagosCr = estado.pagos;
+  const totalPagadoCr = estado.pagado; // suma de recibos (incluye mora pagada)
+  const saldoCapital = estado.saldo;
   const infoMora = obtenerDatosMora(cr);
-  const montoMora = infoMora.total;
-  const totalCobrar = saldoCapital + montoMora;
+  const montoMora = estado.moraPendiente;
+  const totalCobrar = estado.pendienteTotal;
 
   const numeroRegistrado = c.telefono ? c.telefono.replace(/\D/g, '') : '';
   const numeroInput = await showPrompt(`Confirma o edita el número de ${c.nombre}`, numeroRegistrado);

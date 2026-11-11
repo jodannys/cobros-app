@@ -24,37 +24,10 @@ window.eliminarClienteCascade = async function (clienteId) {
   const pagos    = (DB._cache['pagos']    || []).filter(x => x.clienteId === clienteId);
   const cliente  = (DB._cache['clientes'] || []).find(x => x.id === clienteId);
 
-  // Ajuste contable por cada crédito
-  for (const cr of creditos) {
-    const pagosCr      = pagos.filter(p => p.creditoId === cr.id && !p.eliminado);
-    const totalPagado  = pagosCr.reduce((s, p) => s + Number(p.monto), 0);
-    const montoSeguro  = Number(cr.montoSeguro || 0);
-    const montoTotal   = Number(cr.monto) + montoSeguro;
-    const cobradorId   = cliente?.cobradorId || null;
-    const fechaAjuste  = cr.fechaInicio;
-
-    // Devolver monto + seguro a cartera admin
-    if (montoTotal > 0) {
-      const id = genId();
-      await DB.set('movimientos_cartera', id, {
-       id, tipo: 'inyeccion', monto: montoTotal,
-        descripcion: `Baja cliente`,
-        fecha: fechaAjuste, cobradorId,
-        registradoPor: state.currentUser.id
-      });
-    }
-
-    // Quitar cuotas cobradas de la mochila del cobrador
-    if (totalPagado > 0 && cobradorId) {
-      const id2 = genId();
-      await DB.set('movimientos_cartera', id2, {
-        id: id2, tipo: 'gasto_cobrador', monto: totalPagado,
-        descripcion: `Baja cliente`,
-        fecha: fechaAjuste, cobradorId,
-        registradoPor: state.currentUser.id
-      });
-    }
-  }
+  // Eliminar = DESHACER sus créditos (como si nunca hubieran existido). No se crean ajustes:
+  // la mochila del cobrador se recalcula sola (vuelve lo prestado, salen seguro y cuotas).
+  // Si el cobrador entrega ese dinero al admin, se registra con "Depósito" (monto real, confirmado).
+  // Antes se sumaba monto+seguro a la cartera del admin y se restaban las cuotas dos veces.
 
   // Copia de archivo para poder ver su historial después de borrarlo (buscador del historial).
   // Solo la leen el buscador y el historial: no afecta mochila, cuadre ni caja.

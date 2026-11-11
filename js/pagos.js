@@ -108,15 +108,13 @@ window.guardarPago = async function () {
       btnConfirmar.innerHTML = '⏳ Guardando...';
     }
 
-    const pagosAnteriores = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id && !p.eliminado);
-    const totalPagadoAntes = pagosAnteriores.reduce((s, p) => s + (Number(p.monto) || 0), 0);
-    const saldoRestante = Math.max(0, cr.total - totalPagadoAntes);
+    // Primero se cubre la mora PENDIENTE (no la ya pagada) y el resto va al saldo del préstamo
+    const estado = estadoCredito(cr);
+    const saldoRestante = estado.saldo;
+    const moraActual = estado.moraPendiente;
 
-    const infoMora = typeof obtenerDatosMora === 'function' ? obtenerDatosMora(cr) : { total: 0 };
-    const moraActual = infoMora.total;
-
-    let aplicadoMora = Math.min(monto, moraActual);
-    let aplicadoSaldo = Math.min(monto - aplicadoMora, saldoRestante);
+    let aplicadoMora = Math.round(Math.min(monto, moraActual) * 100) / 100;
+    let aplicadoSaldo = Math.round(Math.min(monto - aplicadoMora, saldoRestante) * 100) / 100;
 
     const clienteDePago = (DB._cache['clientes'] || []).find(c => c.id === cr.clienteId);
     const users = DB._cache['users'] || [];
@@ -148,7 +146,8 @@ window.guardarPago = async function () {
       updatedAt: new Date()
     };
 
-    const creditoSeCierra = (totalPagadoAntes + aplicadoSaldo) >= cr.total && (moraActual - aplicadoMora) <= 0;
+    // Se cierra cuando este pago cubre todo el saldo y toda la mora pendiente
+    const creditoSeCierra = aplicadoSaldo >= saldoRestante - 0.009 && aplicadoMora >= moraActual - 0.009;
 
     // Escritura atómica: pago + cierre de crédito (si aplica) en un solo commit
     const ops = [{ op: 'set', col: 'pagos', id, data: nuevoPago }];
@@ -195,12 +194,12 @@ window.renderModalRegistrarPago = function () {
   const cr = state.selectedCredito;
   if (!cr) return '';
 
-  const pagos = (DB._cache['pagos'] || []).filter(p => p.creditoId === cr.id && !p.eliminado);
-  const totalPagado = pagos.reduce((s, p) => s + (Number(p.monto) || 0), 0);
-  const saldo = Math.max(0, cr.total - totalPagado);
-
-  const infoMora = typeof obtenerDatosMora === 'function' ? obtenerDatosMora(cr) : { total: 0, dias: 0 };
-  const totalConMora = saldo + infoMora.total;
+  const estado = estadoCredito(cr);
+  const saldo = estado.saldo;
+  const datosMora = typeof obtenerDatosMora === 'function' ? obtenerDatosMora(cr) : { total: 0, dias: 0 };
+  // infoMora.total = mora PENDIENTE (lo que se muestra y se cobra)
+  const infoMora = { ...datosMora, total: estado.moraPendiente };
+  const totalConMora = estado.pendienteTotal;
   window._pagoTipo = 'efectivo';
 
   // Fecha forzada a Lima

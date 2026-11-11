@@ -385,9 +385,8 @@ window.DB = {
         await DB.update('creditos', cr.id, { fechaFin: nuevaFechaFin }).catch(e => console.error(e));
       }
       if (cr.activo === true) {
-        const pagosCr = pagos.filter(p => p.creditoId === cr.id && !p.eliminado);
-        const totalPagado = pagosCr.reduce((s, p) => s + (Number(p.monto) || 0), 0);
-        if (totalPagado >= Number(cr.total || 0) && cr.total > 0) {
+        // Cerrar solo si ya no debe saldo NI mora (antes la mora pagada contaba como pago del préstamo)
+        if (cr.total > 0 && estadoCredito(cr, pagos).pendienteTotal <= 0.01) {
           await DB.update('creditos', cr.id, { activo: false }).catch(e => console.error(e));
         }
       }

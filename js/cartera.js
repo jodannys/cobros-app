@@ -20,7 +20,7 @@ function _calcularMochila(cobradorId, fechaLimite) {
   const key = cobradorId + '|' + (fechaLimite || '') + '|' + DB._cacheVersion;
   if (_mochilaCache[key] !== undefined) return _mochilaCache[key];
 
-  const movs = DB._cache['movimientos_cartera'] || [];
+  const movs = movsCartera();
   const pagos = DB._cache['pagos'] || [];
   const creditos = DB._cache['creditos'] || [];
   const gastos = DB._cache['gastos'] || [];
@@ -37,7 +37,7 @@ function _calcularMochila(cobradorId, fechaLimite) {
     .reduce((s, p) => s + Number(p.monto || 0), 0);
 
   const ajustesCobros = movs
-    .filter(m => m.tipo === 'cobro_ajuste' && m.cobradorId === cobradorId && antes(m.fecha))
+    .filter(m => m.tipo === 'cobro_ajuste' && m.cobradorId === cobradorId && antes(m.fecha) && !esAjusteDePago(m))
     .reduce((s, m) => s + Number(m.monto || 0), 0);
 
   const seguros = creditos
@@ -62,7 +62,8 @@ function _calcularMochila(cobradorId, fechaLimite) {
       const esAntes = antes(m.fecha);
       const estaConfirmado = m.confirmado === true || m.tipo === 'confirmar_yape';
       const esGastoCobrador = m.tipo === 'gasto_cobrador';
-      return esMio && esAntes && (estaConfirmado || esGastoCobrador);
+      // Los ajustes de pago eliminado/corregido no cuentan: el pago ya se refleja solo
+      return esMio && esAntes && (estaConfirmado || esGastoCobrador) && !esAjusteDePago(m);
     })
     .reduce((s, m) => s + Number(m.monto || 0), 0);
 
@@ -73,8 +74,8 @@ function _calcularMochila(cobradorId, fechaLimite) {
 
 // ── CARTERA: Saldo del admin ──────────────────────────────────
 window.getSaldoCartera = function () {
-  const movs = DB._cache['movimientos_cartera'] || [];
-  return movs.reduce((s, m) => {
+  const movs = movsCartera();
+  const saldoMovs = movs.reduce((s, m) => {
     const monto = Number(m.monto) || 0;
     switch (m.tipo) {
       case 'inyeccion': return s + monto;
@@ -85,10 +86,18 @@ window.getSaldoCartera = function () {
       default: return s;
     }
   }, 0);
+  // La caja chica asignada sale de la cartera del admin, igual que "Enviar a cobrador"
+  // (antes solo se sumaba al cobrador y el mismo dinero aparecía en los dos lados)
+  // (solo de cobradores que existen: al eliminar un cobrador se borran sus envíos, igual con sus cajas)
+  const idsUsuarios = new Set((DB._cache['users'] || []).map(u => u.id));
+  const cajasAsignadas = (DB._cache['cajas'] || [])
+    .filter(c => idsUsuarios.has(c.cobradorId))
+    .reduce((s, c) => s + (Number(c.monto) || 0), 0);
+  return saldoMovs - cajasAsignadas;
 };
 
 window.getCapitalInvertido = function () {
-  return (DB._cache['movimientos_cartera'] || [])
+  return movsCartera()
     .filter(m => m.tipo === 'inyeccion')
     .reduce((s, m) => s + Number(m.monto), 0);
 };
@@ -104,16 +113,12 @@ window.getTotalEnLaCalle = function () {
   const pagos = DB._cache['pagos'] || [];
   return creditos
     .filter(cr => cr.activo)
-    .reduce((s, cr) => {
-      const pagado = pagos
-        .filter(p => p.creditoId === cr.id && !p.eliminado)
-        .reduce((ss, p) => ss + Number(p.monto), 0);
-      return s + Math.max(0, Number(cr.total) - pagado);
-    }, 0);
+    // Capital que falta cobrar (la mora pagada no reduce el préstamo)
+    .reduce((s, cr) => s + estadoCredito(cr, pagos).saldo, 0);
 };
 
 window.getDepositosPendientes = function () {
-  return (DB._cache['movimientos_cartera'] || [])
+  return movsCartera()
     .filter(m => m.tipo === 'deposito_cobrador' && !m.confirmado);
 };
 
@@ -124,7 +129,7 @@ window.renderPanelCartera = function () {
   const enMochilas = getTotalEnMochilas();
   const pendientes = getDepositosPendientes();
   const cobradores = (DB._cache['users'] || []).filter(u => u.role === 'cobrador');
-  const movs = (DB._cache['movimientos_cartera'] || [])
+  const movs = movsCartera()
     .slice().sort((a, b) => (b.fecha || '').localeCompare(a.fecha || '')).slice(0, 5);
   const saldoOk = saldo >= 0;
   const menuAbierto = state._menuCarteraAbierto || false;
@@ -160,7 +165,7 @@ window.renderPanelCartera = function () {
       .reduce((s, cr) => s + Number(cr.montoSeguro || 0), 0);
 
     const gastosRuta = cobradores_admin.reduce((s, u) => s + getCajaChicaDelDia(u.id, hoy).totalGastos, 0);
-    const gastosMovsCartera = (DB._cache['movimientos_cartera'] || [])
+    const gastosMovsCartera = movsCartera()
       .filter(m => m.fecha === hoy && (m.tipo === 'gasto_admin' || m.tipo === 'retiro'))
       .reduce((s, m) => s + Number(m.monto || 0), 0);
     totalGastos = gastosRuta + gastosMovsCartera;
@@ -228,6 +233,16 @@ window.renderPanelCartera = function () {
                          display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0">💼</span>
             Retirar de Cobrador
           </button>
+          ${movsAjustesBaja().length ? `
+          <button onclick="state.modal='revisar-bajas'; state._menuCarteraAbierto=false; render()"
+            style="width:100%; padding:9px 12px; border-radius:8px; border:none; cursor:pointer;
+                   background:transparent; font-weight:600; font-size:13px; margin-top:2px;
+                   display:flex; align-items:center; gap:10px; color:#475569; text-align:left;
+                   border-top:1px solid #f1f5f9">
+            <span style="width:28px; height:28px; background:#f8fafc; border-radius:6px;
+                         display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0">🧾</span>
+            Revisar ajustes viejos
+          </button>` : ''}
         </div>` : ''}
       </div>
     </div>
@@ -428,7 +443,7 @@ window.renderPanelCartera = function () {
     </div>
   </div>
   ${(() => {
-      const todos = (DB._cache['movimientos_cartera'] || []).slice().sort((a, b) => b.fecha.localeCompare(a.fecha));
+      const todos = movsCartera().slice().sort((a, b) => b.fecha.localeCompare(a.fecha));
       const filtrados = state._filtroFechaMovs ? todos.filter(m => m.fecha === state._filtroFechaMovs) : todos;
       const lista = (mostrarMovs || state._filtroFechaMovs) ? filtrados : filtrados.slice(0, 5);
       return lista.length === 0
@@ -983,3 +998,89 @@ window.confirmarDeposito = unaVez(window.confirmarDeposito);
 window.guardarMovimientoCartera = unaVez(window.guardarMovimientoCartera);
 window.guardarDepositoCobrador = unaVez(window.guardarDepositoCobrador);
 window.guardarRetiroCobrador = unaVez(window.guardarRetiroCobrador);
+
+// ── REVISAR AJUSTES VIEJOS DE CRÉDITOS/CLIENTES ELIMINADOS ─────────
+// Antes, al eliminar un crédito o cliente, la app creaba dos ajustes automáticos:
+//   - "inyección" a la cartera del admin por monto + seguro
+//   - "gasto_cobrador" en la mochila por las cuotas cobradas (que ya se descontaban solas)
+// Con la regla nueva (eliminar = deshacer el crédito) esos ajustes sobran. No se tocan solos
+// para no mover saldos viejos: el admin decide uno por uno si dejan de contar (anulado).
+window.movsAjustesBaja = function () {
+  return (DB._cache['movimientos_cartera'] || [])
+    .filter(m => (m.descripcion === 'Baja crédito' || m.descripcion === 'Baja cliente') &&
+                 (m.tipo === 'inyeccion' || m.tipo === 'gasto_cobrador'))
+    .sort((a, b) => String(b.fecha || '').localeCompare(String(a.fecha || '')));
+};
+
+window.renderModalRevisarBajas = function () {
+  const lista = movsAjustesBaja();
+  const nombre = (id) => (DB._cache['users'] || []).find(u => u.id === id)?.nombre || '—';
+  const activos = lista.filter(m => !m.anulado);
+
+  return `
+  <div class="modal-handle"></div>
+  <div class="modal-title">🧾 Ajustes viejos de créditos eliminados</div>
+  <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:10px 12px;
+              margin-bottom:12px;font-size:12.5px;color:#92400e;line-height:1.5">
+    Antes, al eliminar un crédito la app sumaba el préstamo + seguro a la cartera y restaba
+    las cuotas <strong>dos veces</strong> al cobrador. Ahora eliminar solo deshace el crédito.<br>
+    <strong>"No contar"</strong> quita el ajuste de las cuentas (no se borra, se puede volver a contar).
+    Si el cobrador sí te entregó dinero, regístralo como <strong>Depósito</strong>.
+  </div>
+  ${activos.length > 1 ? `
+  <button onclick="anularAjustesBaja(null)"
+    style="width:100%;padding:10px;margin-bottom:10px;border-radius:10px;border:2px solid #fecaca;
+           background:white;color:#dc2626;font-weight:700;font-size:13px;cursor:pointer">
+    No contar ninguno (${activos.length})
+  </button>` : ''}
+  ${lista.length === 0
+    ? '<div style="text-align:center;color:var(--muted);padding:20px 0">No hay ajustes viejos</div>'
+    : lista.map(m => {
+      const esAdmin = m.tipo === 'inyeccion';
+      return `
+      <div style="padding:10px 0;border-bottom:1px solid var(--border);display:flex;
+                  justify-content:space-between;align-items:center;gap:8px;${m.anulado ? 'opacity:0.5' : ''}">
+        <div style="min-width:0">
+          <div style="font-weight:700;font-size:13.5px">
+            ${esAdmin ? 'Cartera admin' : 'Mochila de ' + esc(nombre(m.cobradorId))}
+            <span style="color:${esAdmin ? 'var(--success)' : 'var(--danger)'}">
+              ${esAdmin ? '+' : '−'}${formatMoney(m.monto)}
+            </span>
+          </div>
+          <div style="font-size:11.5px;color:var(--muted)">
+            ${esc(m.descripcion)} · ${formatDate(m.fecha)}${esAdmin && m.cobradorId ? ' · ' + esc(nombre(m.cobradorId)) : ''}
+            ${m.anulado ? ' · <strong>no cuenta</strong>' : ''}
+          </div>
+        </div>
+        <button onclick="anularAjustesBaja('${esc(m.id)}', ${m.anulado ? 'false' : 'true'})"
+          style="flex-shrink:0;padding:6px 10px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;
+                 border:1px solid ${m.anulado ? '#bbf7d0' : '#fecaca'};background:white;
+                 color:${m.anulado ? '#15803d' : '#dc2626'}">
+          ${m.anulado ? 'Volver a contar' : 'No contar'}
+        </button>
+      </div>`;
+    }).join('')}
+  <button onclick="state.modal=null; render()"
+    style="width:100%;padding:12px;margin-top:12px;background:#f1f5f9;color:var(--text);border:none;
+           border-radius:12px;font-size:14px;font-weight:600;cursor:pointer">Cerrar</button>`;
+};
+
+// id = un ajuste (anular true/false); id = null → anular todos los que aún cuentan
+window.anularAjustesBaja = unaVez(async function (id, anular = true) {
+  const objetivo = id
+    ? movsAjustesBaja().filter(m => m.id === id)
+    : movsAjustesBaja().filter(m => !m.anulado);
+  if (!objetivo.length) return;
+  if (!id && !await showConfirm(`¿Dejar de contar ${objetivo.length} ajustes viejos? Las cuentas de cartera y mochilas se recalculan.`,
+    { confirmText: 'No contar' })) return;
+  try {
+    const ops = objetivo.map(m => ({ op: 'update', col: 'movimientos_cartera', id: m.id, data: { anulado: anular, updatedAt: new Date() } }));
+    for (let i = 0; i < ops.length; i += 400) await fbBatch(ops.slice(i, i + 400));
+    objetivo.forEach(m => { m.anulado = anular; });
+    DB._cacheVersion++; // recalcular mochilas
+    showToast(anular ? 'Ajuste(s) sin contar' : 'Ajuste vuelve a contar');
+    render();
+  } catch (e) {
+    alert('Error: ' + e.message);
+  }
+});

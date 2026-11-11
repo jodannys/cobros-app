@@ -126,8 +126,7 @@ window.getAlertasCreditos = function() {
 
       const cobrador = users.find(u => u.id === cliente.cobradorId) || { nombre: 'Sin Cobrador', id: 'n/a' };
       const pagosCr = todosLosPagos.filter(p => p.creditoId === cr.id && !p.eliminado);
-      const totalPagado = pagosCr.reduce((s, p) => s + (Number(p.monto) || 0), 0);
-      const saldoTotal = Number(cr.total || 0) - totalPagado;
+      const saldoTotal = estadoCredito(cr, todosLosPagos).pendienteTotal; // saldo + mora pendiente
 
       if (saldoTotal <= 0.1) return;
 
@@ -190,6 +189,43 @@ window.obtenerDatosMora = function(credito, pagos) {
     diasInactivo: diasInactividad,
     total: (credito.mora_activa && diasDeMora > 0) ? (diasDeMora * 5) : 0
   };
+};
+
+// ── Estado de cuenta de un crédito (ÚNICA fuente para saldo y mora) ──
+// obtenerDatosMora().total es la mora GENERADA en total (días × 5), sin restar lo ya pagado.
+// Antes, la mora pagada se volvía a mostrar como pendiente y además se restaba del saldo
+// (el total a cobrar salía bien, pero el reparto saldo/mora no).
+// Aquí: moraPagada = lo pagado a mora, nunca más que la mora generada (algunos pagos viejos
+// registraron de más), así el TOTAL pendiente es idéntico al cálculo anterior en todos los casos.
+window.estadoCredito = function (cr, pagos) {
+  const lista = (pagos || (DB._cache['pagos'] || []))
+    .filter(p => p.creditoId === cr.id && !p.eliminado);
+  const pagado = lista.reduce((s, p) => s + (Number(p.monto) || 0), 0);
+  const moraGenerada = obtenerDatosMora(cr, pagos).total || 0;
+  const moraRegistrada = lista.reduce((s, p) => s + (Number(p.aplicadoMora) || 0), 0);
+  const moraPagada = Math.min(moraRegistrada, moraGenerada);
+  const moraPendiente = Math.max(0, moraGenerada - moraPagada);
+  const pagadoCapital = pagado - moraPagada;
+  const saldo = Math.max(0, (Number(cr.total) || 0) - pagadoCapital);
+  return {
+    pagado,            // todo lo cobrado (capital + mora)
+    pagadoCapital,     // lo que fue al préstamo
+    saldo,             // lo que falta del préstamo
+    moraGenerada,
+    moraPagada,
+    moraPendiente,
+    pendienteTotal: saldo + moraPendiente, // lo que falta cobrar en total
+    pagos: lista
+  };
+};
+
+// Ajustes automáticos que solo reflejaban el cambio de un pago (eliminado o corregido).
+// El pago eliminado/editado ya cambia la mochila por sí mismo: contarlos descontaba dos veces.
+// Se conservan en la base, pero no suman ni restan en ningún cálculo.
+window.esAjusteDePago = function (m) {
+  if (m.tipo !== 'gasto_cobrador' && m.tipo !== 'cobro_ajuste') return false;
+  const d = String(m.descripcion || '');
+  return d === 'Baja pago' || d.startsWith('Corrección pago');
 };
 
 window.calcularMora = function (cr) {
@@ -276,8 +312,10 @@ window.calcularEstadoAtraso = function (cr, pagos, fecha) {
     p => p.creditoId === cr.id && !p.eliminado
   );
 
-  const totalPagado   = pagosNoEliminados.reduce((s, p) => s + Number(p.monto), 0);
-  const saldoRestante = Math.max(0, Number(cr.total) - totalPagado);
+  // Solo lo pagado al préstamo cubre cuotas (la mora pagada no)
+  const estCr         = estadoCredito(cr, pagosNoEliminados);
+  const totalPagado   = estCr.pagadoCapital;
+  const saldoRestante = estCr.saldo;
 
   if (saldoRestante <= TOLERANCIA) {
     return { atrasado: false, cuotasDebidas: 0, cuotasCubiertas: 0,
@@ -342,3 +380,7 @@ window.unaVez = function (fn) {
 window.esc = (v) => String(v ?? '')
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+// Movimientos de cartera que cuentan en los cálculos. Los marcados "anulado" (desde
+// Cartera → "Revisar ajustes viejos") se conservan en la base pero no suman ni restan.
+window.movsCartera = () => (DB._cache['movimientos_cartera'] || []).filter(m => !m.anulado);

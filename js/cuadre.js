@@ -95,10 +95,14 @@ window.calcularMetaReal = function (cobradorId, fecha) {
       .filter(p => p.fecha === fecha)
       .reduce((s, p) => s + Number(p.monto), 0);
 
-    const totalPagado = pagosNoEliminados
-      .reduce((s, p) => s + Number(p.monto), 0);
+    // Para cuotas y saldo solo cuenta lo que fue al préstamo (la mora pagada no cubre cuotas)
+    const estCr = estadoCredito(cr, pagosNoEliminados);
+    const totalPagado = estCr.pagadoCapital;
+    const capitalPagadoHoy = pagosNoEliminados
+      .filter(p => p.fecha === fecha)
+      .reduce((s, p) => s + Number(p.monto) - Math.min(Number(p.aplicadoMora) || 0, Number(p.monto)), 0);
 
-    const saldoRestante = Number(cr.total) - totalPagado;
+    const saldoRestante = estCr.saldo;
 
     // Crédito ya saldado: solo mostrarlo si pagó HOY (badge de saldado)
     if (saldoRestante <= 0.5) {
@@ -124,7 +128,7 @@ window.calcularMetaReal = function (cobradorId, fecha) {
       estado.cuotasCubiertas >= estado.cuotasDebidas;
 
     // ── META ──
-    const totalPagadoSinHoy = totalPagado - montoPagadoHoy;
+    const totalPagadoSinHoy = Math.max(0, totalPagado - capitalPagadoHoy);
 
     const cuotasCubiertasSinHoy = Math.min(
       Math.floor((totalPagadoSinHoy + 0.5) / cuota),
