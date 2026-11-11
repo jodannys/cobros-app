@@ -306,7 +306,7 @@ window.renderHistorial = function renderHistorial() {
           <line x1="21" y1="21" x2="16.65" y2="16.65"/>
         </svg>
       </span>
-      <input
+      <input id="search-historial"
   style="width:100%; border:none; background:#ffffff; border-radius:20px;
          padding:9px 36px 9px 40px; font-size:13.5px; color:#2d3748;
          font-weight:500; outline:none; box-shadow:0 2px 8px rgba(0,0,0,0.08)"
@@ -315,9 +315,11 @@ window.renderHistorial = function renderHistorial() {
   oninput="state._hBusqueda=this.value; renderBusquedaClientes();
            document.getElementById('btn-clear-historial').style.display=this.value?'block':'none';">
 <span id="btn-clear-historial"
-  onclick="state._hBusqueda=''; renderBusquedaClientes();
-           document.getElementById('btn-clear-historial').style.display='none';
-           document.querySelector('#busquedaResultados').innerHTML='';"
+  onclick="state._hBusqueda='';
+           document.getElementById('search-historial').value='';
+           renderBusquedaClientes();
+           this.style.display='none';
+           document.getElementById('search-historial').focus();"
   style="position:absolute; right:14px; cursor:pointer; color:#a0aec0;
          font-size:13px; font-weight:700; line-height:1;
          display:${filtroBusqueda ? 'block' : 'none'}">
@@ -333,12 +335,14 @@ window.renderHistorial = function renderHistorial() {
                       text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px">Fecha</div>
           <div style="display:flex; align-items:center; gap:4px">
             ${btnDia(-1, '‹', false)}
-            <!-- Sin calendario (descuadraba el diseño): solo la fecha; tocarla vuelve a hoy -->
-            <div onclick="${esHoy ? '' : 'state._hFecha=null; render()'}"
+            <!-- Solo la fecha (sin ícono, para no descuadrar); al tocarla se abre el calendario.
+                 No deja elegir días futuros. -->
+            <div onclick="abrirDatePicker('${encodeURIComponent(filtroFecha).replace(/'/g, '%27')}',
+                   '${encodeURIComponent("state._hFecha = VALUE > today() ? today() : VALUE; render()").replace(/'/g, '%27')}')"
               style="flex:1; min-width:0; height:38px; display:flex; align-items:center; justify-content:center;
                      border:1px solid #e2e8f0; border-radius:8px; background:white; white-space:nowrap;
                      overflow:hidden; text-overflow:ellipsis; font-size:13px; font-weight:700;
-                     color:var(--text); cursor:${esHoy ? 'default' : 'pointer'}">
+                     color:var(--text); cursor:pointer">
               ${esHoy ? 'Hoy' : formatDate(filtroFecha)}
             </div>
             ${btnDia(1, '›', esHoy)}

@@ -614,8 +614,9 @@ ${c.nota ? `
 
   ${state[`_searchClientes_${cobrador.id}`] ? `
     <span onclick="
-      event.stopPropagation(); 
-      state['_searchClientes_${cobrador.id}'] = ''; 
+      event.stopPropagation();
+      clearTimeout(window._searchT);
+      state['_searchClientes_${cobrador.id}'] = '';
       const y = window.scrollY;
       render(); 
       requestAnimationFrame(() => window.scrollTo(0, y));"
