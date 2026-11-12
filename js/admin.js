@@ -27,52 +27,7 @@ window.renderAdmin = function renderAdmin() {
     <div class="page">
 
       ${alertas.length > 0 ? `
-        <div style="background:#fff1f2; border-radius:10px; padding:16px; margin-bottom:16px">
-          <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px">
-            <span style="font-size:22px">🚨</span>
-            <div>
-              <div style="font-weight:700; font-size:15px; color:#9f1239">Alertas (${alertas.length})</div>
-              <div style="font-size:11.5px; color:var(--muted)">Requieren atención</div>
-            </div>
-          </div>
-${(() => {
-        const mostrarTodas = state._verTodasAlertas || false;
-        const alertasVisible = mostrarTodas ? alertas : alertas.slice(0, 3);
-        const hayMas = alertas.length > 3;
-        return `
-${alertasVisible.map(a => `
-  <div style="background:white; border-radius:8px; padding:12px; margin-bottom:8px;
-              border-left:3px solid ${a.tipo === 'vencido' ? 'var(--danger)' : 'var(--warning)'}">
-    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px">
-      <div style="flex:1; min-width:0">
-        <div style="font-weight:700; font-size:14px; color:var(--text)">${a.cliente?.nombre || '—'}</div>
-        <div style="font-size:11.5px; color:var(--muted); margin-top:2px">Cobrador: ${a.cobrador?.nombre || '—'}</div>
-        <div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap">
-          <span style="background:${a.tipo === 'vencido' ? '#fff1f2' : '#fffbeb'};
-                       color:${a.tipo === 'vencido' ? 'var(--danger)' : 'var(--warning)'};
-                       padding:2px 8px; border-radius:6px; font-size:10.5px; font-weight:700">
-            ${a.tipo === 'vencido' ? '🔴 VENCIDO' : `⚠️ ${a.dias} ${a.dias === 1 ? 'cuota' : 'cuotas'} pendiente`}
-          </span>
-          <span style="background:#fff1f2; color:var(--danger); padding:2px 8px;
-                       border-radius:6px; font-size:10.5px; font-weight:700">
-            Saldo: ${formatMoney(a.saldo)}
-          </span>
-        </div>
-      </div>
-      <button class="btn btn-sm btn-primary" style="white-space:nowrap; flex-shrink:0"
-        onclick="abrirGestionCredito('${a.cr?.id}','${a.cliente?.id}')">Gestionar</button>
-    </div>
-  </div>`).join('')}
-    ${hayMas ? `
-      <button onclick="state._verTodasAlertas=!state._verTodasAlertas; render()"
-        style="width:100%; padding:10px; border-radius:8px; border:1px solid #fecdd3;
-               background:white; font-size:13px; font-weight:700; color:#9f1239;
-               cursor:pointer; margin-top:4px">
-        ${mostrarTodas ? '▲ Ver menos' : `▼ Ver todas las alertas (${alertas.length})`}
-      </button>` : ''}
-  `;
-      })()}
-       </div>
+        ${renderBloqueAlertas(alertas)}
       ` : `
         <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px;
                     padding:13px 16px; margin-bottom:16px; display:flex; align-items:center; gap:10px">
@@ -952,4 +907,140 @@ window.abrirMapaRutaCobrador = function (cobradorId, fecha) {
   const meta = calcularMetaReal(cobradorId, fecha);
   window._metaDetalle = meta.detalle;
   abrirMapaRuta();
+};
+// ── ALERTAS: resumen, filtros, buscador y lista con scroll propio ──────
+// Con muchas alertas (ej. 400) la lista desplegada alargaba toda la página y el botón
+// para recogerla quedaba al final. Ahora: lo más urgente primero, filtros, buscador,
+// lista dentro de una caja con scroll y de a 30 en 30.
+const _ALERTAS_POR_PAGINA = 30;
+
+// Más urgente primero: vencidos (más días) → atrasados (más cuotas) → mayor saldo
+window.ordenarAlertas = function (alertas) {
+  return alertas.slice().sort((a, b) =>
+    (a.tipo === 'vencido' ? 0 : 1) - (b.tipo === 'vencido' ? 0 : 1) ||
+    (Number(b.dias) || 0) - (Number(a.dias) || 0) ||
+    (Number(b.saldo) || 0) - (Number(a.saldo) || 0));
+};
+
+function _alertasFiltradas(alertas) {
+  const filtro = state._alertaFiltro || 'todas';
+  const q = _normAyuda(state._alertaBusqueda || '').trim();
+  return ordenarAlertas(alertas).filter(a => {
+    if (filtro === 'vencido' && a.tipo !== 'vencido') return false;
+    if (filtro === 'atrasado' && a.tipo === 'vencido') return false;
+    if (!q) return true;
+    return _normAyuda(a.cliente?.nombre).includes(q) ||
+           _normAyuda(a.cliente?.dni).includes(q) ||
+           _normAyuda(a.cobrador?.nombre).includes(q);
+  });
+}
+
+function _itemAlertaHTML(a) {
+  const vencido = a.tipo === 'vencido';
+  return `
+  <div style="background:white; border-radius:8px; padding:12px; margin-bottom:8px;
+              border-left:3px solid ${vencido ? 'var(--danger)' : 'var(--warning)'}">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px">
+      <div style="flex:1; min-width:0">
+        <div style="font-weight:700; font-size:14px; color:var(--text);
+                    white-space:nowrap; overflow:hidden; text-overflow:ellipsis">${esc(a.cliente?.nombre || '—')}</div>
+        <div style="font-size:11.5px; color:var(--muted); margin-top:2px">Cobrador: ${esc(a.cobrador?.nombre || '—')}</div>
+        <div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap">
+          <span style="background:${vencido ? '#fff1f2' : '#fffbeb'};
+                       color:${vencido ? 'var(--danger)' : 'var(--warning)'};
+                       padding:2px 8px; border-radius:6px; font-size:10.5px; font-weight:700">
+            ${vencido
+              ? `🔴 Vencido hace ${a.dias || 0} día${a.dias === 1 ? '' : 's'}`
+              : `⚠️ ${a.dias} ${a.dias === 1 ? 'cuota' : 'cuotas'} sin pagar`}
+          </span>
+          <span style="background:#fff1f2; color:var(--danger); padding:2px 8px;
+                       border-radius:6px; font-size:10.5px; font-weight:700">
+            Debe: ${formatMoney(a.saldo)}
+          </span>
+        </div>
+      </div>
+      <button class="btn btn-sm btn-primary" style="white-space:nowrap; flex-shrink:0"
+        onclick="abrirGestionCredito('${esc(a.cr?.id)}','${esc(a.cliente?.id)}')">Gestionar</button>
+    </div>
+  </div>`;
+}
+
+// Solo la lista (para que escribir en el buscador no recargue toda la pantalla)
+function _listaAlertasHTML(alertas) {
+  const lista = _alertasFiltradas(alertas);
+  const desplegado = state._verTodasAlertas || false;
+  if (!lista.length) {
+    return `<div style="text-align:center; padding:16px; color:var(--muted); font-size:13px">
+      Ninguna alerta coincide con la búsqueda</div>`;
+  }
+  if (!desplegado) {
+    return lista.slice(0, 3).map(_itemAlertaHTML).join('');
+  }
+  const limite = state._alertasLimite || _ALERTAS_POR_PAGINA;
+  const quedan = lista.length - limite;
+  return `
+    <div style="max-height:60vh; overflow-y:auto; overscroll-behavior:contain;
+                margin:0 -4px; padding:0 4px; border-radius:8px">
+      ${lista.slice(0, limite).map(_itemAlertaHTML).join('')}
+      ${quedan > 0 ? `
+        <button onclick="state._alertasLimite=${limite + _ALERTAS_POR_PAGINA}; _refrescarListaAlertas()"
+          style="width:100%; padding:10px; border-radius:8px; border:1px dashed #fecdd3;
+                 background:white; font-size:13px; font-weight:700; color:#9f1239; cursor:pointer">
+          Mostrar ${Math.min(quedan, _ALERTAS_POR_PAGINA)} más (quedan ${quedan})
+        </button>` : ''}
+    </div>`;
+}
+
+window._refrescarListaAlertas = function () {
+  const cont = document.getElementById('lista-alertas');
+  if (cont) cont.innerHTML = _listaAlertasHTML(getAlertasCreditos());
+  else render();
+};
+
+window.renderBloqueAlertas = function (alertas) {
+  const vencidos = alertas.filter(a => a.tipo === 'vencido').length;
+  const atrasados = alertas.length - vencidos;
+  const filtro = state._alertaFiltro || 'todas';
+  const desplegado = state._verTodasAlertas || false;
+  const chip = (valor, texto, n, color) => `
+    <button onclick="state._alertaFiltro='${valor}'; state._alertasLimite=null; state._verTodasAlertas=true; render()"
+      style="padding:5px 10px; border-radius:20px; font-size:12px; font-weight:700; cursor:pointer;
+             border:1.5px solid ${filtro === valor ? color : '#fecdd3'};
+             background:${filtro === valor ? color : 'white'};
+             color:${filtro === valor ? 'white' : color}">
+      ${texto} (${n})
+    </button>`;
+
+  return `
+  <div style="background:#fff1f2; border-radius:10px; padding:14px; margin-bottom:16px">
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px">
+      <div style="display:flex; align-items:center; gap:10px; min-width:0">
+        <span style="font-size:22px">🚨</span>
+        <div>
+          <div style="font-weight:700; font-size:15px; color:#9f1239">Alertas (${alertas.length})</div>
+          <div style="font-size:11.5px; color:var(--muted)">Lo más urgente primero</div>
+        </div>
+      </div>
+      ${alertas.length > 3 ? `
+      <button onclick="state._verTodasAlertas=${!desplegado}; state._alertasLimite=null; render()"
+        style="flex-shrink:0; padding:7px 12px; border-radius:8px; border:1px solid #fecdd3;
+               background:white; font-size:12.5px; font-weight:700; color:#9f1239; cursor:pointer">
+        ${desplegado ? '▲ Ocultar' : '▼ Ver todas'}
+      </button>` : ''}
+    </div>
+
+    ${alertas.length > 3 ? `
+    <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px">
+      ${chip('todas', 'Todas', alertas.length, '#9f1239')}
+      ${chip('vencido', '🔴 Vencidos', vencidos, '#dc2626')}
+      ${chip('atrasado', '⚠️ Atrasados', atrasados, '#d97706')}
+    </div>
+    ${desplegado ? `
+    <input id="buscar-alertas" class="form-control" placeholder="Buscar cliente, DNI o cobrador..."
+      value="${esc(state._alertaBusqueda || '')}"
+      oninput="state._alertaBusqueda=this.value; state._alertasLimite=null; _refrescarListaAlertas()"
+      style="margin-bottom:10px; font-size:13.5px; padding:9px 12px; border-radius:10px">` : ''}` : ''}
+
+    <div id="lista-alertas">${_listaAlertasHTML(alertas)}</div>
+  </div>`;
 };

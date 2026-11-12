@@ -618,23 +618,28 @@ window.renderModalGestionarCredito = function renderModalGestionarCredito() {
 
 // ── MODAL BANNER ALERTAS ──────────────────────────────────────
 window.renderModalBannerAlertas = function renderModalBannerAlertas() {
-  const alertas = getAlertasCreditos();
+  // Al entrar solo se muestran las 10 más urgentes; el resto se ve en el Panel Admin
+  const todas = ordenarAlertas(getAlertasCreditos());
+  const alertas = todas.slice(0, 10);
+  const vencidos = todas.filter(a => a.tipo === 'vencido').length;
 
   return `
   <div class="modal-handle"></div>
 
-  <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px;
+  <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px;
               background:#fff1f2; padding:14px 16px; border-radius:10px;">
     <span style="font-size:28px; flex-shrink:0">🚨</span>
     <div>
-      <div style="font-size:16px; font-weight:800; color:#9f1239">Créditos Críticos</div>
+      <div style="font-size:16px; font-weight:800; color:#9f1239">Créditos que requieren atención</div>
       <div style="font-size:12px; color:var(--muted); margin-top:2px">
-        ${alertas.length} préstamo${alertas.length !== 1 ? 's' : ''} requieren gestión
+        ${todas.length} en total · 🔴 ${vencidos} vencido${vencidos !== 1 ? 's' : ''} · ⚠️ ${todas.length - vencidos} atrasado${todas.length - vencidos !== 1 ? 's' : ''}
       </div>
     </div>
   </div>
+  ${todas.length > alertas.length ? `
+  <div style="font-size:12px; color:var(--muted); margin-bottom:8px">Las ${alertas.length} más urgentes:</div>` : ''}
 
-  <div style="max-height:400px; overflow-y:auto; scrollbar-width:thin;">
+  <div style="max-height:50vh; overflow-y:auto; scrollbar-width:thin; overscroll-behavior:contain;">
     ${alertas.length === 0
       ? `<div style="text-align:center; padding:24px; color:var(--muted); font-size:13.5px">
            ✅ No hay alertas pendientes
@@ -689,7 +694,10 @@ window.renderModalBannerAlertas = function renderModalBannerAlertas() {
 
   <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:16px">
     <button class="btn btn-outline" onclick="closeModal(event)">Cerrar</button>
-    <button class="btn btn-primary" onclick="closeModal(event); navigate('admin')">Panel Admin</button>
+    <button class="btn btn-primary"
+      onclick="closeModal(event); state._verTodasAlertas=true; state._alertaFiltro='todas'; state._alertaBusqueda=''; state._alertasLimite=null; navigate('admin')">
+      ${todas.length > alertas.length ? `Ver las ${todas.length}` : 'Panel Admin'}
+    </button>
   </div>`;
 };
 

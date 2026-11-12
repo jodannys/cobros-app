@@ -241,7 +241,7 @@ window.renderPanelCartera = function () {
                    border-top:1px solid #f1f5f9">
             <span style="width:28px; height:28px; background:#f8fafc; border-radius:6px;
                          display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0">🧾</span>
-            Revisar créditos eliminados antes
+            Revisar créditos eliminados
           </button>` : ''}
         </div>` : ''}
       </div>
@@ -1019,16 +1019,16 @@ window.renderModalRevisarBajas = function () {
 
   return `
   <div class="modal-handle"></div>
-  <div class="modal-title">🧾 Créditos eliminados antes de la actualización</div>
+  <div class="modal-title">🧾 Movimientos de créditos eliminados</div>
   <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:10px 12px;
               margin-bottom:12px;font-size:12.5px;color:#92400e;line-height:1.55">
-    Cuando antes se eliminaba un crédito o un cliente, la app <strong>sumaba dinero a tu disponible
-    y le restaba de más al cobrador</strong>, aunque ese dinero no se hubiera movido de verdad.
-    Por eso algunos saldos pueden verse mal.<br><br>
-    Revisa cada línea:<br>
-    • Si ese dinero <strong>no</strong> llegó a tus manos → toca <strong>No contar</strong>.<br>
-    • Si el cobrador <strong>sí</strong> te lo entregó → toca <strong>No contar</strong> y regístralo
-      como <strong>depósito</strong> con el monto real.<br><br>
+    Son movimientos de dinero que se anotaron solos al eliminar un crédito o un cliente.
+    Pueden hacer que <strong>tu disponible</strong> o <strong>la caja de un cobrador</strong> no cuadren
+    con el dinero real.<br><br>
+    <strong>Qué hacer:</strong><br>
+    1. Toca <strong>No contar</strong> en cada uno (o <strong>No contar ninguno</strong> para todos).<br>
+    2. Si el cobrador te entregó dinero de ese crédito, regístralo como <strong>depósito</strong>
+       con el monto que recibiste de verdad.<br><br>
     No se borra nada. Si te equivocas, toca <strong>Volver a contar</strong>.
   </div>
   ${activos.length > 1 ? `

@@ -124,9 +124,9 @@ const _SECCIONES_ADMIN = [
   },
   {
     tab: 'cuadre',
-    titulo: '🧾 Revisar créditos eliminados antes de la actualización',
-    keywords: ['ajustes viejos', 'revisar ajustes', 'no contar', 'volver a contar', 'saldo raro', 'no cuadra', 'credito eliminado antes', 'baja credito', 'baja cliente'],
-    contenido: 'Solo aparece en el menú ☰ si tienes créditos o clientes eliminados con la versión anterior de la app. Esa versión, al eliminar, <b>sumaba dinero a tu disponible y restaba de más al cobrador</b>, así que esos saldos pueden verse mal.<br>Revisa cada movimiento de la lista:<br>• Si ese dinero <b>no</b> llegó a tus manos → toca <b>No contar</b>.<br>• Si el cobrador <b>sí</b> te lo entregó → toca <b>No contar</b> y regístralo como depósito con el monto real.<br>No se borra nada, y puedes tocar <b>Volver a contar</b> si te equivocas.'
+    titulo: '🧾 Revisar créditos eliminados',
+    keywords: ['revisar creditos eliminados', 'movimientos', 'no contar', 'volver a contar', 'saldo raro', 'no cuadra', 'disponible mal', 'caja mal', 'credito eliminado', 'cliente eliminado'],
+    contenido: 'En el menú ☰ de Cuadre aparece <b>Revisar créditos eliminados</b> cuando hay movimientos de dinero que se anotaron solos al eliminar un crédito o un cliente. Esos movimientos pueden hacer que tu disponible o la caja de un cobrador no cuadren con el dinero real.<br><b>Qué hacer:</b><br>1. Toca <b>No contar</b> en cada uno (o <b>No contar ninguno</b>).<br>2. Si el cobrador te entregó dinero de ese crédito, regístralo como <b>depósito</b> con el monto que recibiste de verdad.<br>No se borra nada; si te equivocas, toca <b>Volver a contar</b>.'
   },
   {
     tab: 'cuadre',
