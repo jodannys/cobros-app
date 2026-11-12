@@ -32,8 +32,14 @@ document.addEventListener('pointerdown', e => {
   const rect  = fab.getBoundingClientRect()
   const startX = e.clientX - rect.left
   const startY = e.clientY - rect.top
+  const origenX = e.clientX
+  const origenY = e.clientY
+  // Al tocar con el dedo siempre hay un pequeño movimiento: solo es "arrastre" si se
+  // mueve más de 10 px. Antes cualquier temblor cancelaba el toque y había que tocar 2 veces.
+  const UMBRAL_ARRASTRE = 10
 
   const onMove = e => {
+    if (!moved && Math.hypot(e.clientX - origenX, e.clientY - origenY) < UMBRAL_ARRASTRE) return
     moved = true
 
     const x = Math.min(

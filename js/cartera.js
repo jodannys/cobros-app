@@ -388,7 +388,7 @@ window.renderPanelCartera = function () {
       <div style="display:flex; justify-content:space-between; align-items:center;
                   padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.06)">
         <div>
-          <div style="font-size:13px; font-weight:700; color:white">${cob?.nombre || '—'}</div>
+          <div style="font-size:13px; font-weight:700; color:white">${esc(cob?.nombre || '—')}</div>
           <div style="font-size:11px; color:rgba(255,255,255,0.4); margin-top:2px">
             ${m.descripcion || '—'} · ${m.fecha}
           </div>
@@ -409,75 +409,8 @@ window.renderPanelCartera = function () {
 
 </div>
 
-<!-- ÚLTIMOS MOVIMIENTOS -->
-<div class="card" style="margin-bottom:12px">
-  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
-    <div class="card-title" style="margin:0">📒 Movimientos</div>
-    <button onclick="state._verMovsCartera=!state._verMovsCartera; render()"
-      style="font-size:11px; font-weight:700; background:var(--bg); border:none;
-             padding:5px 12px; border-radius:8px; cursor:pointer; color:var(--muted)">
-      ${mostrarMovs ? 'Ver menos' : 'Ver todos'}
-    </button>
-  </div>
-  <div style="margin-bottom:12px">
-    <div style="font-size:11px; color:var(--muted); font-weight:700; text-transform:uppercase;
-                letter-spacing:0.5px; margin-bottom:6px">
-      📅 Filtrar por fecha
-    </div>
-    <div style="display:flex; gap:8px; align-items:center">
-      <div style="flex:1; position:relative">
-        ${renderDatePicker({
-    value: state._filtroFechaMovs || '',
-    placeholder: 'Selecciona una fecha...',
-    onChange: "state._filtroFechaMovs=VALUE||null; state._verMovsCartera=true; render()"
-  })}
-        ${!state._filtroFechaMovs ? `
-        <div style="display:none"><!-- placeholder handled by datePicker -->
-        </div>` : ''}
-      </div>
-      ${state._filtroFechaMovs ? `
-      <button onclick="state._filtroFechaMovs=null; render()"
-        style="padding:9px 12px; border-radius:10px; border:1.5px solid #e2e8f0;
-               background:white; font-size:12px; cursor:pointer; color:#94a3b8; font-weight:700;
-               white-space:nowrap">✕ Limpiar</button>` : ''}
-    </div>
-  </div>
-  ${(() => {
-      const todos = movsCartera().slice().sort((a, b) => b.fecha.localeCompare(a.fecha));
-      const filtrados = state._filtroFechaMovs ? todos.filter(m => m.fecha === state._filtroFechaMovs) : todos;
-      const lista = (mostrarMovs || state._filtroFechaMovs) ? filtrados : filtrados.slice(0, 5);
-      return lista.length === 0
-        ? `<div style="text-align:center; color:var(--muted); font-size:13px; padding:16px 0">Sin movimientos</div>`
-        : lista.map(m => {
-          const cob = (DB._cache['users'] || []).find(u => u.id === m.cobradorId);
-          const labels = {
-            inyeccion: { icon: '➕', color: '#16a34a', label: 'Inyección' },
-            envio_cobrador: { icon: '💰', color: '#1d4ed8', label: `Envío → ${cob?.nombre || '—'}` },
-            gasto_admin: { icon: '💸', color: '#9f1239', label: 'Gasto Admin' },
-            retiro: { icon: '🏠', color: '#92400e', label: 'Retiro Personal' },
-            confirmar_yape: { icon: '✅', color: '#16a34a', label: `Depósito de ${cob?.nombre || '—'}` },
-            deposito_cobrador: { icon: '📤', color: '#92400e', label: `Envío de ${cob?.nombre || '—'}` },
-          };
-          const cfg = labels[m.tipo] || { icon: '📌', color: 'var(--muted)', label: m.tipo };
-          return `
-        <div style="display:flex; justify-content:space-between; align-items:center;
-                    padding:10px 0; border-bottom:1px solid var(--border)">
-          <div style="display:flex; align-items:center; gap:10px">
-            <span style="font-size:18px">${cfg.icon}</span>
-            <div>
-              <div style="font-size:13px; font-weight:700; color:var(--text)">${cfg.label}</div>
-              <div style="font-size:11px; color:var(--muted); margin-top:2px">
-                ${formatDate(m.fecha)}${m.descripcion ? ' · ' + m.descripcion : ''}
-              </div>
-            </div>
-          </div>
-          <div style="font-weight:800; font-size:12px; color:${cfg.color}">
-            ${formatMoney(m.monto)}
-          </div>
-        </div>`;
-        }).join('');
-    })()}
-</div>
+<!-- MOVIMIENTOS (ver renderTarjetaMovimientos) -->
+${renderTarjetaMovimientos()}
 
 <!-- MOCHILAS -->
 <div class="card" style="margin-bottom:12px">
@@ -500,7 +433,7 @@ window.renderPanelCartera = function () {
       ${u.nombre.charAt(0)}
             </div>
             <div>
-              <div style="font-weight:700; font-size:14px; color:var(--text)">${u.nombre}</div>
+              <div style="font-weight:700; font-size:14px; color:var(--text)">${esc(u.nombre)}</div>
               <div style="font-size:11px; color:var(--muted); margin-top:2px">Dinero en su poder</div>
             </div>
           </div>
@@ -554,7 +487,7 @@ ${cobradores_admin.map(u => {
 
     <div style="flex:1; min-width:0">
       <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px">
-        <div style="font-weight:700; font-size:14px; color:var(--text)">${u.nombre}</div>
+        <div style="font-weight:700; font-size:14px; color:var(--text)">${esc(u.nombre)}</div>
         <div style="text-align:right">
           <div style="font-weight:800; color:#16a34a; font-size:14px; letter-spacing:-0.3px">
             ${formatMoney(c.total)}
@@ -1088,3 +1021,129 @@ window.anularAjustesBaja = unaVez(async function (id, anular = true) {
     alert('Error: ' + mensajeError(e));
   }
 });
+
+// ── MOVIMIENTOS DE CARTERA: filtros, fecha y lista con scroll propio ────
+// Con muchos movimientos (ej. 400), "Ver todos" alargaba la página y el botón para
+// recogerla quedaba fuera de la vista. Ahora: filtros por tipo, lista dentro de una
+// caja con scroll, de a 30, y el botón Ocultar siempre arriba.
+const _MOVS_POR_PAGINA = 30;
+
+// Cómo se muestra cada tipo de movimiento (sin nombres técnicos)
+function _infoMovimiento(m) {
+  const cob = esc((DB._cache['users'] || []).find(u => u.id === m.cobradorId)?.nombre || '—');
+  const tipos = {
+    inyeccion:         { icon: '➕', color: '#16a34a', label: 'Inyección de capital', grupo: 'entradas' },
+    confirmar_yape:    { icon: '✅', color: '#16a34a', label: `Depósito de ${cob}`, grupo: 'entradas' },
+    deposito_cobrador: { icon: '⏳', color: '#d97706', label: `Depósito de ${cob} (por confirmar)`, grupo: 'pendientes' },
+    envio_cobrador:    { icon: '💰', color: '#1d4ed8', label: `Envío a ${cob}`, grupo: 'salidas' },
+    gasto_admin:       { icon: '💸', color: '#9f1239', label: 'Gasto admin', grupo: 'salidas' },
+    retiro:            { icon: '🏠', color: '#92400e', label: 'Retiro personal', grupo: 'salidas' },
+    gasto_cobrador:    { icon: '➖', color: '#64748b', label: `Descuento en la caja de ${cob}`, grupo: 'ajustes' },
+    cobro_ajuste:      { icon: '➕', color: '#64748b', label: `Ajuste a favor de ${cob}`, grupo: 'ajustes' }
+  };
+  return tipos[m.tipo] || { icon: '📌', color: 'var(--muted)', label: 'Movimiento', grupo: 'ajustes' };
+}
+
+function _movimientosFiltrados() {
+  const filtro = state._filtroTipoMovs || 'todos';
+  const fecha = state._filtroFechaMovs || null;
+  return movsCartera()
+    .filter(m => !esAjusteDePago(m)) // no cuentan en los saldos: no se muestran
+    .filter(m => !fecha || m.fecha === fecha)
+    .filter(m => filtro === 'todos' || _infoMovimiento(m).grupo === filtro)
+    .sort((a, b) => String(b.fecha || '').localeCompare(String(a.fecha || '')));
+}
+
+function _itemMovimientoHTML(m) {
+  const cfg = _infoMovimiento(m);
+  return `
+  <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;
+              padding:10px 0; border-bottom:1px solid var(--border)">
+    <div style="display:flex; align-items:center; gap:10px; min-width:0">
+      <span style="font-size:18px; flex-shrink:0">${cfg.icon}</span>
+      <div style="min-width:0">
+        <div style="font-size:13px; font-weight:700; color:var(--text)">${cfg.label}</div>
+        <div style="font-size:11px; color:var(--muted); margin-top:2px;
+                    white-space:nowrap; overflow:hidden; text-overflow:ellipsis">
+          ${formatDate(m.fecha)}${m.descripcion ? ' · ' + esc(m.descripcion) : ''}
+        </div>
+      </div>
+    </div>
+    <div style="font-weight:800; font-size:12.5px; color:${cfg.color}; white-space:nowrap">
+      ${formatMoney(m.monto)}
+    </div>
+  </div>`;
+}
+
+function _listaMovimientosHTML() {
+  const lista = _movimientosFiltrados();
+  const desplegado = state._verMovsCartera || !!state._filtroFechaMovs;
+  if (!lista.length) {
+    return `<div style="text-align:center; color:var(--muted); font-size:13px; padding:16px 0">Sin movimientos</div>`;
+  }
+  if (!desplegado) return lista.slice(0, 5).map(_itemMovimientoHTML).join('');
+  const limite = state._movsLimite || _MOVS_POR_PAGINA;
+  const quedan = lista.length - limite;
+  return `
+  <div style="max-height:60vh; overflow-y:auto; overscroll-behavior:contain; margin:0 -4px; padding:0 4px">
+    ${lista.slice(0, limite).map(_itemMovimientoHTML).join('')}
+    ${quedan > 0 ? `
+      <button onclick="state._movsLimite=${limite + _MOVS_POR_PAGINA}; render()"
+        style="width:100%; margin-top:8px; padding:10px; border-radius:8px; border:1px dashed #cbd5e1;
+               background:white; font-size:13px; font-weight:700; color:var(--muted); cursor:pointer">
+        Mostrar ${Math.min(quedan, _MOVS_POR_PAGINA)} más (quedan ${quedan})
+      </button>` : ''}
+  </div>`;
+}
+
+window.renderTarjetaMovimientos = function () {
+  const desplegado = state._verMovsCartera || false;
+  const filtro = state._filtroTipoMovs || 'todos';
+  const base = movsCartera().filter(m => !esAjusteDePago(m));
+  const cuenta = (grupo) => base.filter(m => _infoMovimiento(m).grupo === grupo).length;
+  const chip = (valor, texto, n) => `
+    <button onclick="state._filtroTipoMovs='${valor}'; state._movsLimite=null; state._verMovsCartera=true; render()"
+      style="padding:5px 10px; border-radius:20px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;
+             border:1.5px solid ${filtro === valor ? 'var(--text)' : 'var(--border)'};
+             background:${filtro === valor ? 'var(--text)' : 'white'};
+             color:${filtro === valor ? 'white' : 'var(--muted)'}">
+      ${texto}${n !== null ? ` (${n})` : ''}
+    </button>`;
+  const pendientes = cuenta('pendientes');
+
+  return `
+<div class="card" style="margin-bottom:12px">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
+    <div class="card-title" style="margin:0">📒 Movimientos</div>
+    <button onclick="state._verMovsCartera=${!desplegado}; state._movsLimite=null; render()"
+      style="font-size:12px; font-weight:700; background:var(--bg); border:none;
+             padding:6px 12px; border-radius:8px; cursor:pointer; color:var(--text)">
+      ${desplegado ? '▲ Ocultar' : '▼ Ver todos'}
+    </button>
+  </div>
+
+  <div style="display:flex; gap:6px; overflow-x:auto; padding-bottom:4px; margin-bottom:10px; scrollbar-width:none">
+    ${chip('todos', 'Todos', null)}
+    ${chip('entradas', '⬇️ Entradas', cuenta('entradas'))}
+    ${chip('salidas', '⬆️ Salidas', cuenta('salidas'))}
+    ${pendientes ? chip('pendientes', '⏳ Por confirmar', pendientes) : ''}
+    ${cuenta('ajustes') ? chip('ajustes', 'Ajustes', cuenta('ajustes')) : ''}
+  </div>
+
+  <div style="display:flex; gap:8px; align-items:center; margin-bottom:10px">
+    <div style="flex:1; min-width:0">
+      ${renderDatePicker({
+        value: state._filtroFechaMovs || '',
+        placeholder: 'Filtrar por fecha',
+        onChange: "state._filtroFechaMovs=VALUE||null; state._movsLimite=null; state._verMovsCartera=true; render()"
+      })}
+    </div>
+    ${state._filtroFechaMovs ? `
+    <button onclick="state._filtroFechaMovs=null; state._movsLimite=null; render()"
+      style="padding:9px 12px; border-radius:10px; border:1.5px solid #e2e8f0; background:white;
+             font-size:12px; cursor:pointer; color:#64748b; font-weight:700; white-space:nowrap">✕ Quitar fecha</button>` : ''}
+  </div>
+
+  ${_listaMovimientosHTML()}
+</div>`;
+};

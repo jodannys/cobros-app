@@ -230,11 +230,11 @@ window._renderClienteItem = function (c, creditos, users, pagos, isAdmin) {
   line-height:1.2;
   word-break:break-word;
 ">
-        ${c.nombre}
+        ${esc(c.nombre)}
       </div>
       <div style="font-size:11.5px; color:var(--muted); display:flex; flex-direction:column; gap:1px; margin-top:2px">
         <span>DNI: ${c.dni}</span>
-        ${isAdmin ? `<span style="color:var(--muted); font-weight:600; font-size:8px">${cob.nombre}</span>` : ''}
+        ${isAdmin ? `<span style="color:var(--muted); font-weight:600; font-size:8px">${esc(cob.nombre)}</span>` : ''}
       </div>
     </div>
 
@@ -488,19 +488,10 @@ window.renderClientDetail = function () {
   const isAdmin = state.currentUser.role === 'admin';
 
   return `
- <div style="background: linear-gradient(135deg, #1a56db, #0ea96d); padding-bottom: 20px; font-family: sans-serif;">
+ <div style="background: linear-gradient(135deg, #1a56db, #0ea96d); padding-bottom: 20px;">
   <!-- Barra Superior -->
   <div style="padding: 14px 16px; display: flex; align-items: center; gap: 10px">
-    <!-- Volver: botón con ícono dibujado (el carácter ← quedaba desalineado y no parecía botón) -->
-    <button type="button" aria-label="Volver" onclick="backFromClient()"
-      style="height: 32px; padding: 0 12px 0 8px; display: flex; align-items: center; gap: 4px;
-             background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.3);
-             border-radius: 20px; font-size: 12px; font-weight: 700; cursor: pointer;
-             -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); flex-shrink: 0">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-           stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-      Volver
-    </button>
+    ${renderBtnVolver('backFromClient()', true)}
 
     <h2 style="color: white; font-size: 12px; font-weight: 600; flex: 1; margin: 0; letter-spacing: 0.5px;
                text-transform: uppercase; opacity: 0.75; text-align: center; white-space: nowrap;
@@ -508,19 +499,15 @@ window.renderClientDetail = function () {
       Ficha del cliente
     </h2>
 
-    <button type="button" onclick="openModal('editar-cliente')"
-      style="height: 32px; padding: 0 14px; display: flex; align-items: center;
-             background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.3);
-             border-radius: 20px; font-size: 12px; font-weight: 700; cursor: pointer;
-             -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); flex-shrink: 0">
-      EDITAR
+    <button type="button" class="btn-atras btn-atras--claro" style="padding:0 14px" onclick="openModal('editar-cliente')">
+      Editar
     </button>
   </div>
 
   <!-- Información del Cliente -->
   <div style="padding: 0 20px">
     <div style="font-size: 26px; font-weight: 800; color: white; letter-spacing: -0.5px; line-height: 1.1">
-      ${c.nombre}
+      ${esc(c.nombre)}
     </div>
 
     <!-- Línea Unificada: Negocio + ID (Mismo tamaño y alineación) -->
@@ -557,7 +544,7 @@ window.renderClientDetail = function () {
           ${isAdmin && cobrador ? `
           <div class="info-item" style="grid-column:1/-1">
             <div class="info-label">Cobrador asignado</div>
-            <div class="info-value" style="font-size:14px; font-weight:600; color:var(--text)">👤 ${cobrador.nombre}</div>
+            <div class="info-value" style="font-size:14px; font-weight:600; color:var(--text)">👤 ${esc(cobrador.nombre)}</div>
           </div>` : ''}
         </div>
         <div class="info-item" style="margin-top:8px">
@@ -635,7 +622,7 @@ window.enviarEstadoWhatsApp = async function (clienteId) {
   const totalCobrar = estado.pendienteTotal;
 
   const numeroRegistrado = c.telefono ? c.telefono.replace(/\D/g, '') : '';
-  const numeroInput = await showPrompt(`Confirma o edita el número de ${c.nombre}`, numeroRegistrado);
+  const numeroInput = await showPrompt(`Confirma o edita el número de ${esc(c.nombre)}`, numeroRegistrado);
   if (numeroInput === null) return;
   const numero = numeroInput.replace(/\D/g, '').trim();
   if (!numero) { alert('⚠️ Número inválido'); return; }

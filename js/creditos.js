@@ -671,7 +671,7 @@ window.renderModalEditarPago = function () {
 
   <div style="${_S.surface}; margin-bottom:14px">
     <div style="${_S.label}; margin-bottom:4px">Cliente</div>
-    <div style="font-weight:700; font-size:14px; color:var(--text)">${cliente?.nombre || '—'}</div>
+    <div style="font-weight:700; font-size:14px; color:var(--text)">${esc(cliente?.nombre || '—')}</div>
   </div>
 
   <div class="form-group">

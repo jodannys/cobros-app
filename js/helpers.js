@@ -406,3 +406,54 @@ window.mensajeError = function (e) {
   if (/insufficient permissions/i.test(e?.message || '')) return textos['permission-denied'];
   return e?.message || 'Ocurrió un error inesperado.';
 };
+
+// ── Toques que "no agarran a la primera" con el teclado abierto ─────────
+// En el celular, al tocar un botón mientras se escribe, primero se cierra el teclado:
+// la pantalla cambia de tamaño, el botón se mueve y el toque cae fuera (había que tocar
+// dos veces, ej. "Ingresar" o "Registrar pago"). Evitamos que el toque quite el foco
+// del campo: el teclado no se cierra antes del click y el botón responde a la primera.
+// (Al guardar, la pantalla se vuelve a dibujar y el teclado se cierra solo.)
+document.addEventListener('pointerdown', (e) => {
+  if (e.pointerType === 'mouse') return; // en computadora no hace falta
+  if (e.target.closest('input, textarea, select, label')) return;
+  // Solo botones de acción (no el calendario ni listas desplegables, que sí deben cerrar el teclado)
+  const boton = e.target.closest('button, .btn');
+  const activo = document.activeElement;
+  if (boton && activo && /^(INPUT|TEXTAREA)$/.test(activo.tagName) && !boton.contains(activo)) {
+    e.preventDefault();
+  }
+}, { passive: false });
+
+// ══════════════════════════════════════════════════════════════
+// COMPONENTES COMPARTIDOS (misma forma y comportamiento en toda la app)
+// ══════════════════════════════════════════════════════════════
+
+// Botón "‹ Volver". claro=true para fondos de color (ficha del cliente)
+window.renderBtnVolver = function (onclick, claro = false) {
+  return `
+  <button type="button" class="btn-atras${claro ? ' btn-atras--claro' : ''}" aria-label="Volver" onclick="${onclick}">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    Volver
+  </button>`;
+};
+
+// Selector de día: ‹ [Hoy | dd/mm/aaaa] ›
+// - Flechas: llaman a mover(-1 | 1)
+// - Tocar la fecha: abre el calendario de la app y guarda en state[estado]
+// - Nunca permite días futuros
+window.renderSelectorFecha = function ({ fecha, mover, estado }) {
+  const hoy = today();
+  const esHoy = fecha >= hoy;
+  const enc = (s) => encodeURIComponent(s).replace(/'/g, '%27');
+  const alElegir = `state.${estado} = VALUE > today() ? today() : VALUE; render()`;
+  return `
+  <div class="selector-fecha">
+    <button type="button" class="selector-fecha__flecha" aria-label="Día anterior" onclick="${mover}(-1)">‹</button>
+    <button type="button" class="selector-fecha__dia" onclick="abrirDatePicker('${enc(fecha)}', '${enc(alElegir)}')">
+      ${esHoy ? 'Hoy' : formatDate(fecha)}
+    </button>
+    <button type="button" class="selector-fecha__flecha" aria-label="Día siguiente"
+      onclick="${mover}(1)" ${esHoy ? 'disabled' : ''}>›</button>
+  </div>`;
+};

@@ -62,7 +62,7 @@ window.renderAdmin = function renderAdmin() {
         </div>
         <div style="margin-left:12px; min-width:0">
           <div style="font-weight:700; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">
-            ${u.nombre}
+            ${esc(u.nombre)}
           </div>
           <div style="font-size:11.5px; color:var(--muted); margin-top:2px">
             ${mis.length} clientes · ${activos.length} activos
@@ -111,7 +111,7 @@ window.renderAdmin = function renderAdmin() {
       ${u.nombre.charAt(0)}
     </div>
     <div style="flex:1; min-width:0">
-      <div style="font-weight:700; font-size:14px; color:var(--text)">${u.nombre}</div>
+      <div style="font-weight:700; font-size:14px; color:var(--text)">${esc(u.nombre)}</div>
       <div style="font-size:11.5px; color:var(--muted); margin-top:2px">Usuario: ${u.user}</div>
     </div>
     <button class="btn btn-sm btn-outline" onclick="abrirEditarAdmin('${u.id}')">✏️</button>
@@ -202,14 +202,13 @@ window.renderAdminCobrador = function renderAdminCobrador() {
 
   return `
   <div>
-    <div class="topbar">
-      <button class="back-btn" onclick="state.selectedCobrador=null;state._fechaCobrador=null;render()">←</button>
-      <h2>${cobrador.nombre}</h2>
-      <div style="display:flex; align-items:center; gap:8px">
-  ${renderIndicadorVivo()}
-  <button class="btn btn-sm btn-outline" onclick="openModal('editar-usuario')">✏️ Editar</button>
-  ${renderBtnAyudaAdmin()}
-</div>
+    <div class="topbar" style="gap:10px">
+      ${renderBtnVolver('state.selectedCobrador=null;state._fechaCobrador=null;render()')}
+      <h2 style="flex:1; text-align:center; font-size:16px">${esc(cobrador.nombre)}</h2>
+      <div style="display:flex; align-items:center; gap:8px; flex-shrink:0">
+        <button type="button" class="btn-atras" style="padding:0 14px" onclick="openModal('editar-usuario')">Editar</button>
+        ${renderBtnAyudaAdmin()}
+      </div>
     </div>
     <div class="page">
 
@@ -223,25 +222,7 @@ window.renderAdminCobrador = function renderAdminCobrador() {
           <div style="font-size:10px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px">
             📅 Cuadre del día
           </div>
-          <div style="display:flex; align-items:center; gap:10px">
-            <button onclick="cambiarFechaCobrador(-1)"
-              style="width:36px; height:36px; border-radius:8px; border:1px solid #e2e8f0;
-              background:white; font-size:18px; cursor:pointer; flex-shrink:0">‹</button>
-            <div onclick="document.getElementById('inputFechaCobrador').showPicker()"
-              style="flex:1; height:40px; border:1px solid #e2e8f0; border-radius:8px; background:white;
-              display:flex; align-items:center; justify-content:center; gap:8px;
-              font-weight:700; font-size:14px; cursor:pointer; user-select:none">
-              ${fechaVer.split('-').reverse().join('/')}
-            </div>
-            <input type="date" id="inputFechaCobrador" value="${fechaVer}"
-              onchange="state._fechaCobrador=this.value;render()"
-              style="position:fixed; opacity:0; pointer-events:none; top:0; left:0; width:1px; height:1px">
-            <button onclick="cambiarFechaCobrador(1)"
-              style="width:36px; height:36px; border-radius:8px; border:1px solid #e2e8f0;
-              background:white; font-size:18px; cursor:pointer; flex-shrink:0;
-              opacity:${fechaVer >= today() ? '0.3' : '1'}"
-              ${fechaVer >= today() ? 'disabled' : ''}>›</button>
-          </div>
+          ${renderSelectorFecha({ fecha: fechaVer, mover: 'cambiarFechaCobrador', estado: '_fechaCobrador' })}
         </div>
 
         ${_renderCajaChicaPro(caja, c, fechaVer)}
@@ -513,7 +494,7 @@ ${c.nota ? `
        onclick="state['_verClientesAdmin_${cobrador.id}']=!state['_verClientesAdmin_${cobrador.id}']; render()">
     <div style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;
                 white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1; min-width:0; color:white">
-      👥 Clientes de ${cobrador.nombre}
+      👥 Clientes de ${esc(cobrador.nombre)}
     </div>
     <div style="display:flex; align-items:center; gap:8px; flex-shrink:0; margin-left:8px">
       <span style="font-size:10px; padding:2px 8px; border-radius:10px; font-weight:700;
@@ -636,7 +617,7 @@ ${c.nota ? `
                   ${cl.nombre.charAt(0)}
                 </div>
                 <div class="client-info">
-                  <div class="client-name" style="font-weight:700;color:#1e293b">${cl.nombre}</div>
+                  <div class="client-name" style="font-weight:700;color:#1e293b">${esc(cl.nombre)}</div>
                   <div class="client-dni" style="font-size:12px;color:#94a3b8">DNI: ${cl.dni}</div>
                 </div>
                 <span style="padding:4px 10px;border-radius:6px;font-size:10.5px;
@@ -776,7 +757,7 @@ window.renderModalEditarCredito = function renderModalEditarCredito() {
   <div class="modal-title">✏️ Corregir Monto</div>
   <div style="background:var(--bg);border-radius:10px;padding:10px 14px;margin-bottom:14px">
     <div style="font-size:12px;color:var(--muted)">Cliente</div>
-    <div style="font-weight:700">${cliente?.nombre || '—'}</div>
+    <div style="font-weight:700">${esc(cliente?.nombre || '—')}</div>
   </div>
   <div class="form-group">
     <label>Monto prestado (S/) *</label>

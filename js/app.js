@@ -278,12 +278,6 @@ window.renderHistorial = function renderHistorial() {
       <div style="font-size:10px; color:var(--muted); font-weight:700; text-transform:uppercase">${titulo}</div>
       <div style="font-size:14px; font-weight:800; color:${color}; margin-top:2px">${formatMoney(valor)}</div>
     </div>`;
-  const esHoy = filtroFecha >= hoy;
-  const btnDia = (dias, simbolo, deshabilitado) => `
-    <button onclick="moverFechaHistorial(${dias})" ${deshabilitado ? 'disabled' : ''}
-      style="width:34px; height:38px; border-radius:8px; border:1px solid #e2e8f0; background:white;
-             font-size:15px; font-weight:800; cursor:${deshabilitado ? 'default' : 'pointer'};
-             color:${deshabilitado ? '#cbd5e1' : 'var(--primary)'}; flex-shrink:0">${simbolo}</button>`;
 
   return `
   <div class="topbar">
@@ -329,20 +323,7 @@ window.renderHistorial = function renderHistorial() {
         <div>
           <div style="font-size:11px; color:var(--muted); font-weight:700;
                       text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px">Fecha</div>
-          <div style="display:flex; align-items:center; gap:4px">
-            ${btnDia(-1, '‹', false)}
-            <!-- Solo la fecha (sin ícono, para no descuadrar); al tocarla se abre el calendario.
-                 No deja elegir días futuros. -->
-            <div onclick="abrirDatePicker('${encodeURIComponent(filtroFecha).replace(/'/g, '%27')}',
-                   '${encodeURIComponent("state._hFecha = VALUE > today() ? today() : VALUE; render()").replace(/'/g, '%27')}')"
-              style="flex:1; min-width:0; height:38px; display:flex; align-items:center; justify-content:center;
-                     border:1px solid #e2e8f0; border-radius:8px; background:white; white-space:nowrap;
-                     overflow:hidden; text-overflow:ellipsis; font-size:13px; font-weight:700;
-                     color:var(--text); cursor:pointer">
-              ${esHoy ? 'Hoy' : formatDate(filtroFecha)}
-            </div>
-            ${btnDia(1, '›', esHoy)}
-          </div>
+          ${renderSelectorFecha({ fecha: filtroFecha, mover: 'moverFechaHistorial', estado: '_hFecha' })}
         </div>
         <div>
           <div style="font-size:11px; color:var(--muted); font-weight:700;
@@ -770,8 +751,8 @@ window.addEventListener('popstate', () => {
       <div style="display:flex;align-items:center;justify-content:center;height:100vh;
         flex-direction:column;gap:12px;padding:20px;text-align:center">
         <div style="font-size:40px">⚠️</div>
-        <div style="font-size:16px;color:#e53e3e;font-family:sans-serif">Error conectando con la base de datos</div>
-        <div style="font-size:13px;color:#718096;font-family:sans-serif">${e.message}</div>
+        <div style="font-size:16px;color:#e53e3e;font-weight:700">No se pudo conectar</div>
+        <div style="font-size:13px;color:#718096">${esc(mensajeError(e))}</div>
         <button onclick="location.reload()"
           style="margin-top:12px;padding:10px 20px;background:#1a56db;color:white;
           border:none;border-radius:10px;cursor:pointer;font-size:14px">Reintentar</button>

@@ -213,7 +213,7 @@ window.renderPanelCajaChica = function () {
           <div style="display:flex;justify-content:space-between;align-items:center;
             padding:6px 0;border-bottom:1px solid #f8fafc">
             <div>
-              <div style="font-size:13px;font-weight:600">${cl?.nombre || '—'}</div>
+              <div style="font-size:13px;font-weight:600">${esc(cl?.nombre || '—')}</div>
               <div style="font-size:11px;color:var(--muted)">${cr.porcentajeSeguro}% de ${formatMoney(cr.monto)}</div>
             </div>
             <div style="font-size:13px;font-weight:800;color:#ea580c">+${formatMoney(cr.montoSeguro)}</div>
@@ -306,7 +306,7 @@ window.renderCajaChicaAdmin = function (cobradorId, fecha) {
     const cl = (DB._cache['clientes'] || []).find(c => c.id === cr.clienteId);
     return `
         <div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0">
-          <span style="color:var(--muted)">${cl?.nombre || '—'} (${cr.porcentajeSeguro}%)</span>
+          <span style="color:var(--muted)">${esc(cl?.nombre || '—')} (${cr.porcentajeSeguro}%)</span>
           <span style="color:#ea580c;font-weight:700">+${formatMoney(cr.montoSeguro)}</span>
         </div>`;
   }).join('')}
@@ -470,7 +470,7 @@ window.renderModalAsignarCaja = function () {
   const cajaExistente = cajas.find(c => c.cobradorId === u.id && c.fecha === fechaModal);
   return `
   <div class="modal-handle"></div>
-  <div class="modal-title">💼 Caja Chica — ${u.nombre}</div>
+  <div class="modal-title">💼 Caja Chica — ${esc(u.nombre)}</div>
   <div class="form-group">
     <label>Fecha</label>
     <input type="hidden" id="cajaFecha" value="${fechaModal}">

@@ -579,7 +579,7 @@ window.renderModalGestionarCredito = function renderModalGestionarCredito() {
   </div>
 
   <div style="background:var(--bg);border-radius:12px;padding:14px;margin-bottom:16px">
-    <div style="font-weight:700;font-size:16px;margin-bottom:8px">${c.nombre}</div>
+    <div style="font-weight:700;font-size:16px;margin-bottom:8px">${esc(c.nombre)}</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       ${mostrarAlertaRoja
       ? `<span style="background:#fff5f5;color:var(--danger);padding:4px 10px;border-radius:20px;font-size:12px;font-weight:700;border:1px solid #fed7d7">${textoBadge}</span>`
@@ -660,7 +660,7 @@ window.renderModalBannerAlertas = function renderModalBannerAlertas() {
               <div style="flex:1; min-width:0">
                 <div style="font-weight:700; font-size:14.5px; color:var(--text);
                             white-space:nowrap; overflow:hidden; text-overflow:ellipsis">
-                  ${a.cliente?.nombre || 'Cliente sin nombre'}
+                  ${esc(a.cliente?.nombre || 'Cliente sin nombre')}
                 </div>
                 <div style="font-size:11.5px; color:var(--muted); margin-top:3px">
                   👤 ${a.cobrador?.nombre || 'Sin cobrador'}

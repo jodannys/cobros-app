@@ -105,19 +105,32 @@ window.bindLogin = function () {
 
   // LOGIN
   btnLogin.onclick = async () => {
-    btnLogin.disabled = true;
-    btnLogin.textContent = 'Verificando...';
-    btnLogin.classList.add('loading');
+    if (btnLogin.disabled) return; // evita doble toque mientras entra
 
     const userVal = loginUserInput.value.trim();
     const passVal = loginPassInput.value.trim();
     const remember = document.getElementById('rememberMe')?.checked;
+
+    // Campos vacíos: avisar sin consultar al servidor
+    if (!userVal || !passVal) {
+      state.loginUserField = userVal;
+      state.loginPassField = passVal;
+      state.loginError = !userVal ? 'Escribe tu usuario' : 'Escribe tu contraseña';
+      render();
+      return;
+    }
+
+    btnLogin.disabled = true;
+    btnLogin.textContent = 'Verificando...';
+    btnLogin.classList.add('loading');
 
     let resultado;
     let found = null;
     try {
       resultado = await fbLogin(userVal, passVal, remember);
       if (resultado.ok) {
+        // La clave ya es correcta; ahora se descargan los datos (puede tardar unos segundos)
+        btnLogin.textContent = 'Cargando tus datos...';
         await DB.init();
         found = (DB._cache['users'] || []).find(u => u.id === resultado.uid) || null;
         if (!found) {

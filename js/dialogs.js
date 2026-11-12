@@ -43,8 +43,29 @@ window.showAlert = function (msg, type = 'error') {
   setTimeout(() => overlay.querySelector('#_alertOkBtn')?.focus(), 50);
 };
 
-// Override nativo
-window.alert = (msg) => window.showAlert(String(msg ?? ''), 'error');
+// Override nativo: todos los alert() de la app usan la ventana propia.
+// - Ícono y color según el mensaje (éxito ✅ / aviso ⚠️), no siempre error
+// - Texto escapado y con saltos de línea
+window.alert = (msg) => {
+  let texto = String(msg ?? '').trim();
+  const esExito = /^✅|completad|correctamente|guardad[oa] con éxito/i.test(texto);
+  const esAviso = !esExito && /^(ingresa|selecciona|completa|escribe|todos los campos|nombre y|la contraseña|ese |ya existe|no puedes|no se puede)/i.test(texto);
+  texto = texto.replace(/^(✅|⚠️|❌|🎉)\s*/u, ''); // el ícono ya va arriba
+  const html = texto
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/\n/g, '<br>');
+  window.showAlert(html, esExito ? 'success' : esAviso ? 'warning' : 'error');
+};
+
+// Animaciones de las ventanas (antes solo existían después de abrir un calendario)
+if (!document.getElementById('dialog-anim-styles')) {
+  const st = document.createElement('style');
+  st.id = 'dialog-anim-styles';
+  st.textContent = `
+    @keyframes fadeIn { from { opacity:0 } to { opacity:1 } }
+    @keyframes popIn  { from { opacity:0; transform:scale(0.92) } to { opacity:1; transform:scale(1) } }`;
+  document.head.appendChild(st);
+}
 
 // ── showPrompt ────────────────────────────────────────────────
 // Uso: const val = await showPrompt('Confirma el número', '51999...');
