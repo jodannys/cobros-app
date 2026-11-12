@@ -20,12 +20,13 @@ self.addEventListener('message', e => {
 
 // Al activar: borrar cachés viejos y tomar control
 self.addEventListener('activate', e => {
+  // Borrar copias viejas y, al terminar, tomar el control de las pestañas abiertas
+  // (esto dispara la recarga en la página cuando el usuario tocó "Actualizar")
   e.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
-    )
+    caches.keys()
+      .then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
+      .then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
 // Estrategia: Network-first para HTML/JS/CSS — siempre intenta red primero

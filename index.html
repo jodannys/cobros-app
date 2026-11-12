@@ -54,48 +54,80 @@
 <script type="module" src="js/botonFab.js"></script>
 
 <script>
+  // ── Actualización de la app ─────────────────────────────────
+  // Antes el aviso guardaba la versión que esperaba al aparecer. Si mientras tanto llegaba
+  // otra más nueva, esa quedaba descartada y "Actualizar" le hablaba a una versión muerta:
+  // el botón no hacía nada. Ahora se usa siempre la versión que espera EN ESE MOMENTO,
+  // y si en 3 segundos no cambió, se recarga igual.
+  let _registroSW = null;
+  let _recargando = false;
+  function recargarUnaVez() {
+    if (_recargando) return;
+    _recargando = true;
+    window.location.reload();
+  }
+
   if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      // Solo recargar si el usuario pidió actualizar (evita recargas inesperadas)
+      if (document.getElementById('banner-update')?.dataset.actualizando) recargarUnaVez();
+    });
+
     navigator.serviceWorker.register('/sw.js').then(reg => {
+      _registroSW = reg;
       // Revisar si ya hay uno esperando al cargar
-      if (reg.waiting) mostrarBannerActualizacion(reg.waiting);
+      if (reg.waiting && navigator.serviceWorker.controller) mostrarBannerActualizacion();
 
       reg.addEventListener('updatefound', () => {
         const nuevo = reg.installing;
+        if (!nuevo) return;
         nuevo.addEventListener('statechange', () => {
           if (nuevo.state === 'installed' && navigator.serviceWorker.controller) {
-            mostrarBannerActualizacion(nuevo);
+            mostrarBannerActualizacion();
           }
         });
       });
     });
   }
 
-  function mostrarBannerActualizacion(swEsperando) {
+  function mostrarBannerActualizacion() {
     if (document.getElementById('banner-update')) return;
     const banner = document.createElement('div');
     banner.id = 'banner-update';
     banner.style.cssText = `
-      position:fixed; bottom:80px; left:50%; transform:translateX(-50%);
-      background:#1e293b; color:white; padding:12px 20px;
+      position:fixed; bottom:calc(84px + env(safe-area-inset-bottom, 0px)); left:50%; transform:translateX(-50%);
+      background:#0f172a; color:white; padding:10px 10px 10px 16px;
       border-radius:14px; z-index:99999; display:flex;
-      align-items:center; gap:12px; box-shadow:0 4px 20px rgba(0,0,0,0.4);
-      font-family:sans-serif; font-size:14px; white-space:nowrap;
+      align-items:center; gap:12px; box-shadow:0 8px 24px rgba(0,0,0,0.35);
+      font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size:13.5px; font-weight:600; white-space:nowrap;
       border:1px solid rgba(255,255,255,0.1)`;
     banner.innerHTML = `
-      <span>🔄 Nueva versión disponible</span>
-      <button id="btn-actualizar" style="
-        background:#2563eb; color:white; border:none; border-radius:8px;
-        padding:6px 14px; font-size:13px; font-weight:700; cursor:pointer">
+      <span>Hay una versión nueva</span>
+      <button id="btn-actualizar" type="button" style="
+        background:#2563eb; color:white; border:none; border-radius:10px;
+        padding:8px 14px; font-size:13px; font-weight:700; cursor:pointer">
         Actualizar
       </button>`;
     document.body.appendChild(banner);
 
-    document.getElementById('btn-actualizar').addEventListener('click', () => {
-      // Escuchar cuando el nuevo SW toma control y recargar
-      navigator.serviceWorker.addEventListener('controllerchange', () => {
-        window.location.reload();
-      });
-      swEsperando.postMessage({ type: 'SKIP_WAITING' });
+    document.getElementById('btn-actualizar').addEventListener('click', (e) => {
+      const btn = e.currentTarget;
+      if (banner.dataset.actualizando) return;
+      banner.dataset.actualizando = '1';
+      btn.textContent = 'Actualizando...';
+      btn.style.opacity = '0.7';
+
+      // La versión que espera AHORA (no la del momento en que apareció el aviso)
+      const esperando = _registroSW && _registroSW.waiting;
+      if (esperando) {
+        esperando.postMessage({ type: 'SKIP_WAITING' });
+      } else {
+        recargarUnaVez(); // ya no hay nada esperando: basta con recargar
+        return;
+      }
+      // Plan B: si en 3 segundos no cambió la versión, recargar igual
+      setTimeout(recargarUnaVez, 3000);
     });
   }
 </script>
