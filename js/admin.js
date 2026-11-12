@@ -1018,7 +1018,6 @@ window.renderBloqueAlertas = function (alertas) {
         <span style="font-size:22px">🚨</span>
         <div>
           <div style="font-weight:700; font-size:15px; color:#9f1239">Alertas (${alertas.length})</div>
-          <div style="font-size:11.5px; color:var(--muted)">Lo más urgente primero</div>
         </div>
       </div>
       ${alertas.length > 3 ? `
