@@ -197,7 +197,7 @@ window.renderPanelCajaChica = function () {
             style="width:100%;margin-top:10px;padding:8px;border-radius:8px;
             border:1px solid #e2e8f0;background:white;font-size:13px;
             font-weight:600;color:var(--muted);cursor:pointer">
-            ${mostrarTodos ? '▲ Ver menos' : `▼ Ver todos (${gastos.length})`}
+            ${mostrarTodos ? iconoFlecha(true) + ' Ver menos' : iconoFlecha(false) + ` Ver todos (${gastos.length})`}
           </button>` : ''}
         `}
 
@@ -292,7 +292,7 @@ window.renderCajaChicaAdmin = function (cobradorId, fecha) {
           style="width:100%;margin-top:8px;padding:6px;border-radius:8px;
           border:1px solid #e2e8f0;background:white;font-size:12px;
           font-weight:600;color:var(--muted);cursor:pointer">
-          ${mostrarTodos ? '▲ Ver menos' : `▼ Ver todos (${caja.gastos.length})`}
+          ${mostrarTodos ? iconoFlecha(true) + ' Ver menos' : iconoFlecha(false) + ` Ver todos (${caja.gastos.length})`}
         </button>` : ''}
     </div>` : ''}
 

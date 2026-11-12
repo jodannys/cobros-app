@@ -257,7 +257,7 @@ window.renderAdminCobrador = function renderAdminCobrador() {
                 style="width:100%; margin-top:12px; padding:10px; border-radius:8px;
                 border:1px solid #e2e8f0; background:white; font-size:13px;
                 font-weight:600; color:#94a3b8; cursor:pointer">
-                ${mostrarTodos ? '▲ Ver menos' : `▼ Ver todos (${gastos.length})`}
+                ${mostrarTodos ? iconoFlecha(true) + ' Ver menos' : iconoFlecha(false) + ` Ver todos (${gastos.length})`}
               </button>` : ''}`}
         </div>
 
@@ -276,7 +276,7 @@ window.renderAdminCobrador = function renderAdminCobrador() {
         ${formatMoney(meta.cobrosExtra.reduce((s, x) => s + Number(x.pago.monto), 0))}
       </span>
       <span style="font-size:12px; color:#92400e">
-        ${state[`_cobrosExtraAdminOpen_${cobrador.id}`] ? '▲' : '▼'}
+        ${state[`_cobrosExtraAdminOpen_${cobrador.id}`] ? iconoFlecha(true) : iconoFlecha(false)}
       </span>
     </div>
   </div>
@@ -328,7 +328,7 @@ window.renderAdminCobrador = function renderAdminCobrador() {
       </button>
 
       <span style="font-size:16px; color:white">
-        ${state[`_verRutaAdmin_${cobrador.id}`] ? '▲' : '▼'}
+        ${state[`_verRutaAdmin_${cobrador.id}`] ? iconoFlecha(true) : iconoFlecha(false)}
       </span>
     </div>
   </div>
@@ -507,7 +507,7 @@ ${c.nota ? `
         ${listaClientes.length} / ${clientes.length}
       </span>
       <span style="font-size:16px; color:white">
-        ${state[`_verClientesAdmin_${cobrador.id}`] ? '▲' : '▼'}
+        ${state[`_verClientesAdmin_${cobrador.id}`] ? iconoFlecha(true) : iconoFlecha(false)}
       </span>
     </div>
   </div>
@@ -571,29 +571,42 @@ ${c.nota ? `
 
     <!-- Filtros -->
     <div class="filtros-scroll" style="margin-bottom:10px; display:flex; gap:5px; overflow-x:auto; padding-bottom:4px">
-  ${[
-        { key: 'todos', label: 'Todos' },
-        { key: 'activos', label: '✅ Activos' },
-        { key: 'atrasados', label: '🔴 Atrasados' },
-        { key: 'sin_credito', label: '🆕 Sin crédito' }, // Acortamos el texto para ganar espacio
-      ].map(f => `
+  ${(() => {
+        // Cuántos clientes hay en cada filtro
+        const conActivo = (cl) => creditos.some(cr => cr.clienteId === cl.id && cr.activo);
+        const conteo = {
+          todos: clientes.length,
+          activos: clientes.filter(conActivo).length,
+          atrasados: clientes.filter(cl => estaRealmenteAtrasado(cl.id)).length,
+          sin_credito: clientes.filter(cl => !conActivo(cl)).length
+        };
+        return [
+          { key: 'todos', label: 'Todos' },
+          { key: 'activos', label: '✅ Activos' },
+          { key: 'atrasados', label: '🔴 Atrasados' },
+          { key: 'sin_credito', label: '🆕 Sin crédito' },
+        ].map(f => `
     <button onclick="event.stopPropagation(); state['${filtroKey}']='${f.key}'; render()"
       class="filtro-btn ${filtroAdminCob === f.key ? 'active' : ''}"
       style="padding: 5px 10px; font-size: 10.5px; border-radius: 15px; white-space: nowrap; flex-shrink: 0; height: 28px; display: flex; align-items: center; gap: 4px">
-      ${f.label}
-    </button>`).join('')}
+      ${f.label} (${conteo[f.key]})
+    </button>`).join('');
+      })()}
 </div>
 
     <!-- Lista -->
     ${(() => {
-        const busqueda = (state[`_searchClientes_${cobrador.id}`] || '').toLowerCase();
+        // Búsqueda sin importar tildes ni mayúsculas
+        const busqueda = _normAyuda(state[`_searchClientes_${cobrador.id}`] || '').trim();
         const filtrados = busqueda
           ? listaClientes.filter(cl =>
-            cl.nombre.toLowerCase().includes(busqueda) ||
-            (cl.dni || '').toLowerCase().includes(busqueda))
+            _normAyuda(cl.nombre).includes(busqueda) ||
+            _normAyuda(cl.dni).includes(busqueda) ||
+            _normAyuda(cl.negocio).includes(busqueda))
           : listaClientes;
 
-        return filtrados.length === 0
+        // La lista tiene su propio scroll: buscador y filtros quedan siempre a la vista
+        return `<div class="lista-scroll" data-scroll-id="clientes-admin-${cobrador.id}">` + (filtrados.length === 0
           ? `<div class="empty-state" style="padding:20px 0">
              <div class="icon">👤</div>
              <p>Sin clientes en este filtro</p>
@@ -619,18 +632,18 @@ ${c.nota ? `
               <div class="client-item" onclick="selectClient('${cl.id}')" style="cursor:pointer">
                 <div class="client-avatar"
                   style="background:linear-gradient(135deg,#1a56db,#0ea96d);color:white;font-weight:800">
-                  ${cl.nombre.charAt(0)}
+                  ${esc(String(cl.nombre || '?').charAt(0).toUpperCase())}
                 </div>
                 <div class="client-info">
                   <div class="client-name" style="font-weight:700;color:#1e293b">${esc(cl.nombre)}</div>
-                  <div class="client-dni" style="font-size:12px;color:#94a3b8">DNI: ${cl.dni}</div>
+                  <div class="client-dni" style="font-size:12px;color:#94a3b8">DNI: ${esc(cl.dni)}</div>
                 </div>
                 <span style="padding:4px 10px;border-radius:6px;font-size:10.5px;
                              font-weight:700;white-space:nowrap;${badgeStyle}">
                   ${badge}
                 </span>
               </div>`;
-          }).join('');
+          }).join('')) + `</div>`;
       })()}
 
   </div>` : ''}
@@ -1010,7 +1023,7 @@ window.renderBloqueAlertas = function (alertas) {
       <button onclick="state._verTodasAlertas=${!desplegado}; state._alertasLimite=null; render()"
         style="flex-shrink:0; padding:7px 12px; border-radius:8px; border:1px solid #fecdd3;
                background:white; font-size:12.5px; font-weight:700; color:#9f1239; cursor:pointer">
-        ${desplegado ? '▲ Ocultar' : '▼ Ver todas'}
+        ${desplegado ? iconoFlecha(true) + ' Ocultar' : iconoFlecha(false) + ' Ver todas'}
       </button>` : ''}
     </div>
 

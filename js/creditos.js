@@ -72,7 +72,7 @@ window.renderSeccionCreditosCliente = function (clienteId) {
                    display:flex; justify-content:space-between; align-items:center;
                    transition:background 0.15s">
             <span>📁 Créditos cerrados (${antiguos.length})</span>
-            <span id="flecha-hist" style="color:var(--muted); font-size:11px">▼</span>
+            <span id="flecha-hist" style="color:var(--muted); display:flex">${iconoFlecha(false)}</span>
           </button>
           <div id="cajon-historial" style="display:none; margin-top:10px;
                flex-direction:column; gap:10px">
@@ -91,7 +91,7 @@ window.toggleHistorial = function () {
   if (!cajon) return;
   const isHidden = cajon.style.display === 'none';
   cajon.style.display = isHidden ? 'flex' : 'none';
-  flecha.innerText = isHidden ? '▲' : '▼';
+  if (flecha) flecha.innerHTML = iconoFlecha(isHidden);
 };
 
 // ── renderCreditoCard ─────────────────────────────────────────

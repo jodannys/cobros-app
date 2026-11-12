@@ -457,3 +457,10 @@ window.renderSelectorFecha = function ({ fecha, mover, estado }) {
       onclick="${mover}(1)" ${esHoy ? 'disabled' : ''}>›</button>
   </div>`;
 };
+
+// Flecha para desplegar/ocultar (⌄ abajo, ⌃ arriba), mismo trazo que las flechas ‹ › de la app
+window.iconoFlecha = function (arriba, tam = 16) {
+  return `<svg width="${tam}" height="${tam}" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+    style="vertical-align:middle; flex-shrink:0; margin-top:-2px"><path d="${arriba ? 'M18 15l-6-6-6 6' : 'M6 9l6 6 6-6'}"/></svg>`;
+};

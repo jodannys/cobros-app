@@ -1118,7 +1118,7 @@ window.renderTarjetaMovimientos = function () {
     <button onclick="state._verMovsCartera=${!desplegado}; state._movsLimite=null; render()"
       style="font-size:12px; font-weight:700; background:var(--bg); border:none;
              padding:6px 12px; border-radius:8px; cursor:pointer; color:var(--text)">
-      ${desplegado ? '▲ Ocultar' : '▼ Ver todos'}
+      ${desplegado ? iconoFlecha(true) + ' Ocultar' : iconoFlecha(false) + ' Ver todos'}
     </button>
   </div>
 

@@ -589,7 +589,7 @@ window.renderCuadre = function () {
         <button onclick="state._verTodosGastos=!state._verTodosGastos; render()"
           style="width:100%; margin-top:10px; padding:8px; border-radius:8px; border:none;
                  background:var(--bg); font-size:12.5px; font-weight:600; color:var(--muted); cursor:pointer">
-          ${mostrarTodos ? '▲ Ver menos' : '▼ Ver todos (' + gastos.length + ')'}
+          ${mostrarTodos ? iconoFlecha(true) + ' Ver menos' : iconoFlecha(false) + ' Ver todos (' + gastos.length + ')'}
         </button>` : ''}
     </div>
 <!-- SWITCH DE RUTA -->
@@ -637,7 +637,7 @@ window.renderCuadre = function () {
       ${indicadorGPS}
 
       <span style="font-size:16px; color:white">
-        ${state._clientesPendientesOpen ? '▲' : '▼'}
+        ${state._clientesPendientesOpen ? iconoFlecha(true) : iconoFlecha(false)}
       </span>
     </div>
   </div>
@@ -837,7 +837,7 @@ ${d.estadoVisual === 'pendiente' ? `
         ${formatMoney(meta.cobrosExtra.reduce((s, x) => s + Number(x.pago.monto), 0))}
       </span>
       <span style="font-size:12px; color:#92400e">
-        ${state._cobrosExtraOpen ? '▲' : '▼'}
+        ${state._cobrosExtraOpen ? iconoFlecha(true) : iconoFlecha(false)}
       </span>
     </div>
   </div>
