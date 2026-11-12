@@ -33,6 +33,8 @@ window.getCuadreDelDia = function (cobradorId, fecha) {
     total: yape + efectivo + transferencia + totalSeguros, // total real para saldo
     totalPagos: yape + efectivo + transferencia,           // solo cobros
     totalSeguros,
+    // Seguros por forma de pago (para saber cuánto efectivo / Yape debe tener en total)
+    segurosYape, segurosEfectivo, segurosTransferencia,
     nota: notaObj ? notaObj.nota : '',
     pagos: pagosDia
   };
@@ -340,27 +342,35 @@ ${(caja.totalSeguros || 0) > 0 ? `
         </div>
       </div>
 
+      ${(() => {
+        // RECIBIDO HOY: cuotas + seguros, y cuánto de cada forma de pago debe tener en total
+        const cuotas = Number(cuadre.totalPagos != null ? cuadre.totalPagos : caja.cobrosDelDia - (caja.totalSeguros || 0)) || 0;
+        const seguros = Number(cuadre.totalSeguros != null ? cuadre.totalSeguros : caja.totalSeguros) || 0;
+        const metodo = (icono, nombre, cuota, seguro) => `
+          <div style="background:var(--bg); border-radius:8px; padding:10px">
+            <div style="font-size:15px; margin-bottom:4px">${icono}</div>
+            <div style="font-weight:800; font-size:13px; color:var(--text)">${formatMoney(cuota + seguro)}</div>
+            <div style="font-size:9.5px; color:var(--muted); font-weight:600; margin-top:2px">${nombre}</div>
+            ${seguro > 0 ? `<div style="font-size:9px; color:#ea580c; font-weight:700; margin-top:2px">incl. seguro ${formatMoney(seguro)}</div>` : ''}
+          </div>`;
+        return `
       <div style="border-top:1px solid var(--border); padding-top:12px">
-        <div style="font-size:10px; color:var(--muted); font-weight:700; text-transform:uppercase;
-                    letter-spacing:0.6px; margin-bottom:10px; text-align:center">Cobros por método</div>
-        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; text-align:center">
-          <div style="background:var(--bg); border-radius:8px; padding:10px">
-            <div style="font-size:15px; margin-bottom:4px">📱</div>
-            <div style="font-weight:800; font-size:13px; color:var(--text)">${formatMoney(cuadre.yape)}</div>
-            <div style="font-size:9.5px; color:var(--muted); font-weight:600; margin-top:2px">Yape/Plin</div>
+        <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:4px">
+          <div style="font-size:10px; color:var(--muted); font-weight:700; text-transform:uppercase; letter-spacing:0.6px">
+            💰 Recibido hoy
           </div>
-          <div style="background:var(--bg); border-radius:8px; padding:10px">
-            <div style="font-size:15px; margin-bottom:4px">💵</div>
-            <div style="font-weight:800; font-size:13px; color:var(--text)">${formatMoney(cuadre.efectivo)}</div>
-            <div style="font-size:9.5px; color:var(--muted); font-weight:600; margin-top:2px">Efectivo</div>
-          </div>
-          <div style="background:var(--bg); border-radius:8px; padding:10px">
-            <div style="font-size:15px; margin-bottom:4px">🏦</div>
-            <div style="font-weight:800; font-size:13px; color:var(--text)">${formatMoney(cuadre.transferencia)}</div>
-            <div style="font-size:9.5px; color:var(--muted); font-weight:600; margin-top:2px">Transf.</div>
-          </div>
+          <div style="font-size:18px; font-weight:900; color:#16a34a">${formatMoney(cuotas + seguros)}</div>
         </div>
-      </div>
+        <div style="font-size:11px; color:var(--muted); margin-bottom:10px">
+          Cuotas ${formatMoney(cuotas)}${seguros > 0 ? ` · Seguros ${formatMoney(seguros)}` : ''}
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; text-align:center">
+          ${metodo('📱', 'Yape/Plin', Number(cuadre.yape) || 0, Number(cuadre.segurosYape) || 0)}
+          ${metodo('💵', 'Efectivo', Number(cuadre.efectivo) || 0, Number(cuadre.segurosEfectivo) || 0)}
+          ${metodo('🏦', 'Transf.', Number(cuadre.transferencia) || 0, Number(cuadre.segurosTransferencia) || 0)}
+        </div>
+      </div>`;
+      })()}
     </div>
   </div>
 
