@@ -490,16 +490,29 @@ window.renderClientDetail = function () {
   return `
  <div style="background: linear-gradient(135deg, #1a56db, #0ea96d); padding-bottom: 20px; font-family: sans-serif;">
   <!-- Barra Superior -->
-  <div style="padding: 16px 20px; display: flex; align-items: center; gap: 16px">
-    <button style="background: none; border: none; color: white; font-size: 24px; cursor: pointer; padding: 0; display: flex; align-items: center; opacity: 0.8;" onclick="backFromClient()">
-      <span style="transform: translateY(-1px);">←</span>
+  <div style="padding: 14px 16px; display: flex; align-items: center; gap: 10px">
+    <!-- Volver: botón con ícono dibujado (el carácter ← quedaba desalineado y no parecía botón) -->
+    <button type="button" aria-label="Volver" onclick="backFromClient()"
+      style="height: 32px; padding: 0 12px 0 8px; display: flex; align-items: center; gap: 4px;
+             background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.3);
+             border-radius: 20px; font-size: 12px; font-weight: 700; cursor: pointer;
+             -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); flex-shrink: 0">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      Volver
     </button>
-    
-    <h2 style="color: white; font-size: 13px; font-weight: 500; flex: 1; margin: 0; letter-spacing: 0.5px; text-transform: uppercase; opacity: 0.7">
-      Ficha del Cliente
+
+    <h2 style="color: white; font-size: 12px; font-weight: 600; flex: 1; margin: 0; letter-spacing: 0.5px;
+               text-transform: uppercase; opacity: 0.75; text-align: center; white-space: nowrap;
+               overflow: hidden; text-overflow: ellipsis">
+      Ficha del cliente
     </h2>
 
-    <button style="background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.3); font-size: 11px; font-weight: 600; padding: 5px 12px; border-radius: 20px; cursor: pointer; backdrop-filter: blur(8px);" onclick="openModal('editar-cliente')">
+    <button type="button" onclick="openModal('editar-cliente')"
+      style="height: 32px; padding: 0 14px; display: flex; align-items: center;
+             background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.3);
+             border-radius: 20px; font-size: 12px; font-weight: 700; cursor: pointer;
+             -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); flex-shrink: 0">
       EDITAR
     </button>
   </div>
@@ -587,11 +600,14 @@ window.renderClientDetail = function () {
       </div>
     </div>
 
-    <nav class="bottom-nav">
-      <div class="nav-item" onclick="backFromClient()" style="width:100%; text-align:center; font-weight:600; display:flex; align-items:center; justify-content:center; gap:8px;">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    <!-- espacio para que la barra "Volver" no tape el final de la ficha -->
+    <div style="height:calc(12px + env(safe-area-inset-bottom, 0px))"></div>
+    <nav class="barra-volver">
+      <button type="button" class="btn-volver" onclick="backFromClient()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
         Volver
-      </div>
+      </button>
     </nav>
   </div>`;
 };
