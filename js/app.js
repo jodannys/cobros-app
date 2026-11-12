@@ -54,6 +54,12 @@ if (state._scrollToFiltroActivo) {
 
 
   const isAdmin = state.currentUser.role === 'admin';
+
+  // Guardar la posición de las listas con scroll propio (ruta, alertas, movimientos):
+  // al redibujar la pantalla (ej. después de cobrar) vuelven al mismo lugar, sin saltos.
+  const _scrollsInternos = {};
+  root.querySelectorAll('[data-scroll-id]').forEach(el => { _scrollsInternos[el.dataset.scrollId] = el.scrollTop; });
+
   root.innerHTML = `
   <div class="app">
     ${state.toast ? `
@@ -137,6 +143,12 @@ if (state._scrollToFiltroActivo) {
 
   // Restaurar posición del FAB (se pierde en cada render porque el DOM se reconstruye)
   if (typeof restoreFabPosition === 'function') restoreFabPosition();
+
+  // Restaurar la posición de las listas con scroll propio
+  root.querySelectorAll('[data-scroll-id]').forEach(el => {
+    const y = _scrollsInternos[el.dataset.scrollId];
+    if (y) el.scrollTop = y;
+  });
 
 }
 // ── CONFIRMAR SALIDA (overlay custom) ────────────────────────

@@ -1085,7 +1085,7 @@ function _listaMovimientosHTML() {
   const limite = state._movsLimite || _MOVS_POR_PAGINA;
   const quedan = lista.length - limite;
   return `
-  <div style="max-height:60vh; overflow-y:auto; overscroll-behavior:contain; margin:0 -4px; padding:0 4px">
+  <div class="lista-scroll" data-scroll-id="movimientos" style="margin:0 -4px; padding:0 4px">
     ${lista.slice(0, limite).map(_itemMovimientoHTML).join('')}
     ${quedan > 0 ? `
       <button onclick="state._movsLimite=${limite + _MOVS_POR_PAGINA}; render()"

@@ -688,13 +688,16 @@ window.renderCuadre = function () {
           { key: 'saldado', label: '🏆 Saldados' },
         ].map(function (f) {
           const isActive = _filtroRuta === f.key;
+          // Cuántos hay en cada filtro (los vacíos no se muestran, salvo Todos)
+          const n = f.key === 'todos' ? listaOrdenada.length : listaOrdenada.filter(d => _getEstado(d) === f.key).length;
+          if (!n && f.key !== 'todos' && !isActive) return '';
           return '<button onclick="event.stopPropagation(); state[\'' + _filtroKey + '\']=\'' + f.key + '\'; render()"'
             + (isActive ? ' data-filtro-activo="1"' : '')
             + ' style="padding:5px 10px; border-radius:15px; font-size:11px; flex-shrink:0; cursor:pointer; white-space:nowrap;'
             + ' border:' + (isActive ? '2px solid #1a56db' : '1px solid #e2e8f0') + ';'
             + ' background:' + (isActive ? '#eff6ff' : 'white') + ';'
             + ' font-weight:' + (isActive ? '700' : '400') + '">'
-            + f.label + '</button>';
+            + f.label + ' (' + n + ')</button>';
         }).join('');
         const filtroBar =
           '<div style="display:flex; gap:6px; overflow-x:auto; padding:14px 0 10px; margin-top:6px; margin-bottom:4px">'
@@ -714,7 +717,7 @@ window.renderCuadre = function () {
                         padding:11px 0; border-bottom:1px solid var(--border)">
               <div>
                 <div style="font-weight:700; font-size:14px; color:var(--text)">
-                  ${d.cliente?.nombre || 'Sin nombre'}
+                  ${esc(d.cliente?.nombre || 'Sin nombre')}
                 </div>
                 <div style="font-size:11.5px; color:var(--muted); margin-top:2px;
             display:flex; align-items:center; gap:6px; flex-wrap:wrap">
@@ -812,7 +815,8 @@ ${d.estadoVisual === 'pendiente' ? `
           <p style="color:#16a34a; font-weight:700; margin:0; font-size:13.5px">¡Ruta completada!</p>
         </div>`;
         }
-        return filtroBar + listaHTML;
+        // Filtros fijos arriba; la lista tiene su propio scroll (no alarga la página)
+        return filtroBar + `<div class="lista-scroll" data-scroll-id="ruta-cobrador">${listaHTML}</div>`;
       })()}
   </div>` : ''}
 </div>

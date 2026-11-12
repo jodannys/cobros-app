@@ -406,17 +406,21 @@ window.renderAdminCobrador = function renderAdminCobrador() {
             { key: 'parcial', label: '🟡 Abonos' },
             { key: 'pagado', label: '✅ Pagaron' },
             { key: 'saldado', label: '🏆 Saldados' },
-          ].map(f => `
+          ].map(f => {
+            // Cuántos hay en cada filtro (los vacíos no se muestran, salvo Todos)
+            const n = f.key === 'todos' ? listaOrdenada.length : listaOrdenada.filter(d => getEstadoFiltro(d) === f.key).length;
+            if (!n && f.key !== 'todos' && rutaFiltro !== f.key) return '';
+            return `
               <button onclick="event.stopPropagation(); state['${rutaFiltroKey}']='${f.key}'; render()"
                 ${rutaFiltro === f.key ? 'data-filtro-activo="1"' : ''}
-                style="padding:5px 10px; border-radius:15px; font-size:11px;
+                style="padding:5px 10px; border-radius:15px; font-size:11px; flex-shrink:0;
                        border:${rutaFiltro === f.key ? '2px solid #1a56db' : '1px solid #e2e8f0'};
                        background:${rutaFiltro === f.key ? '#eff6ff' : 'white'};
                        font-weight:${rutaFiltro === f.key ? '700' : '400'};
                        cursor:pointer; white-space:nowrap">
-                ${f.label}
-              </button>
-            `).join('')}
+                ${f.label} (${n})
+              </button>`;
+          }).join('')}
           </div>`;
 
         const listaHTML = listaFiltrada.length === 0
@@ -432,7 +436,7 @@ window.renderAdminCobrador = function renderAdminCobrador() {
 
           <div style="flex:1; min-width:0">
             <div style="font-size:14px; font-weight:700; color:${terminado ? '#64748b' : '#1e293b'}">
-              ${d.cliente?.nombre || '—'}
+              ${esc(d.cliente?.nombre || '—')}
             </div>
 
             <div style="display:flex; gap:4px; flex-wrap:wrap; margin-top:3px; align-items:center">
@@ -466,7 +470,8 @@ window.renderAdminCobrador = function renderAdminCobrador() {
         </div>`;
           }).join('');
 
-        return filtroBar + listaHTML;
+        // Filtros fijos arriba; la lista tiene su propio scroll (no alarga la página)
+        return filtroBar + `<div class="lista-scroll" data-scroll-id="ruta-admin-${cobrador.id}">${listaHTML}</div>`;
 
       })()}
   </div>
@@ -960,8 +965,8 @@ function _listaAlertasHTML(alertas) {
   const limite = state._alertasLimite || _ALERTAS_POR_PAGINA;
   const quedan = lista.length - limite;
   return `
-    <div style="max-height:60vh; overflow-y:auto; overscroll-behavior:contain;
-                margin:0 -4px; padding:0 4px; border-radius:8px">
+    <div class="lista-scroll" data-scroll-id="alertas"
+         style="margin:0 -4px; padding:0 4px; border-radius:8px">
       ${lista.slice(0, limite).map(_itemAlertaHTML).join('')}
       ${quedan > 0 ? `
         <button onclick="state._alertasLimite=${limite + _ALERTAS_POR_PAGINA}; _refrescarListaAlertas()"
