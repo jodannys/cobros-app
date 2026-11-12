@@ -75,17 +75,73 @@ window.fbGet = async function (colName, id) {
   return snap.exists ? { ...snap.data(), id: snap.id } : null;
 };
 
-window.fbSet = async function (colName, id, data) {
-  await fsdb.collection(colName).doc(id).set(data);
+// ── Escrituras que no se traban sin señal ────────────────────
+// Con la caché offline, Firestore guarda el cambio en el celular al instante y lo sube al
+// volver la señal; pero la promesa no se cumple hasta que el servidor confirma. Sin señal,
+// los botones quedaban en "Guardando..." y el cobrador podía registrar dos veces.
+// Ahora: si el servidor no confirma en unos segundos (o no hay internet), se sigue adelante
+// con el dato guardado en el celular y se avisa. Si luego el servidor lo rechaza, se avisa.
+const ESPERA_SERVIDOR_MS = 5000;
+let _pendientesSinSenal = 0;
+let _avisoSinSenal = null;
+
+function _conEspera(promesa) {
+  let esperando = true;
+  promesa
+    .then(() => {
+      if (!esperando) {
+        _pendientesSinSenal = Math.max(0, _pendientesSinSenal - 1);
+        if (_pendientesSinSenal === 0 && typeof showToast === 'function') {
+          showToast('✅ Datos enviados a la nube');
+        }
+      }
+    })
+    .catch(e => {
+      if (esperando) return; // el error lo maneja quien llamó
+      _pendientesSinSenal = Math.max(0, _pendientesSinSenal - 1);
+      console.error('Un cambio guardado sin señal fue rechazado:', e);
+      alert('⚠️ Un cambio que se guardó sin señal no pudo enviarse: ' + (e.message || e) +
+            '\nRevisa ese registro.');
+    });
+
+  const limite = new Promise(resolve =>
+    setTimeout(() => resolve('pendiente'), navigator.onLine ? ESPERA_SERVIDOR_MS : 0));
+
+  return Promise.race([promesa.then(() => 'ok'), limite]).then(r => {
+    esperando = false;
+    if (r === 'pendiente') {
+      _pendientesSinSenal++;
+      clearTimeout(_avisoSinSenal);
+      _avisoSinSenal = setTimeout(() => {
+        if (typeof showToast === 'function') {
+          showToast('📴 Sin señal: guardado en el celular. Se enviará solo al volver la señal');
+        }
+      }, 50);
+    }
+    return r;
+  }, e => { esperando = false; throw e; });
+}
+
+// Devuelven 'ok' (confirmado por el servidor) o 'pendiente' (guardado en el celular)
+window.fbSet = function (colName, id, data) {
+  return _conEspera(fsdb.collection(colName).doc(id).set(data));
 };
 
-window.fbUpdate = async function (colName, id, data) {
-  await fsdb.collection(colName).doc(id).update(data);
+window.fbUpdate = function (colName, id, data) {
+  return _conEspera(fsdb.collection(colName).doc(id).update(data));
 };
 
-window.fbDelete = async function (colName, id) {
-  await fsdb.collection(colName).doc(id).delete();
+window.fbDelete = function (colName, id) {
+  return _conEspera(fsdb.collection(colName).doc(id).delete());
 };
+
+// ¿Hay cambios guardados en el celular esperando señal?
+window.hayCambiosSinEnviar = () => _pendientesSinSenal > 0;
+
+// Si se intenta cerrar la app con cambios sin enviar, pedir confirmación
+window.addEventListener('beforeunload', (e) => {
+  if (_pendientesSinSenal > 0) { e.preventDefault(); e.returnValue = ''; }
+});
 
 window.fbQuery = async function (colName, field, value) {
   const snap = await fsdb.collection(colName).where(field, '==', value).get();
@@ -99,7 +155,7 @@ window.fbGetSince = async function (colName, desde) {
 
 // Escrituras múltiples atómicas (batch)
 // ops = [{ op: 'set'|'update'|'delete', col, id, data? }]
-window.fbBatch = async function (ops) {
+window.fbBatch = function (ops) {
   const batch = fsdb.batch();
   ops.forEach(({ op, col, id, data }) => {
     const ref = fsdb.collection(col).doc(id);
@@ -107,7 +163,7 @@ window.fbBatch = async function (ops) {
     if (op === 'update') batch.update(ref, data);
     if (op === 'delete') batch.delete(ref);
   });
-  await batch.commit();
+  return _conEspera(batch.commit());
 };
 
 window.fbEscuchar = function (colName, callback) {

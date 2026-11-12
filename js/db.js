@@ -164,9 +164,10 @@ window.DB = {
   _calcularSoloMios() {
     const uid = firebase.auth().currentUser?.uid;
     const yo = (this._cache['users'] || []).find(u => u.id === uid);
-    const mig = (this._cache['configuracion'] || []).find(c => c.id === 'migraciones');
-    // Solo se activa cuando el servidor ya marcó `cartera` en todos los créditos y pagos
-    return yo && yo.role === 'cobrador' && mig?.cartera === true ? uid : null;
+    // Solo el admin descarga todo. Cualquier otro usuario descarga solo lo suyo: las reglas de
+    // Firestore no le permiten leer datos de otros cobradores (la migración `cartera` ya se hizo).
+    if (!uid) return null;
+    return yo?.role === 'admin' ? null : uid;
   },
 
   // Cada día, el primer ingreso de un admin corrige el campo `cartera` de créditos/pagos

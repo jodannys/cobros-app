@@ -183,6 +183,17 @@ exports.asignarCartera = onCall({ timeoutSeconds: 540, memory: '512MiB' }, async
   return { ok: true, creditos: nCreditos, pagos: nPagos, fecha };
 });
 
+// ── ¿Existe ya un cliente con este DNI? ──────────────────────
+// El cobrador solo puede leer sus clientes (reglas), así que la revisión de DNI repetido
+// la hace el servidor. Solo responde sí/no (no devuelve datos del otro cliente).
+exports.existeDni = onCall(async (request) => {
+  if (!request.auth) throw new HttpsError('unauthenticated', 'Debes iniciar sesión');
+  const dni = String(request.data?.dni || '').trim();
+  if (!dni) return { existe: false };
+  const snap = await db.collection('clientes').where('dni', '==', dni).limit(1).get();
+  return { existe: !snap.empty };
+});
+
 // ── Código de recuperación ───────────────────────────────────
 // Se guarda solo su hash en recuperacion/{uid} (las reglas bloquean esa colección a la app).
 const crypto = require('crypto');

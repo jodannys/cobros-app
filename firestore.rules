@@ -1,24 +1,112 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    function logueado() {
-      return request.auth != null;
+
+    // ── Ayudas ─────────────────────────────────────────────────
+    function logueado() { return request.auth != null; }
+    function uid() { return request.auth.uid; }
+    function esAdmin() {
+      return logueado() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    // El documento (actual) es del cobrador que pide
+    function esMio() { return resource.data.cobradorId == uid(); }
+    // El documento nuevo/modificado queda a nombre del cobrador que pide
+    function quedaMio() { return request.resource.data.cobradorId == uid(); }
+    // Solo cambian estos campos
+    function soloCambia(campos) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(campos);
     }
 
-    // Usuarios: se leen con sesión; solo las Cloud Functions los crean/editan/borran.
+    // ── Usuarios y códigos: solo Cloud Functions escriben ──────
     match /users/{id} {
       allow read: if logueado();
       allow write: if false;
     }
-
-    // Códigos de recuperación (hash): solo las Cloud Functions.
     match /recuperacion/{id} {
       allow read, write: if false;
     }
 
-    // Resto de colecciones: solo usuarios con sesión iniciada.
+    // ── Configuración (feriados, migraciones): todos leen, admin escribe ──
+    match /configuracion/{id} {
+      allow read: if logueado();
+      allow write: if esAdmin();
+    }
+
+    // ── Clientes ───────────────────────────────────────────────
+    // Cobrador: ve, crea y edita SOLO los suyos (no puede pasarlos a otro cobrador ni borrarlos)
+    match /clientes/{id} {
+      allow read: if esAdmin() || (logueado() && esMio());
+      allow create: if esAdmin() || (logueado() && quedaMio());
+      allow update: if esAdmin() || (logueado() && esMio() && quedaMio());
+      allow delete: if esAdmin();
+    }
+
+    // ── Créditos ───────────────────────────────────────────────
+    // Cobrador: ve los de su cartera o que él otorgó; crea para sus clientes;
+    // solo puede cerrarlo (activo/updatedAt) al registrar el pago final.
+    match /creditos/{id} {
+      allow read: if esAdmin() ||
+        (logueado() && (resource.data.cartera == uid() || resource.data.cobradorId == uid()));
+      allow create: if esAdmin() ||
+        (logueado() && quedaMio() && request.resource.data.cartera == uid());
+      allow update: if esAdmin() ||
+        (logueado() && (resource.data.cartera == uid() || resource.data.cobradorId == uid()) &&
+         soloCambia(['activo', 'updatedAt']));
+      allow delete: if esAdmin();
+    }
+
+    // ── Pagos ──────────────────────────────────────────────────
+    // Cobrador: ve los de su cartera o que él cobró; registra solo los que él cobra.
+    // Editar y eliminar: solo admin.
+    match /pagos/{id} {
+      allow read: if esAdmin() ||
+        (logueado() && (resource.data.cartera == uid() || resource.data.cobradorId == uid()));
+      allow create: if esAdmin() || (logueado() && quedaMio() && request.resource.data.eliminado == false);
+      allow update, delete: if esAdmin();
+    }
+
+    // ── Gastos de ruta: el cobrador maneja los suyos ───────────
+    match /gastos/{id} {
+      allow read, delete: if esAdmin() || (logueado() && esMio());
+      allow create: if esAdmin() || (logueado() && quedaMio());
+      allow update: if esAdmin() || (logueado() && esMio() && quedaMio());
+    }
+
+    // ── Notas de cuadre: el cobrador maneja las suyas ──────────
+    match /notas_cuadre/{id} {
+      allow read: if esAdmin() || (logueado() && esMio());
+      allow create: if esAdmin() || (logueado() && quedaMio());
+      allow update: if esAdmin() || (logueado() && esMio() && quedaMio());
+      allow delete: if esAdmin();
+    }
+
+    // ── Caja chica: la asigna el admin; el cobrador solo ve la suya ──
+    match /cajas/{id} {
+      allow read: if esAdmin() || (logueado() && esMio());
+      allow write: if esAdmin();
+    }
+
+    // ── Movimientos de cartera (dinero) ────────────────────────
+    // Cobrador: ve los suyos y solo puede PEDIR un depósito (sin confirmar).
+    // Confirmar, enviar, retirar, inyectar, anular: solo admin.
+    match /movimientos_cartera/{id} {
+      allow read: if esAdmin() || (logueado() && esMio());
+      allow create: if esAdmin() ||
+        (logueado() && quedaMio() &&
+         request.resource.data.tipo == 'deposito_cobrador' &&
+         request.resource.data.confirmado == false);
+      allow update, delete: if esAdmin();
+    }
+
+    // ── Archivo de clientes eliminados: solo admin ─────────────
+    match /clientes_eliminados/{id} {
+      allow read, write: if esAdmin();
+    }
+
+    // ── Cualquier otra colección: solo admin ───────────────────
     match /{coleccion}/{id} {
-      allow read, write: if logueado() && !(coleccion in ['users', 'recuperacion']);
+      allow read, write: if esAdmin();
     }
   }
 }

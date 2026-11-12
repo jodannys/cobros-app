@@ -690,10 +690,15 @@ window.guardarCliente = async function () {
 
     const clientes = DB._cache['clientes'] || [];
     if (clientes.find(c => c.dni === dni)) { alert('Ya existe un cliente con ese DNI'); return; }
-    // El cobrador solo tiene sus clientes en el celular: preguntar a Firebase por el DNI
+    // El cobrador solo tiene sus clientes en el celular (y las reglas no le dejan leer los de
+    // otros): el servidor revisa si el DNI ya existe. Sin señal no se puede revisar y se permite.
     if (DB._soloMios) {
-      const existentes = await fbQuery('clientes', 'dni', dni);
-      if (existentes.length) { alert('Ya existe un cliente con ese DNI (de otro cobrador)'); return; }
+      try {
+        const r = await fbFuncion('existeDni', { dni });
+        if (r?.existe) { alert('Ya existe un cliente con ese DNI (de otro cobrador)'); return; }
+      } catch (e) {
+        console.warn('No se pudo revisar el DNI (¿sin señal?):', e);
+      }
     }
 
     const isAdmin = state.currentUser.role === 'admin';
