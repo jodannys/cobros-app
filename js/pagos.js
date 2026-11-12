@@ -180,7 +180,7 @@ window.guardarPago = async function () {
 
   } catch (error) {
     console.error("❌ ERROR CRÍTICO:", error);
-    alert('Error al guardar: ' + error.message);
+    alert('Error al guardar: ' + mensajeError(error));
   } finally {
     state._pagoProcesando = false;
     deshabilitarBotonesPago(false);

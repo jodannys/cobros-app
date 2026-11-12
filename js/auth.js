@@ -280,7 +280,7 @@ window.generarCodigoRecuperacion = unaVez(async function () {
     state._codigoRecuperacion = r.codigo;
     render();
   } catch (e) {
-    alert('Error al generar código: ' + e.message);
+    alert('Error al generar código: ' + mensajeError(e));
   }
 });
 

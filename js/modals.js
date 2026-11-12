@@ -852,7 +852,7 @@ window.eliminarAdmin = async function eliminarAdmin(id) {
   try {
     await fbFuncion('eliminarUsuario', { id });
     DB._cache['users'] = users.filter(u => u.id !== id);
-  } catch (e) { alert('Error al eliminar: ' + e.message); return; }
+  } catch (e) { alert('Error al eliminar: ' + mensajeError(e)); return; }
   state._editingAdmin = null;
   state.modal = null;
   showToast('Administrador eliminado');
@@ -883,7 +883,7 @@ window.guardarAdmin = async function guardarAdmin(idExistente) {
     }
     DB._cache['users'] = await fbGetAll('users');
   } catch (e) {
-    alert('Error al guardar: ' + e.message);
+    alert('Error al guardar: ' + mensajeError(e));
     return;
   }
   state._editingAdmin = null;
@@ -1035,7 +1035,7 @@ window.eliminarClienteDefinitivo = unaVez(async function (clienteId) {
     render();
     if (typeof renderBusquedaClientes === 'function') renderBusquedaClientes();
   } catch (e) {
-    alert('Error al eliminar: ' + e.message);
+    alert('Error al eliminar: ' + mensajeError(e));
   }
 });
 

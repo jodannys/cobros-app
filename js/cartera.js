@@ -241,7 +241,7 @@ window.renderPanelCartera = function () {
                    border-top:1px solid #f1f5f9">
             <span style="width:28px; height:28px; background:#f8fafc; border-radius:6px;
                          display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0">🧾</span>
-            Revisar ajustes viejos
+            Revisar créditos eliminados antes
           </button>` : ''}
         </div>` : ''}
       </div>
@@ -677,7 +677,7 @@ window.confirmarDeposito = async function (movId) {
     showToast('✅ Depósito confirmado — sumado a tu cartera');
     render();
   } catch (e) {
-    alert('Error: ' + e.message);
+    alert('Error: ' + mensajeError(e));
   }
 };
 
@@ -714,7 +714,7 @@ window.guardarMovimientoCartera = async function () {
     showToast(labels[tipo] || 'Movimiento registrado');
     render();
   } catch (e) {
-    alert('Error: ' + e.message);
+    alert('Error: ' + mensajeError(e));
   }
 };
 
@@ -990,7 +990,7 @@ window.guardarRetiroCobrador = async function () {
     showToast(`💼 Retiro de ${formatMoney(monto)} registrado`);
     render();
   } catch (e) {
-    alert('Error: ' + e.message);
+    alert('Error: ' + mensajeError(e));
   }
 };
 // Bloqueo contra doble toque
@@ -1019,13 +1019,17 @@ window.renderModalRevisarBajas = function () {
 
   return `
   <div class="modal-handle"></div>
-  <div class="modal-title">🧾 Ajustes viejos de créditos eliminados</div>
+  <div class="modal-title">🧾 Créditos eliminados antes de la actualización</div>
   <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:10px 12px;
-              margin-bottom:12px;font-size:12.5px;color:#92400e;line-height:1.5">
-    Antes, al eliminar un crédito la app sumaba el préstamo + seguro a la cartera y restaba
-    las cuotas <strong>dos veces</strong> al cobrador. Ahora eliminar solo deshace el crédito.<br>
-    <strong>"No contar"</strong> quita el ajuste de las cuentas (no se borra, se puede volver a contar).
-    Si el cobrador sí te entregó dinero, regístralo como <strong>Depósito</strong>.
+              margin-bottom:12px;font-size:12.5px;color:#92400e;line-height:1.55">
+    Cuando antes se eliminaba un crédito o un cliente, la app <strong>sumaba dinero a tu disponible
+    y le restaba de más al cobrador</strong>, aunque ese dinero no se hubiera movido de verdad.
+    Por eso algunos saldos pueden verse mal.<br><br>
+    Revisa cada línea:<br>
+    • Si ese dinero <strong>no</strong> llegó a tus manos → toca <strong>No contar</strong>.<br>
+    • Si el cobrador <strong>sí</strong> te lo entregó → toca <strong>No contar</strong> y regístralo
+      como <strong>depósito</strong> con el monto real.<br><br>
+    No se borra nada. Si te equivocas, toca <strong>Volver a contar</strong>.
   </div>
   ${activos.length > 1 ? `
   <button onclick="anularAjustesBaja(null)"
@@ -1034,7 +1038,7 @@ window.renderModalRevisarBajas = function () {
     No contar ninguno (${activos.length})
   </button>` : ''}
   ${lista.length === 0
-    ? '<div style="text-align:center;color:var(--muted);padding:20px 0">No hay ajustes viejos</div>'
+    ? '<div style="text-align:center;color:var(--muted);padding:20px 0">No hay nada que revisar</div>'
     : lista.map(m => {
       const esAdmin = m.tipo === 'inyeccion';
       return `
@@ -1042,13 +1046,13 @@ window.renderModalRevisarBajas = function () {
                   justify-content:space-between;align-items:center;gap:8px;${m.anulado ? 'opacity:0.5' : ''}">
         <div style="min-width:0">
           <div style="font-weight:700;font-size:13.5px">
-            ${esAdmin ? 'Cartera admin' : 'Mochila de ' + esc(nombre(m.cobradorId))}
+            ${esAdmin ? 'Se sumó a tu disponible' : 'Se le restó a ' + esc(nombre(m.cobradorId))}
             <span style="color:${esAdmin ? 'var(--success)' : 'var(--danger)'}">
               ${esAdmin ? '+' : '−'}${formatMoney(m.monto)}
             </span>
           </div>
           <div style="font-size:11.5px;color:var(--muted)">
-            ${esc(m.descripcion)} · ${formatDate(m.fecha)}${esAdmin && m.cobradorId ? ' · ' + esc(nombre(m.cobradorId)) : ''}
+            ${m.descripcion === 'Baja cliente' ? 'Cliente eliminado' : 'Crédito eliminado'} del ${formatDate(m.fecha)}${esAdmin && m.cobradorId ? ' · cobrador ' + esc(nombre(m.cobradorId)) : ''}
             ${m.anulado ? ' · <strong>no cuenta</strong>' : ''}
           </div>
         </div>
@@ -1071,16 +1075,16 @@ window.anularAjustesBaja = unaVez(async function (id, anular = true) {
     ? movsAjustesBaja().filter(m => m.id === id)
     : movsAjustesBaja().filter(m => !m.anulado);
   if (!objetivo.length) return;
-  if (!id && !await showConfirm(`¿Dejar de contar ${objetivo.length} ajustes viejos? Las cuentas de cartera y mochilas se recalculan.`,
+  if (!id && !await showConfirm(`¿Dejar de contar estos ${objetivo.length} movimientos? Tu disponible y la caja de los cobradores se van a recalcular.`,
     { confirmText: 'No contar' })) return;
   try {
     const ops = objetivo.map(m => ({ op: 'update', col: 'movimientos_cartera', id: m.id, data: { anulado: anular, updatedAt: new Date() } }));
     for (let i = 0; i < ops.length; i += 400) await fbBatch(ops.slice(i, i + 400));
     objetivo.forEach(m => { m.anulado = anular; });
     DB._cacheVersion++; // recalcular mochilas
-    showToast(anular ? 'Ajuste(s) sin contar' : 'Ajuste vuelve a contar');
+    showToast(anular ? '✅ Listo, ya no cuenta en tus saldos' : '✅ Volvió a contar en tus saldos');
     render();
   } catch (e) {
-    alert('Error: ' + e.message);
+    alert('Error: ' + mensajeError(e));
   }
 });

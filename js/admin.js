@@ -728,7 +728,7 @@ window.eliminarCobrador = async function eliminarCobrador(id) {
     showToast('Cobrador eliminado');
     render();
   } catch (e) {
-    alert('Error al eliminar: ' + e.message);
+    alert('Error al eliminar: ' + mensajeError(e));
   }
 };
 
@@ -766,7 +766,7 @@ window.guardarUsuario = async function guardarUsuario() {
     showToast('Usuario creado exitosamente');
     render();
   } catch (e) {
-    alert('Error al guardar: ' + e.message);
+    alert('Error al guardar: ' + mensajeError(e));
   } finally {
     window._guardandoUsuario = false;
     if (btn) { btn.disabled = false; btn.textContent = 'Crear Usuario'; }
@@ -795,7 +795,7 @@ window.actualizarUsuario = async function actualizarUsuario() {
     showToast('Usuario actualizado');
     render();
   } catch (e) {
-    alert('Error al actualizar: ' + e.message);
+    alert('Error al actualizar: ' + mensajeError(e));
   } finally {
     window._actualizandoUsuario = false;
     if (btn) { btn.disabled = false; btn.textContent = 'Actualizar Datos'; }
@@ -877,7 +877,7 @@ window.guardarCreditoEditado = async function guardarCreditoEditado() {
     showToast('✅ Monto corregido correctamente');
     render();
   } catch (e) {
-    alert('Error al guardar: ' + e.message);
+    alert('Error al guardar: ' + mensajeError(e));
   }
 };
 
@@ -944,7 +944,7 @@ window.eliminarFeriado = async function (fecha) {
     showToast('✅ Fecha desbloqueada');
     render();
   } catch (e) {
-    alert('Error al eliminar: ' + e.message);
+    alert('Error al eliminar: ' + mensajeError(e));
   }
 };
 

@@ -819,7 +819,7 @@ window.actualizarCliente = async function () {
     showToast('✅ Cliente actualizado'); 
     render();
   } catch (e) {
-    alert('Error al actualizar: ' + e.message);
+    alert('Error al actualizar: ' + mensajeError(e));
   } finally {
     window._actualizandoCliente = false;
     if (btn) { btn.disabled = false; btn.textContent = 'Actualizar Cliente'; }

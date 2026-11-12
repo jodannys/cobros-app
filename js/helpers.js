@@ -384,3 +384,25 @@ window.esc = (v) => String(v ?? '')
 // Movimientos de cartera que cuentan en los cálculos. Los marcados "anulado" (desde
 // Cartera → "Revisar ajustes viejos") se conservan en la base pero no suman ni restan.
 window.movsCartera = () => (DB._cache['movimientos_cartera'] || []).filter(m => !m.anulado);
+
+// Texto para buscar en la ayuda: sin tildes ni mayúsculas (ñ → n)
+window._normAyuda = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+// Mensaje de error entendible para el usuario (Firebase devuelve textos técnicos en inglés)
+window.mensajeError = function (e) {
+  const codigo = String(e?.code || '').replace(/^(firestore|auth|functions|storage)\//, '');
+  const textos = {
+    'permission-denied': 'No tienes permiso para hacer esto. Si crees que es un error, avisa al administrador.',
+    'unauthorized': 'No tienes permiso para hacer esto. Si crees que es un error, avisa al administrador.',
+    'unauthenticated': 'Tu sesión venció. Cierra la app y vuelve a iniciar sesión.',
+    'unavailable': 'No hay conexión con el servidor. Revisa tu internet e inténtalo de nuevo.',
+    'network-request-failed': 'No hay conexión. Revisa tu internet e inténtalo de nuevo.',
+    'deadline-exceeded': 'El servidor tardó demasiado en responder. Inténtalo de nuevo.',
+    'not-found': 'Ese registro ya no existe (quizás otra persona lo eliminó). Cierra y vuelve a abrir la app.',
+    'already-exists': 'Ese registro ya existe.',
+    'resource-exhausted': 'Se alcanzó el límite de uso por hoy. Avisa al administrador.'
+  };
+  if (textos[codigo]) return textos[codigo];
+  if (/insufficient permissions/i.test(e?.message || '')) return textos['permission-denied'];
+  return e?.message || 'Ocurrió un error inesperado.';
+};

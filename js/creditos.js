@@ -545,7 +545,7 @@ window.eliminarCredito = async function (crId) {
       : '✅ Crédito eliminado');
     render();
   } catch (e) {
-    alert('Error al eliminar: ' + e.message);
+    alert('Error al eliminar: ' + mensajeError(e));
   } finally {
     window._eliminandoCredito = false;
   }
@@ -569,7 +569,7 @@ window.cerrarCredito = async function (crId) {
     showToast('✅ Crédito cerrado');
     render();
   } catch (e) {
-    alert('Error al cerrar: ' + e.message);
+    alert('Error al cerrar: ' + mensajeError(e));
   }
 };
 
@@ -742,7 +742,7 @@ window.guardarPagoEditado = async function () {
     showToast('✅ Pago actualizado');
     render();
   } catch (e) {
-    alert('Error al guardar: ' + e.message);
+    alert('Error al guardar: ' + mensajeError(e));
   } finally {
     window._guardandoPagoEditado = false;
     if (btn) { btn.disabled = false; btn.textContent = 'Guardar cambios'; }
@@ -767,7 +767,7 @@ window.eliminarPago = async function (pagoId) {
     showToast('Pago eliminado');
     render();
   } catch (e) {
-    alert('Error al eliminar: ' + e.message);
+    alert('Error al eliminar: ' + mensajeError(e));
   }
 };
 
@@ -781,7 +781,7 @@ window.reabrirCredito = async function (crId) {
     showToast('✅ Crédito reabierto');
     render();
   } catch (e) {
-    alert('Error al reabrir: ' + e.message);
+    alert('Error al reabrir: ' + mensajeError(e));
   } finally {
     window._reabriendo = false;
   }

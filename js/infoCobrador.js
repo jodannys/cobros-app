@@ -1,92 +1,143 @@
 
 const _SECCIONES_COBRADOR = [
+  // ── CLIENTES ──────────────────────────────────────────────
   {
     tab: 'clientes',
     titulo: '📋 Lista de clientes',
     keywords: ['cliente','lista','todos','filtro','activo','atrasado','sin credito','buscar','dni','negocio','nombre','busqueda'],
-    contenido: 'Tu lista muestra todos los clientes asignados. Usa los filtros rápidos: <b>Todos · ✅ Activos · 🆕 Sin crédito · 🔴 Atrasados</b>. También puedes buscar por nombre, DNI o negocio en la barra superior.'
+    contenido: 'Tu lista muestra <b>solo tus clientes</b>. Usa los filtros rápidos: <b>Todos · ✅ Activos · 🆕 Sin crédito · 🔴 Atrasados</b>. También puedes buscar por nombre, DNI o negocio en la barra de arriba; la <b>X</b> borra la búsqueda.'
   },
   {
     tab: 'clientes',
     titulo: '⚡ Acciones rápidas desde la lista',
     keywords: ['cobrar','cuota','pago rapido','credito nuevo','whatsapp','chat','boton verde','boton azul','accion rapida'],
-    contenido: '💰 <b>Botón verde</b> → registra una cuota al instante sin entrar al perfil.<br>➕ <b>Botón azul</b> → crea un crédito nuevo si el cliente no tiene uno activo.<br>💬 <b>Logo WhatsApp</b> → abre directamente el chat del cliente sin enviar nada.'
+    contenido: '💰 <b>Botón verde</b> → registra una cuota al instante sin entrar a la ficha.<br>➕ <b>Botón azul</b> → crea un crédito nuevo si el cliente no tiene uno activo.<br>💬 <b>Logo de WhatsApp</b> → abre el chat del cliente sin enviar nada.'
   },
- 
   {
     tab: 'clientes',
-    titulo: '👤 Perfil del cliente',
+    titulo: '➕ Crear un cliente',
+    keywords: ['crear cliente','nuevo cliente','agregar cliente','dni','dni repetido','ya existe','otro cobrador'],
+    contenido: 'Toca el botón <b>+</b> y completa los datos. Si sale <b>"Ya existe un cliente con ese DNI (de otro cobrador)"</b>, ese cliente ya está registrado con otro cobrador: no lo crees de nuevo y avísale al admin.'
+  },
+  {
+    tab: 'clientes',
+    titulo: '📷 Foto de la casa o negocio',
+    keywords: ['foto','camara','galeria','imagen','tomar foto','subir foto','casa','negocio'],
+    contenido: 'Al crear o editar un cliente tienes dos botones:<br>📷 <b>Cámara</b> → toma la foto en ese momento.<br>🖼️ <b>Galería</b> → elige una foto que ya tienes en el celular.<br>Toca la foto para verla en grande.'
+  },
+  {
+    tab: 'clientes',
+    titulo: '👤 Ficha del cliente',
     keywords: ['perfil','ficha','editar','datos','foto','ubicacion','gps','estado de cuenta','whatsapp estado','telefono','direccion'],
-    contenido: 'Al tocar un cliente entras a su ficha. Arriba a la derecha puedes <b>editar sus datos</b> (nombre, DNI, teléfono, dirección, foto y ubicación GPS). También puedes enviarle su <b>estado de cuenta por WhatsApp</b> — el sistema te pedirá confirmar el número antes de enviar.'
+    contenido: 'Al tocar un cliente entras a su ficha. Arriba a la derecha puedes <b>editar sus datos</b> (nombre, DNI, teléfono, dirección, foto y ubicación GPS). También puedes enviarle su <b>estado de cuenta por WhatsApp</b>; la app te pide confirmar el número antes de enviar.'
   },
   {
     tab: 'clientes',
-    titulo: '💳 Gestión de crédito',
-    keywords: ['credito activo','atraso','atrasado','mora','vencido','credito cerrado','historial','agregar pago','admin','inicio','fin','fecha'],
-    contenido: 'En la ficha ves el resumen del crédito activo: fecha de inicio, fecha de fin, cuánto debe y si está atrasado o al día. Si hay atraso puedes <b>notificar al admin</b>. También puedes ver créditos cerrados anteriores y agregar un pago desde aquí.'
+    titulo: '💳 Crédito activo',
+    keywords: ['credito activo','atraso','atrasado','mora','vencido','credito cerrado','historial','agregar pago','inicio','fin','fecha','saldo','debe'],
+    contenido: 'En la ficha ves el crédito activo: fecha de inicio y de fin, <b>cuánto debe</b> y si está atrasado o al día. Las cuotas se empiezan a cobrar <b>al día siguiente</b> del préstamo, y no se cobra los domingos ni los feriados. También ves sus créditos anteriores.'
   },
   {
     tab: 'clientes',
-    titulo: '➕ Crear un crédito',
-    keywords: ['crear credito','nuevo credito','plan','24 dias','20 dias','seguro','monto','yape','efectivo','transferencia','cuota diaria','interes'],
-    contenido: 'Elige el <b>plan</b> (24 o 20 días), el <b>monto</b> a prestar, si cobras <b>seguro</b> o no y el porcentaje, y cómo se entregó el dinero (efectivo, Yape o transferencia). El sistema calcula automáticamente la cuota diaria y el total a pagar.'
+    titulo: '➕ Dar un crédito',
+    keywords: ['crear credito','nuevo credito','prestar','plan','24 dias','20 dias','seguro','monto','yape','efectivo','transferencia','cuota diaria','interes'],
+    contenido: 'Elige el <b>plan</b> (24 o 20 días), el <b>monto</b>, si cobras <b>seguro</b> y su porcentaje, y cómo entregaste el dinero (efectivo, Yape o transferencia). La app calcula la cuota diaria y el total a pagar.<br><b>Ejemplo:</b> prestas S/100 con seguro de S/5 → le entregas <b>S/95</b> al cliente y el seguro se queda en tu caja.'
   },
-   {
-  tab: 'clientes',
-  titulo: '🔔 Cliente con mora — ¿qué hacer?',
-  keywords: ['mora','moroso','vencido','notificar','admin','gestionar','atraso grave','que hago','que hacer'],
-  contenido: 'Si un cliente lleva varios días sin pagar o su crédito ya venció, entra a su ficha y toca <b>Gestionar crédito</b>. Desde ahí puedes activar la mora (penalidad de S/5 diarios) y el admin recibirá una alerta automática en su panel. El admin decidirá si extender el plazo, negociar un pago parcial o cerrar el crédito. No tomes decisiones sobre créditos en mora sin consultar al admin primero.'
-},
+  {
+    tab: 'clientes',
+    titulo: '💰 Registrar un pago',
+    keywords: ['pago','cobrar','registrar pago','cuota','abono','yape','efectivo','transferencia','mora','monto'],
+    contenido: 'Escribe el monto que te dio el cliente, elige cómo pagó (efectivo, Yape o transferencia) y confirma. Si el cliente tiene mora, el pago <b>cubre primero la mora</b> y lo que sobra va al préstamo. Cuando termina de pagar todo, el crédito se cierra solo.'
+  },
+  {
+    tab: 'clientes',
+    titulo: '✏️ Me equivoqué en un pago',
+    keywords: ['error pago','equivoque','corregir pago','borrar pago','eliminar pago','pago duplicado','pago repetido','monto mal'],
+    contenido: 'No lo registres de nuevo ni intentes compensarlo. <b>Avísale al admin</b>: él puede corregir el monto o eliminar el pago, y tu caja se ajusta sola.'
+  },
+  {
+    tab: 'clientes',
+    titulo: '🔔 Cliente con mora — ¿qué hacer?',
+    keywords: ['mora','moroso','vencido','notificar','admin','atraso grave','que hago','que hacer','no paga'],
+    contenido: 'Si un cliente lleva varios días sin pagar o su crédito ya venció, <b>avísale al admin</b>. El admin decide si activa la mora (S/5 por cada día hábil de retraso), extiende el plazo o acuerda un pago. Cuando la mora está activa, verás el monto actualizado en la ficha del cliente.'
+  },
+
+  // ── CUADRE ────────────────────────────────────────────────
   {
     tab: 'cuadre',
     titulo: '💰 Tu caja del día',
-    keywords: ['caja','dinero disponible','prestar','asignado','cobrado','gastos','prestamos','disponible'],
-    contenido: 'Muestra el dinero disponible para seguir prestando — incluye lo que el admin te asignó más lo que has cobrado hoy, menos los gastos y préstamos del día.'
+    keywords: ['caja','dinero disponible','prestar','asignado','cobrado','gastos','prestamos','disponible','negativo','caja chica'],
+    contenido: 'Es el dinero que deberías tener en la mano:<br>lo que traías de ayer <b>+</b> lo que te envió el admin (incluida la caja chica) <b>+</b> lo cobrado hoy y los seguros <b>−</b> lo prestado <b>−</b> tus gastos <b>−</b> lo que entregaste al admin.<br>Si sale en negativo, avísale al admin.'
   },
   {
     tab: 'cuadre',
     titulo: '🎯 Meta de cobranza',
     keywords: ['meta','cobrar hoy','cuanto llevo','falta','atrasados','deuda','total','resumen'],
-    contenido: 'Muestra cuánto debes cobrar hoy, cuánto llevas y cuánto te falta. También ves un <b>resumen de clientes atrasados</b> y el total que deben acumulado.'
+    contenido: 'Muestra cuánto debes cobrar hoy, cuánto llevas y cuánto te falta. También ves un <b>resumen de clientes atrasados</b> y cuánto deben en total.'
   },
   {
     tab: 'cuadre',
     titulo: '▶️ Ruta del día — lista',
     keywords: ['ruta','empezar ruta','pausar ruta','cercania','gps','orden','pendientes','cobro rapido','lista ruta','reanudar'],
-    contenido: 'Lista de clientes pendientes. Toca el <b>botón con el monto</b> para registrar el pago al instante — el cliente desaparece de la lista.<br><br>▶️ <b>Empezar ruta</b>: activa el GPS y organiza por cercanía — el indicador muestra "📍 Por cercanía".<br>⏸️ <b>Pausar ruta</b>: vuelve al orden alfabético. Al reanudar se reorganizan según tu posición actual.'
+    contenido: 'Lista de clientes que te faltan cobrar. Toca el <b>botón con el monto</b> para registrar el pago al instante; el cliente sale de la lista.<br><br>▶️ <b>Empezar ruta</b>: activa el GPS y ordena por cercanía (aparece "📍 Por cercanía").<br>⏸️ <b>Pausar ruta</b>: vuelve al orden alfabético. Al reanudar se ordena según dónde estés.'
   },
   {
     tab: 'cuadre',
     titulo: '🗺️ Mapa de ruta',
     keywords: ['mapa','ruta mapa','circulo azul','circulo rojo','gps mapa','ver mapa','ubicacion mapa'],
-    contenido: 'Toca el ícono 🗺️ para ver los clientes pendientes en el mapa. <b>Tú eres el círculo azul</b>. Los clientes aparecen con colores según su estado: 🔴 rojo = pendiente/atrasado, 🟡 naranja = abonó, 🟢 verde = pagó. Puedes pausar y reanudar el GPS — al reanudar los clientes se reorganizan según tu nueva posición.'
+    contenido: 'Toca el ícono 🗺️ para ver en el mapa a los clientes que te faltan. <b>Tú eres el círculo azul</b>. Los clientes salen en colores: 🔴 rojo = pendiente o atrasado, 🟡 naranja = abonó, 🟢 verde = pagó.'
   },
   {
     tab: 'cuadre',
     titulo: '🧾 Registrar un gasto',
-    keywords: ['gasto','registrar gasto','transporte','papeleria','descuento','caja gasto','agregar gasto'],
-    contenido: 'Toca <b>➕ Gasto</b>, ingresa el monto y una descripción (transporte, papelería, etc.). El gasto se descuenta automáticamente de tu caja y el admin puede verlo en su panel.'
+    keywords: ['gasto','registrar gasto','gasolina','transporte','papeleria','descuento','caja gasto','agregar gasto','editar gasto','borrar gasto'],
+    contenido: 'Toca <b>➕ Gasto</b>, escribe el monto y para qué fue (gasolina, transporte, etc.). Se descuenta de tu caja y el admin lo ve. Si te equivocaste, toca el gasto para <b>corregirlo o borrarlo</b>.'
   },
   {
     tab: 'cuadre',
     titulo: '📝 Notas del día',
     keywords: ['nota','comentario','detalle','observacion','admin nota','mensaje admin'],
-    contenido: 'Al final del día puedes dejar un <b>comentario o detalle importante</b> para el admin en la sección de notas.'
+    contenido: 'Al final del día puedes dejarle al admin un <b>comentario o detalle importante</b> en la sección de notas.'
   },
   {
     tab: 'cuadre',
-    titulo: '💸 Retirar dinero',
-    keywords: ['retirar','enviar dinero','admin','confirmar','descuento','mochila','retiro','entregar'],
-    contenido: 'Usa el botón <b>Retirar</b> para enviar dinero al admin. Ingresa el monto y una descripción. El admin recibe una notificación y debe <b>confirmar</b> — solo entonces se descuenta de tu caja disponible.'
+    titulo: '💸 Entregar dinero al admin',
+    keywords: ['retirar','entregar','enviar dinero','admin','confirmar','deposito','yape admin','mochila','retiro'],
+    contenido: 'Cuando le entregues dinero al admin, usa el botón <b>Retirar</b>: escribe el monto y una descripción. El admin recibe un aviso y lo <b>confirma</b> cuando le llega el dinero; recién ahí se descuenta de tu caja.'
+  },
+
+  // ── TU CUENTA ─────────────────────────────────────────────
+  {
+    tab: 'cuenta',
+    titulo: '🔐 Iniciar sesión',
+    keywords: ['iniciar sesion','entrar','login','usuario','contraseña','clave','recordarme','no puedo entrar'],
+    contenido: 'Entra con el <b>usuario y la contraseña</b> que te dio el admin. Si marcas <b>Recordarme</b>, no tendrás que volver a escribirla en tu celular.'
   },
   {
-    tab: 'cuadre',
-   titulo: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px"><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg> Cerrar sesión',
+    tab: 'cuenta',
+    titulo: '❓ Olvidé mi contraseña',
+    keywords: ['olvide mi clave','olvide contraseña','no recuerdo','recuperar clave','cambiar clave','perdi clave'],
+    contenido: '<b>Pídele al admin</b> que te ponga una contraseña nueva. Él lo hace desde su panel y te la dice.'
+  },
+  {
+    tab: 'cuenta',
+    titulo: '📴 Sin señal o sin internet',
+    keywords: ['sin señal','sin internet','offline','no carga','guardando','sin datos','conexion','zona sin señal'],
+    contenido: 'Puedes seguir cobrando sin señal: lo que guardes queda en tu celular y aparece <b>"📴 Sin señal: guardado en el celular"</b>. Cuando vuelve la señal se envía solo y sale <b>"✅ Datos enviados a la nube"</b>.<br><b>No vuelvas a registrar el mismo pago.</b> Evita cerrar la app hasta ver ese aviso.'
+  },
+  {
+    tab: 'cuenta',
+    titulo: '🔄 La app no se actualiza',
+    keywords: ['actualizar','version nueva','no se ve','cambios','recargar','no aparece','error'],
+    contenido: 'Si algo no carga o no ves un cambio, <b>cierra la pestaña de la app y ábrela de nuevo</b>.'
+  },
+  {
+    tab: 'cuenta',
+    titulo: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px"><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg> Cerrar sesión',
     keywords: ['salir','cerrar sesion','sesion','logout','fin del dia','terminar'],
-    contenido: 'Puedes <b>dejar tu sesión abierta</b> entre días. Cuando termines tu jornada toca <b>Salir</b> en la barra inferior.'
+    contenido: 'Puedes <b>dejar tu sesión abierta</b> entre días. Cuando termines tu jornada toca <b>Salir</b> en la barra de abajo. Si hay pagos sin enviar por falta de señal, espera a que se envíen antes de salir.'
   }
 ];
-
 // ── Función de filtrado global ────────────────────────────────
 window._filtrarAyuda = function (q) {
   const contenedor = document.getElementById('ayuda-resultados');
@@ -95,14 +146,16 @@ window._filtrarAyuda = function (q) {
   const iconClientes = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>';
   const iconCuadre = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>';
 
-  const icons = { clientes: iconClientes, cuadre: iconCuadre };
-  const tabLabels = { clientes: 'Clientes', cuadre: 'Cuadre' };
+  const iconCuenta = '<span style="vertical-align:middle;margin-right:4px;font-size:13px">🔑</span>';
+  const icons = { clientes: iconClientes, cuadre: iconCuadre, cuenta: iconCuenta };
+  const tabLabels = { clientes: 'Clientes', cuadre: 'Cuadre', cuenta: 'Tu cuenta' };
 
-  const term = (q || '').toLowerCase().trim();
+  // Búsqueda sin importar tildes ni mayúsculas ("contrasena" encuentra "contraseña")
+  const term = _normAyuda(q).trim();
   const filtradas = term === '' ? _SECCIONES_COBRADOR : _SECCIONES_COBRADOR.filter(s =>
-    s.keywords.some(k => k.includes(term)) ||
-    s.titulo.toLowerCase().includes(term) ||
-    s.contenido.toLowerCase().replace(/<[^>]+>/g, '').includes(term)
+    s.keywords.some(k => _normAyuda(k).includes(term)) ||
+    _normAyuda(s.titulo.replace(/<[^>]+>/g, '')).includes(term) ||
+    _normAyuda(s.contenido.replace(/<[^>]+>/g, '')).includes(term)
   );
 
   if (filtradas.length === 0) {

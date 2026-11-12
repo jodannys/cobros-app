@@ -258,7 +258,7 @@ window.guardarNota = async function () {
     render();
     setTimeout(() => { const el = document.getElementById('notaHoy'); if (el) el.value = ''; }, 100);
   } catch (e) {
-    alert('Error al guardar nota: ' + e.message);
+    alert('Error al guardar nota: ' + mensajeError(e));
   }
 };
 

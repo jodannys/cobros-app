@@ -339,7 +339,7 @@ const monto = parseMonto(document.getElementById('gMonto').value);
     showToast('Gasto registrado');
     render();
   } catch (e) {
-    alert('Error al guardar gasto: ' + e.message);
+    alert('Error al guardar gasto: ' + mensajeError(e));
   }
 };
 
@@ -365,7 +365,7 @@ window.guardarEdicionGasto = async function () {
     showToast('Gasto actualizado');
     render();
   } catch (e) {
-    alert('Error al editar gasto: ' + e.message);
+    alert('Error al editar gasto: ' + mensajeError(e));
   }
 };
 
@@ -378,7 +378,7 @@ window.eliminarGasto = async function () {
     showToast('Gasto eliminado');
     render();
   } catch (e) {
-    alert('Error al eliminar: ' + e.message);
+    alert('Error al eliminar: ' + mensajeError(e));
   }
 };
 
@@ -520,7 +520,7 @@ window.guardarCajaChica = async function () {
     showToast('Caja chica actualizada');
     render();
   } catch (e) {
-    alert('Error: ' + e.message);
+    alert('Error: ' + mensajeError(e));
   }
 };
 
