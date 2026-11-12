@@ -87,9 +87,7 @@ window.calcularMetaReal = function (cobradorId, fecha) {
     const cuota = Number(cr.cuotaDiaria) || 0;
     if (cuota <= 0) return;
 
-    const pagosNoEliminados = pagos.filter(p =>
-      p.creditoId === cr.id && !p.eliminado
-    );
+    const pagosNoEliminados = pagosDeCredito(cr.id, pagos).filter(p => !p.eliminado);
 
     const montoPagadoHoy = pagosNoEliminados
       .filter(p => p.fecha === fecha)

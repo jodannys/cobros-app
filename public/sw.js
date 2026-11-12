@@ -1,4 +1,14 @@
-const CACHE = 'cobrosapp-v7';
+// v8: solo se guardan los archivos de la app. Las versiones anteriores guardaban también
+// las conexiones con Firebase (datos en vivo): el almacenamiento crecía sin límite y sin
+// señal podía devolver datos viejos. Al activarse, esta versión borra esas copias.
+const CACHE = 'cobrosapp-v8';
+
+// Archivos que vale la pena guardar para abrir la app sin señal:
+// los de la propia app y las librerías (Firebase SDK, mapas). Nada de datos.
+const HOSTS_PERMITIDOS = ['www.gstatic.com', 'unpkg.com'];
+function esArchivoDeLaApp(url) {
+  return url.origin === self.location.origin || HOSTS_PERMITIDOS.includes(url.hostname);
+}
 
 // Al instalar: esperar — no saltar automático (el usuario decide cuándo actualizar)
 self.addEventListener('install', () => { /* esperar mensaje SKIP_WAITING */ });
@@ -25,27 +35,25 @@ self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
 
   const url = new URL(e.request.url);
+  // Firebase (Firestore, login, funciones, fotos) y demás servicios: no se tocan.
+  // Firebase ya guarda sus datos sin señal por su cuenta, de forma correcta.
+  if (!esArchivoDeLaApp(url)) return;
+
   const esAsset = /\.(png|jpg|jpeg|svg|ico|woff2?|ttf)$/i.test(url.pathname);
+  // Solo se guardan respuestas válidas (no errores 404/500)
+  const guardar = (res) => {
+    if (res && (res.ok || res.type === 'opaque')) {
+      const clone = res.clone();
+      caches.open(CACHE).then(c => c.put(e.request, clone));
+    }
+    return res;
+  };
 
   if (esAsset) {
     // Cache-first para imágenes e íconos
-    e.respondWith(
-      caches.match(e.request).then(r => r || fetch(e.request).then(res => {
-        const clone = res.clone();
-        caches.open(CACHE).then(c => c.put(e.request, clone));
-        return res;
-      }))
-    );
+    e.respondWith(caches.match(e.request).then(r => r || fetch(e.request).then(guardar)));
   } else {
-    // Network-first para JS/CSS/HTML — siempre descarga lo nuevo
-    e.respondWith(
-      fetch(e.request)
-        .then(res => {
-          const clone = res.clone();
-          caches.open(CACHE).then(c => c.put(e.request, clone));
-          return res;
-        })
-        .catch(() => caches.match(e.request))
-    );
+    // Network-first para JS/CSS/HTML — siempre descarga lo nuevo; sin señal usa la copia
+    e.respondWith(fetch(e.request).then(guardar).catch(() => caches.match(e.request)));
   }
 });

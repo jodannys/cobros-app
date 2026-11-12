@@ -5,16 +5,24 @@ window.hoyPeru = () => {
   return new Date(hoyStr + 'T00:00:00');
 };
 
+// Fecha de hoy en Lima ('AAAA-MM-DD'). Se pide miles de veces por pantalla y convertir
+// la hora es costoso: se recuerda el resultado durante 1 segundo.
+let _hoyValor = null, _hoyHasta = 0;
 window.today = () => {
-  return new Date().toLocaleDateString('en-CA', {
-    timeZone: 'America/Lima'
-  });
+  const ahora = Date.now();
+  if (ahora > _hoyHasta) {
+    _hoyValor = new Date(ahora).toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
+    _hoyHasta = ahora + 1000;
+  }
+  return _hoyValor;
 };
 // ── DÍAS NO LABORABLES ───────────────────────────────────────
+const _SIN_FERIADOS = Object.freeze([]);
 window.getDiasNoLaborables = function() {
   const cfg = DB._cache['configuracion'] || [];
   const doc = cfg.find(c => c.id === 'dias_no_laborables');
-  return Array.isArray(doc?.fechas) ? doc.fechas : [];
+  // Siempre la misma lista vacía (no una nueva cada vez): permite recordar cálculos de días
+  return Array.isArray(doc?.fechas) ? doc.fechas : _SIN_FERIADOS;
 };
 
 window.esDiaLaboral = function(fechaStr) {
@@ -99,7 +107,7 @@ window.estaVencido = function(fechaInicio, dias) {
 
 window.diasSinPagar = function(creditoId) {
   const pagos = DB._cache['pagos'] || [];
-  const pagosCr = pagos.filter(p => p.creditoId === creditoId && !p.eliminado);
+  const pagosCr = pagosDeCredito(creditoId, pagos).filter(p => !p.eliminado);
   if (pagosCr.length === 0) return null;
   const ultimo = pagosCr.map(p => p.fecha).sort((a, b) => b.localeCompare(a))[0];
   const hoyStr = today();
@@ -125,7 +133,7 @@ window.getAlertasCreditos = function() {
       if (!cliente) return;
 
       const cobrador = users.find(u => u.id === cliente.cobradorId) || { nombre: 'Sin Cobrador', id: 'n/a' };
-      const pagosCr = todosLosPagos.filter(p => p.creditoId === cr.id && !p.eliminado);
+      const pagosCr = pagosDeCredito(cr.id, todosLosPagos).filter(p => !p.eliminado);
       const saldoTotal = estadoCredito(cr, todosLosPagos).pendienteTotal; // saldo + mora pendiente
 
       if (saldoTotal <= 0.1) return;
@@ -165,17 +173,19 @@ window.obtenerDatosMora = function(credito, pagos) {
   if (!credito) return { esVencido: false, dias: 0, total: 0, diasInactivo: 0 };
 
   // Siempre recalcular con feriados actuales para consistencia con el calendario
-  const fFin = new Date(sumarDiasHabiles(credito.fechaInicio, Number(credito.diasTotal || 0)) + 'T00:00:00');
+  const finStr = sumarDiasHabiles(credito.fechaInicio, Number(credito.diasTotal || 0)); // 'AAAA-MM-DD'
+  const fFin = new Date(finStr + 'T00:00:00');
   fFin.setHours(0, 0, 0, 0);
 
-  const pagosCr = listaPagos.filter(p => p.creditoId === credito.id && !p.eliminado);
+  const pagosCr = pagosDeCredito(credito.id, listaPagos).filter(p => !p.eliminado);
   let fechaRef = credito.fechaInicio;
   if (pagosCr.length > 0) {
     const fechas = pagosCr.map(p => p.fecha).filter(f => f);
     if (fechas.length > 0) fechaRef = fechas.sort((a, b) => b.localeCompare(a))[0];
   }
 
-  const finStr = fFin.toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
+  // finStr ya es la fecha de fin. Antes se convertía fFin a hora de Lima: en celulares con
+  // otra zona horaria (ej. España) quedaba un día antes y la mora salía con un día de más.
   const hoyStr = today();
 
   const esVencido = hoy > fFin;
@@ -198,8 +208,7 @@ window.obtenerDatosMora = function(credito, pagos) {
 // Aquí: moraPagada = lo pagado a mora, nunca más que la mora generada (algunos pagos viejos
 // registraron de más), así el TOTAL pendiente es idéntico al cálculo anterior en todos los casos.
 window.estadoCredito = function (cr, pagos) {
-  const lista = (pagos || (DB._cache['pagos'] || []))
-    .filter(p => p.creditoId === cr.id && !p.eliminado);
+  const lista = pagosDeCredito(cr.id, pagos).filter(p => !p.eliminado);
   const pagado = lista.reduce((s, p) => s + (Number(p.monto) || 0), 0);
   const moraGenerada = obtenerDatosMora(cr, pagos).total || 0;
   const moraRegistrada = lista.reduce((s, p) => s + (Number(p.aplicadoMora) || 0), 0);
@@ -308,9 +317,7 @@ window.calcularEstadoAtraso = function (cr, pagos, fecha) {
              cuotasAtraso: 0, montoAtraso: 0, saldoRestante: 0 };
   }
 
-  const pagosNoEliminados = (pagos || []).filter(
-    p => p.creditoId === cr.id && !p.eliminado
-  );
+  const pagosNoEliminados = pagosDeCredito(cr.id, pagos || []).filter(p => !p.eliminado);
 
   // Solo lo pagado al préstamo cubre cuotas (la mora pagada no)
   const estCr         = estadoCredito(cr, pagosNoEliminados);
@@ -464,3 +471,52 @@ window.iconoFlecha = function (arriba, tam = 16) {
     stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
     style="vertical-align:middle; flex-shrink:0; margin-top:-2px"><path d="${arriba ? 'M18 15l-6-6-6 6' : 'M6 9l6 6 6-6'}"/></svg>`;
 };
+
+// ── Índice de pagos por crédito (velocidad) ──────────────────────
+// Calcular saldo/mora/atraso de cada crédito recorría TODOS los pagos cada vez:
+// con 1.000 créditos y 20.000 pagos eran millones de operaciones por pantalla.
+// Ahora se agrupan los pagos por crédito una sola vez y se reutiliza el grupo.
+// El índice se rehace solo si la lista cambia (otra lista o distinta cantidad);
+// los cambios dentro de un pago (monto, eliminado) se leen siempre del objeto real.
+const _indicesPagos = new WeakMap();
+window.pagosDeCredito = function (creditoId, pagos) {
+  const lista = pagos || DB._cache['pagos'] || [];
+  let idx = _indicesPagos.get(lista);
+  if (!idx || idx.largo !== lista.length) {
+    const mapa = new Map();
+    for (const p of lista) {
+      let grupo = mapa.get(p.creditoId);
+      if (!grupo) { grupo = []; mapa.set(p.creditoId, grupo); }
+      grupo.push(p);
+    }
+    idx = { largo: lista.length, mapa };
+    _indicesPagos.set(lista, idx);
+  }
+  return idx.mapa.get(creditoId) || [];
+};
+
+// ── Recordar cálculos de días hábiles (velocidad) ────────────────
+// sumarDiasHabiles / contarDiasHabiles recorren el calendario día por día y se piden
+// miles de veces con los mismos datos. Se recuerda cada resultado mientras la lista de
+// feriados sea la misma (si el admin agrega o quita un feriado, la lista cambia y se
+// vuelve a calcular todo).
+(function () {
+  const memos = new WeakMap();
+  const memoPara = (feriados) => {
+    let m = memos.get(feriados);
+    if (!m) { m = new Map(); memos.set(feriados, m); }
+    return m;
+  };
+  const recordar = (nombre) => {
+    const original = window[nombre];
+    window[nombre] = function (a, b) {
+      const memo = memoPara(getDiasNoLaborables());
+      const clave = a + '|' + b;
+      let r = memo.get(clave);
+      if (r === undefined) { r = original(a, b); memo.set(clave, r); }
+      return r;
+    };
+  };
+  recordar('sumarDiasHabiles');
+  recordar('contarDiasHabiles');
+})();

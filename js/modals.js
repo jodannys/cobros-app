@@ -636,8 +636,6 @@ window.renderModalBannerAlertas = function renderModalBannerAlertas() {
       </div>
     </div>
   </div>
-  ${todas.length > alertas.length ? `
-  <div style="font-size:12px; color:var(--muted); margin-bottom:8px"></div>` : ''}
 
   <div style="max-height:50vh; overflow-y:auto; scrollbar-width:thin; overscroll-behavior:contain;">
     ${alertas.length === 0
