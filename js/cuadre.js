@@ -469,7 +469,7 @@ window.renderCuadre = function () {
  <div class="topbar">
   <h2>Mi Cuadre</h2>
   <div style="display:flex; align-items:center; gap:8px;">
-    <div class="topbar-user"><strong>${state.currentUser.nombre}</strong></div>
+    <div class="topbar-user"><strong>${esc(state.currentUser.nombre)}</strong></div>
     ${state.currentUser.role === 'cobrador' ? renderBtnAyudaCobrador() : ''}
   </div>
 </div>
@@ -571,7 +571,7 @@ window.renderCuadre = function () {
               <div style="flex:1; min-width:0">
                 <div style="font-size:13.5px; font-weight:600; color:var(--text);
                             white-space:nowrap; overflow:hidden; text-overflow:ellipsis">
-                  ${g.descripcion}
+                  ${esc(g.descripcion)}
                 </div>
               </div>
               <div style="display:flex; align-items:center; gap:10px; flex-shrink:0">
@@ -843,12 +843,12 @@ ${d.estadoVisual === 'pendiente' ? `
   </div>
   ${state._cobrosExtraOpen ? `
   <div style="padding:0 16px 8px; background:white">
-    ${meta.cobrosExtra.map(x => `
+    <div class="lista-scroll" data-scroll-id="cobros-extra">${meta.cobrosExtra.map(x => `
       <div style="display:flex; justify-content:space-between; align-items:center;
                   padding:10px 0; border-bottom:1px solid var(--border)">
         <div>
           <div style="font-weight:700; font-size:14px; color:var(--text)">
-            ${x.cliente?.nombre || '—'}
+            ${esc(x.cliente?.nombre || '—')}
           </div>
           <div style="display:flex; gap:6px; margin-top:3px; flex-wrap:wrap">
             <span style="background:#fff1f2; color:#9f1239; font-size:10px;
@@ -861,7 +861,7 @@ ${d.estadoVisual === 'pendiente' ? `
         <div style="font-weight:800; color:#16a34a; font-size:15px">
           +${formatMoney(x.pago.monto)}
         </div>
-      </div>`).join('')}
+      </div>`).join('')}</div>
   </div>` : ''}
 </div>` : ''}
 

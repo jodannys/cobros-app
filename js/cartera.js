@@ -382,7 +382,7 @@ window.renderPanelCartera = function () {
     <div style="font-size:11px; font-weight:700; color:#fbbf24; margin-bottom:10px">
       ⏳ ${pendientes.length} depósito${pendientes.length > 1 ? 's' : ''} pendiente${pendientes.length > 1 ? 's' : ''} de confirmar
     </div>
-    ${pendientes.map(m => {
+    <div class="lista-scroll" data-scroll-id="depositos-pendientes" style="max-height:40vh">${pendientes.map(m => {
     const cob = (DB._cache['users'] || []).find(u => u.id === m.cobradorId);
     return `
       <div style="display:flex; justify-content:space-between; align-items:center;
@@ -390,7 +390,7 @@ window.renderPanelCartera = function () {
         <div>
           <div style="font-size:13px; font-weight:700; color:white">${esc(cob?.nombre || '—')}</div>
           <div style="font-size:11px; color:rgba(255,255,255,0.4); margin-top:2px">
-            ${m.descripcion || '—'} · ${m.fecha}
+            ${esc(m.descripcion || '—')} · ${formatDate(m.fecha)}
           </div>
         </div>
         <div style="display:flex; align-items:center; gap:8px">
@@ -404,7 +404,7 @@ window.renderPanelCartera = function () {
           </button>
         </div>
       </div>`;
-  }).join('')}
+  }).join('')}</div>
   </div>` : ''}
 
 </div>
@@ -430,7 +430,7 @@ ${renderTarjetaMovimientos()}
                 background:linear-gradient(135deg,#0f172a,#2563eb);
                 display:flex; align-items:center; justify-content:center;
                 color:white; font-weight:800; font-size:16px">
-      ${u.nombre.charAt(0)}
+      ${esc(String(u.nombre || '?').charAt(0).toUpperCase())}
             </div>
             <div>
               <div style="font-weight:700; font-size:14px; color:var(--text)">${esc(u.nombre)}</div>
@@ -482,7 +482,7 @@ ${cobradores_admin.map(u => {
                 background:linear-gradient(135deg,#0f172a,#2563eb);
                 display:flex; align-items:center; justify-content:center;
                 color:white; font-weight:800; font-size:16px">
-      ${u.nombre.charAt(0)}
+      ${esc(String(u.nombre || '?').charAt(0).toUpperCase())}
     </div>
 
     <div style="flex:1; min-width:0">

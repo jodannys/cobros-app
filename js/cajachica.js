@@ -179,7 +179,7 @@ window.renderPanelCajaChica = function () {
             padding:8px 0;border-bottom:1px solid #f1f5f9">
             <div style="flex:1;min-width:0">
               <div style="font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-                ${g.descripcion}
+                ${esc(g.descripcion)}
               </div>
               <div style="font-size:11px;color:var(--muted)">${formatDate(g.fecha)}</div>
             </div>
@@ -277,7 +277,7 @@ window.renderCajaChicaAdmin = function (cobradorId, fecha) {
           font-size:12px;padding:5px 0;border-bottom:1px solid #f1f5f9">
           <span style="color:var(--muted);flex:1;min-width:0;
             white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-            ${g.descripcion}
+            ${esc(g.descripcion)}
           </span>
           <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;margin-left:8px">
             <span style="color:var(--danger);font-weight:600">-${formatMoney(g.monto)}</span>
